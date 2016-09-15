@@ -19,8 +19,27 @@
 
 While classification uncertainty is not a direct measure of class membership, they are nonetheless correlated. As such, it has been used by numerous authors as a proxy indicator of class membership, achieving satisfactory classification accuracy \cite{foody2002accuracy}.
 
-For hard classification, accuracy assessment is rather straight-forward: typically a confusion matrix is employed for this purpose, showing how many pixels in the image have been classified correctly, and how many incorrectly. Such a matrix makes it simple to tell which classes are hard to discern from one another, as well as allows for deriving statistics such as users' accuracy, producers' accuracy, and total accuracy. Unfortunately, a standard confusion matrix is not applicable in the context of fuzzy classification, since misclassification in this case is not absolute, but rather a matter of degree \cite{foody2002accuracy}.
+For hard classification, accuracy assessment is rather straight-forward: typically a confusion matrix is employed for this purpose, showing how many pixels in the image have been classified correctly, and how many incorrectly. Such a matrix makes it simple to tell which classes are hard to discern from one another, as well as allows for deriving statistics such as users' accuracy, producers' accuracy, and total accuracy. Unfortunately, a standard confusion matrix is not applicable in the context of fuzzy classification, since misclassification in this case is not absolute, but rather a matter of degree \cite{foody2002accuracy}. Several solutions, such as cross-entropy, mutual information, and distance have been suggested as alternatives for fuzzy classification accuracy assessment \cite{lu2007methods}.
+
+There is a number of different classification methods, but only several of them are suitable to be used for fuzzy classification \cite{nath2014methods}. The two methods most commonly used in scientific literature are fuzzy c-means and neural networks \cite{zhang2001fullyfuzzy}. In addition, other algorithms that provide a measure of uncertainty about class membership can be used, such as the ratio of individual tree votes of Random Forest. Furthermore, algorithms that can handle continuous variables, but only one response variable (such as Random Forest), can be used as well, as long as the data is postprocessed at a pixel level to conform to physical constraints (class membership must be between 0 and 100\% and sum up to 100\%).
+
+Given the large number of options for the algorithms, all very different approaches to the same problem, the thesis will focus on assessing their performance when applied to real, large scale data spanning the gradient between boreal forests and deciduous forests in Europe. The algorithms tested will be:
+
+\begin{itemize}
+ \item Fuzzy c-means: semi-supervised, fully fuzzy, single-model statistical method
+ \item Fuzzy neural network: fully supervised, fully fuzzy, single-model machine learning method
+ \item Random forest regression: fully supervised, fully fuzzy, multiple-model machine learning method
+ \item Random forest classification: fully supervised, partially fuzzy, single-model machine learning method
+\end{itemize}
+
 
 \bibliography{bibliography}
 
 \end{document}
+
+%Training: Forest + grass + urban + water ~ Blue + Red + NIR + SWIR + Period + Phase + Amplitude + Etc
+%To predict: . ~ Blue + Red + NIR + SWIR + Period + Phase + Amplitude + Etc
+
+%c-means (fully fuzzy, partially supervised)
+%neural networks (partially or fully fuzzy, fully supervised)
+%random forest (partially fuzzy or multiple, fully supervised)
