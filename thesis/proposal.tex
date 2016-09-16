@@ -1,5 +1,6 @@
 \documentclass[a4paper,10pt]{article}
 \usepackage[utf8]{inputenc}
+\usepackage{textcomp} % Degree symbol
 \usepackage[colorlinks, allcolors=blue]{hyperref}
 \bibliographystyle{apalike}
 
@@ -10,10 +11,6 @@
 \begin{document}
 
 \maketitle
-
-\begin{abstract}
-
-\end{abstract}
 
 \section{Introduction}
 
@@ -36,7 +33,41 @@ Given the large number of options for the algorithms, all very different approac
 
 Visualisation of the fuzzy classification results is also challenging, since each class effectively is a single-channel raster of its own. Three such classes can easily be combined into RGB channels for visualisation, but with more classes it is no longer possible. There have been attempts to develop a method based on the hue, saturation and intensity colour model to allow for more distinct classes to be visualised on a single raster \cite{hengl2004fuzzycmeans}. There is also a possibility of hardening the classification when high accuracy visualisation is not needed, and making use of multiple RGB rasters side-by-side when it is needed.
 
-\section{Research questions}
+\section{Problem definition and research questions}
+
+Global land cover classification is an important research topic, with a number of different approaches having been tested \cite{hansen2000hardtree}. New and improved satellite sensors allow for improving existing classification, with both spatial and temporal resolution of the remote sensing imagery getting improved over time. At the moment the PROBA-V mission by the European Space Agency produces imagery that is a good fit for use in land cover classification. It is well-suited for time series analysis, because it has an archive that goes back to 2013, as well as a fast revisit time of 2 days for full global coverage (1 day for locations above 35\textdegree{} latitude) \cite{dierckx2014probav}. It also has moderate spatial resolution (100 by 100 metres, 300 by 300 metres and 1 by 1 kilometre pixel size products) \cite{probavguide}.
+
+Since PROBA-V is a relatively new satellite, so far there have been few studies using it for land cover classification. A number of studies have used simulated PROBA-V data in preparation for its launch \cite{stathakis2014probavurban} \cite{roumenina2013probavcrops}. After launch, most studies have focused on its potential for crop classification \cite{roumenina2015probavcrops} \cite{durgun2016crop} \cite{lambert2016cropland}. All of these studies have used the traditional hard classification.
+
+
+
+\begin{itemize}
+ \item Which algorithm gives the most accurate fuzzy classification results?
+ \item Which classes are the most difficult to discern from others?
+ \item How does the processing time differ among the different algorithms, when applied to large-scale imagery?
+ \item What variables are most important for large-scale fuzzy classification?
+\end{itemize}
+
+\section{Methods}
+
+\subsection{Sample acquisition}
+
+Samples for training and validation will be obtained manually, by following a procedure based on \cite{defries1998training}:
+\begin{itemize}
+ \item The chosen PROBA-V raster tile will be imported into QGIS as a boundary reference.
+ \item A high number of points (around 500) will be generated randomly within the boundaries of the raster tile.
+ \item Other layers, like Google Satellite (Digital Globe), Bing Maps, SENTINEL-2 and OpenStreetMap, as well as validation points from Geo Wiki validation contest II, will be put on top of the PROBA-V raster tile.
+ \item A new point layer for determined class information will be created.
+ \item For each randomly generated point, a new point will be added to the new point layer in the centre of the associated PROBA-V pixel.
+ \item The new point will have its class fraction filled out for all the classes (one attribute per class). This will be determined using visual inspection of all the aforementioned layers.
+ \item The process will be repeated until each class has a representative sample of pixels classified.
+\end{itemize}
+
+Some of the randomly generated points may be skipped, if enough samples of the particular land cover type had already been collected (for instance, water), in favour of those types that do not have enough or are more difficult to discern from remote sensing. Priority will also be given to endmember pixels, as some classification methods can only be trained on endmember pixels.
+
+The sample points will then be imported into R as separate variables.
+
+\section{Time schedule and feasibility}
 
 \bibliography{bibliography}
 
