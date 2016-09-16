@@ -59,10 +59,10 @@ order=-1
 
 [item:proposal.tex]
 archive=true
-column=108
+column=717
 encoding=UTF-8
 highlight=LaTeX
-line=31
+line=25
 mode=LaTeX
 open=true
 order=0
