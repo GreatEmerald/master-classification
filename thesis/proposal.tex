@@ -1,6 +1,7 @@
 \documentclass[a4paper,10pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{textcomp} % Degree symbol
+\usepackage{xcolor} % Grey comments
 \usepackage[colorlinks, allcolors=blue]{hyperref}
 \bibliographystyle{apalike}
 
@@ -20,9 +21,9 @@ Hard classification is not well-suited for coarse resolution imagery, due to a l
 
 There is a number of different classification algorithms, but only several of them are suitable to be used for fuzzy classification \cite{nath2014methods}. The two methods most commonly used in scientific literature are fuzzy c-means and neural networks \cite{zhang2001fullyfuzzy}. Neural networks in particular are well-suited for fuzzy classification, since they allow multiple continuous output as well as input variables in a single model \cite{foody1997fuzzynnet}. Fuzzy c-means, also known as fuzzy k-means or soft k-means, is a statistical method that relies on the proximity of pixels in feature space to class centroids, and thus is also suitable for fully fuzzy classification. However, since k-means is an unsupervised classification algorithm, the ability to make use of training data in fuzzy c-means is limited to determining class centroids with more precision \cite{hengl2004fuzzycmeans}, and as such it is effectively similar to maximum likelihood classification.
 
-In addition, other algorithms that provide a measure of uncertainty about class membership can be used, such as the ratio of individual tree votes of Random Forest. While classification uncertainty is not a direct measure of class membership \cite{sytze2000fuzzyset}, they are nonetheless correlated. As such, it has been used by numerous authors as a proxy indicator of class membership, achieving satisfactory classification accuracy \cite{foody2002accuracy}.
+In addition, other algorithms that provide a measure of uncertainty about class membership can be used, such as the ratio of individual tree votes of Random Forest or class probabilities in gradient boosting. While classification uncertainty is not a direct measure of class membership \cite{sytze2000fuzzyset}, they are nonetheless correlated. As such, it has been used by numerous authors as a proxy indicator of class membership, achieving satisfactory classification accuracy \cite{foody2002accuracy}.
 
-Furthermore, algorithms that can handle continuous variables, but only one response variable (such as Random Forest), can be used as well, by creating separate models for every class. This approach is called Binary Relevance \cite{karalas2016br}. Using this approach, the data needs to be postprocessed after classification at a pixel level to conform to physical constraints (class membership must be between 0 and 100\% and sum up to 100\%). Random Forest has generally been reported to give higher or equal accuracy results compared to other algorithms in hard classification scenarios using satellite imagery similar to that of PROBA-V \cite{duro2012algorithmcomparison}. Random Forest regression was also shown to perform as well as other algorithms in fuzzy classification scenarios \cite{walton2008subpixelrf}, although it is used in much fewer studies on fuzzy classification than the other algorithms mentioned previously.
+Furthermore, algorithms that can handle continuous variables, but only one response variable (such as Random Forest), can be used as well, by creating separate models for every class. This approach is called Binary Relevance \cite{karalas2016br}. Using this approach, the data needs to be postprocessed after classification at a pixel level to conform to physical constraints (class membership must be between 0 and 100\% and sum up to 100\%). Random Forest has generally been reported to give higher or equal accuracy results compared to other algorithms in hard classification scenarios using satellite imagery similar to that of PROBA-V \cite{duro2012algorithmcomparison}. Random Forest regression was also shown to perform as well as other algorithms in fuzzy classification scenarios \cite{walton2008subpixelrf}, although it is used in much fewer studies on fuzzy classification than the other algorithms mentioned previously. Gradient boosting is an algorithm related to Random Forest, with the same advantages and disadvantages, but it is known to perform better for general tasks and not yet been tested on fuzzy land cover classification.
 
 Accuracy assessment is rather straight-forward for hard classification: typically a confusion matrix is employed for this purpose, showing how many pixels in the image have been classified correctly, and how many incorrectly. Such a matrix makes it simple to tell which classes are hard to discern from one another, as well as allows for deriving statistics such as users' accuracy, producers' accuracy, and total accuracy. Unfortunately, a standard confusion matrix is not applicable in the context of fuzzy classification, since misclassification in this case is not absolute, but rather a matter of degree \cite{foody2002accuracy}. Several solutions, such as cross-entropy, mutual information, and distance have been suggested as alternatives for fuzzy classification accuracy assessment \cite{lu2007methods}.
 
@@ -30,37 +31,57 @@ Visualisation of the fuzzy classification results is also challenging, since eac
 
 \section{Problem definition and research questions}
 
-Global land cover classification is an important research topic, with a number of different approaches having been tested \cite{hansen2000hardtree}. New and improved satellite sensors allow for improving existing classification, with both spatial and temporal resolution of the remote sensing imagery getting improved over time. At the moment the PROBA-V mission by the European Space Agency produces imagery that is a good fit for use in land cover classification. It is well-suited for time series analysis, because it has an archive that goes back to 2013, as well as a fast revisit time of 2 days for full global coverage (1 day for locations above 35\textdegree{} latitude) \cite{dierckx2014probav}. It also has moderate spatial resolution (100 by 100 metres, 300 by 300 metres and 1 by 1 kilometre pixel size products) \cite{probavguide}.
+New and improved satellite sensors allow for improving existing classification, with both spatial and temporal resolution of the remote sensing imagery getting improved over time. At the moment the PROBA-V mission by the European Space Agency produces imagery that is a good fit for use in land cover classification. It is well-suited for time series analysis, because it has an archive that goes back to 2013, as well as a fast revisit time of 2 days for full global coverage (1 day for locations above 35\textdegree{} latitude) \cite{dierckx2014probav}. It also has moderate spatial resolution (100 by 100 metres, 300 by 300 metres and 1 by 1 kilometre pixel size products) \cite{probavguide}.
 
 Since PROBA-V is a relatively new satellite, so far there have been few studies using it for land cover classification. A number of studies have used simulated PROBA-V data in preparation for its launch \cite{stathakis2014probavurban} \cite{roumenina2013probavcrops} \cite{bartalev2014probavboreal}. After launch, most studies have focused on its potential for crop classification \cite{roumenina2015probavcrops} \cite{durgun2016crop} \cite{lambert2016cropland}. All of these studies have used the traditional hard classification.
 
+While the ultimate goal is to have a global land cover classification method, this study will focus specifically on the gradient \textcolor{black!50}{(ecotone?)} from boreal forests to temperate broadleaf forests, including wetlands. Boreal forests are an important terrestrial carbon sink in the global carbon cycle, whereas wetlands are key for maintaining biodiversity due to the uniqueness of wetland ecosystems that allows protected species to live there. Monitoring the global land cover of both is very important from an ecological and earth systems point of view. Both mixed forests and wetlands are challenging to detect and classify using traditional remote sensing techniques.
+
+Thus in this thesis, the focus will be on making use of PROBA-V data for fuzzy land cover classification in the boreal forest-temperate braodleaf forest gradient zone. The research questions that the thesis will attempt to answer are:
+
 \begin{itemize}
  \item Which algorithm gives the most accurate fuzzy classification results?
+ \item How does the processing time differ among the different algorithms, when applied to large-scale imagery?
  \item Which classes are the most difficult to discern from others? In particular: 
  \begin{itemize}
-  \item How well can coniferous and deciduous forests be discerned?
+  \item How well can boreal forests and broadleaf forests be discerned?
   \item How well do the algorithms predict forest fractions in mixed forests?
   \item How well can boreal wetlands be classified?
  \end{itemize}
- \item How does the processing time differ among the different algorithms, when applied to large-scale imagery?
- \item What variables are most important for large-scale fuzzy classification?
+ \item How does the classification accuracy change when more variables are introduced?
 \end{itemize}
 
 \section{Methods}
 
 \subsection{Input data}
 
-The PROBA-V image that will be used to derive spectral data for classification will be selected from the ones available based on these criteria: the date of acquisition has to be during summer, since that minimises the effects of snow and senescence \cite{bartalev2014probavboreal}; the number of good-quality pixels has to be the highest; and the spatial resolution has to be the finest. Composites of several days will be used to get higher quality images. Images closer to the present will be preferred.
+The PROBA-V image that will be used to derive spectral data for classification will be selected from the ones available based on these criteria: the date of acquisition has to be during summer, since that minimises the effects of snow and senescence \cite{bartalev2014probavboreal}; the number of good-quality pixels (not affected by clouds, sensor problems, etc.) has to be the highest; and the spatial resolution has to be the finest. Composites of several days will be used to get higher quality images. Images closer to the present will be preferred.
 
-For deriving temporal data (vegetation growth phase, amplitude and period), a series of images spanning the entire lifetime of the PROBA-V mission (2013-2016, 3 years) will be used. They come in two varieties: coarser spatial resolution, but more frequent revisit time, or finer spatial resolution, but less frequent revisit time. Both come in the form of composites. The finer resolution images will be used initially. If the temporal resolution is deemed insufficient to get good quality time series data, the coarser resolution images will be used to fill in the gaps. BFAST or other R packages for time series will be used to derive the data.
+For deriving temporal data (vegetation growth phase, amplitude and period), a series of images spanning the entire lifetime of the PROBA-V mission (2013-2016, 3 years) will be used. They come in two varieties: coarser spatial resolution, but more frequent revisit time, or finer spatial resolution, but less frequent revisit time. Both come in the form of composites. The finer resolution images will be used initially. If the temporal resolution is deemed insufficient to get good quality time series data, the coarser resolution images will be used to fill in the gaps. R packages for time series, such as \texttt{dtwSat} or \texttt{bfast}, will be used to derive the data.
 
-While the ultimate goal is to have a global land cover classification method, this study will focus specifically on the gradient (ecotone?) from boreal forests to nemoral forests, including wetlands. Boreal forests are an important terrestrial carbon sink in the global carbon cycle, whereas wetlands are key for maintaining biodiversity due to the uniqueness of wetland ecosystems that allows protected species to live there. Monitoring the global land cover of both is very important from an ecological and earth systems point of view. Both mixed forests and wetlands are challenging to detect and classify using traditional remote sensing techniques. Therefore the study area will be based on the PROBA-V tile 20,01 (spanning from south Finland, known for boreal forests as well as a variety of lakes and boreal wetlands, to the middle of Lithuania, which includes a variety of forest types as well as protected wetlands). If time permits, tiles 20,02 (from middle of Lithuania to north of Bulgaria), 19,01 (south Sweden) and 19,02 (from north Poland and Germany to north Italy and Croatia) will also be used, by mosaicing them all into one large image.
+The study area will be based on the PROBA-V tile 20,01. It spans from south Finland, known for boreal forests as well as a variety of lakes and boreal wetlands, to the middle of Lithuania, which includes both mixed and temperate broadleaf forests as well as protected wetlands. If time permits, tiles 20,02 (from middle of Lithuania to north of Bulgaria), 19,01 (south Sweden) and 19,02 (from north Poland and Germany to north Italy and Croatia) will also be used, by mosaicing them all into one large image.
 
 In addition to that, auxillary variables will be used, namely the digital elevation model (DEM) from the NASA Global Land Survey. This elevation model is already used by PROBA-V product suppliers for image ortho-rectification \cite{probavguide}. Such auxillary information is known to improve forest detection as well as wetland detection \cite{sader1995wetlands}. Vegetation indices, such as OSAVI, at particular months has also been found to allow detection of wetlands \cite{davranche2010wetland}.
 
+\subsection{Classes}
+
+The land cover classes that will be used for classification are based on the hybrid classification scheme by \cite{see2015hybrid}. The only change is the distiction between evergreen and deciduous tree cover:
+\begin{enumerate}
+ \item Deciduous trees
+ \item Evergreen trees
+ \item Shrubs
+ \item Grassland
+ \item Cropland
+ \item Wetland
+ \item Urban
+ \item Permafrost
+ \item Bare soil
+ \item Water
+\end{enumerate}
+
 \subsection{Sample acquisition}
 
-Samples for training and validation will be obtained manually, by following a procedure based on \cite{defries1998training}:
+Samples for training and validation will be obtained manually, by following a procedure adapted from \cite{defries1998training}:
 \begin{itemize}
  \item The chosen PROBA-V raster tile will be imported into QGIS as a boundary reference.
  \item A high number of points (around 500) will be generated randomly within the boundaries of the raster tile.
@@ -83,7 +104,7 @@ Given the large number of options for the algorithms, all very different approac
  \item Fuzzy c-means: semi-supervised, fully fuzzy, single-model statistical method
  \item Fuzzy neural network: fully supervised, fully fuzzy, single-model machine learning method
  \item Random forest regression: fully supervised, fully fuzzy, multiple-model machine learning method
- \item Random forest classification: fully supervised, partially fuzzy, single-model machine learning method
+ \item Multiclass gradient boosting: fully supervised, partially fuzzy, single-model machine learning method
 \end{itemize}
 
 \subsection{Validation and visualisation}
