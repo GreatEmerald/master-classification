@@ -104,7 +104,7 @@ Samples for training and validation will be obtained manually, by following a pr
  \item Other layers, like Google Satellite (e.g. Digital Globe), Bing Maps, SENTINEL-2, OpenStreetMap, aerial photography as well as validation points from Geo Wiki validation contest II, will be put on top of the PROBA-V raster tile. When there is an option, reference data closest to the date of the image to be classified will be preferred.
  \item A new point layer for determined class information will be created.
  \item For each randomly generated point, a new point will be added to the new point layer in the centre of the associated PROBA-V pixel.
- \item The new point will have its class fraction filled out for all the classes (one attribute per class). This will be determined using visual inspection and interpretation of all the aforementioned layers. To maximise the accuracy in mixed pixels, the fractions will be calculated by measuring the area each class occupies within the pixel.
+ \item The new point will have its class fraction filled out for all the classes (one attribute per class). This will be determined using visual inspection and interpretation of all the aforementioned layers. To maximise the accuracy in mixed pixels, the fractions will be calculated by measuring the area each class occupies within the pixel, then dividing it by the total area the pixel occupies.
  \item The process will be repeated until each class has a representative sample of pixels classified (a minimum of 30 pixels and 10 endmember pixels).
 \end{itemize}
 
@@ -207,9 +207,15 @@ The thesis will take a total of 22 weeks, with a midterm presentation and a fina
 
 \subsection{Feasibility and risks}
 
+PROBA-V data at 1 km resolution is freely available to the public, therefore there is little risk of not being able to obtain it altogether. 100 and 300 m resolution products, however, are commercial products, available though VITO for scientific use at favourable conditions. They should be available by the time the sample collection is done. In the case that they are not, the 1 km resolution products will be used instead.
+
+From auxiliary data, the DEM is freely available to download from NASA FTP servers, whereas vegetation indices can be calculated from PROBA-V imagery. Only the indices that can be calculated out of PROBA-V sensor band data (like OSAVI) will be used.
+
 Since training and validation data will be collected using visual interpretation, there is a risk of misinterpretation and interpreter bias. However, the risk will be mitigated by using a large number of reference layers for interpretation, including raster, vector, point data, and when necessary and possible, geotagged photos of the area. If it is still unclear how the pixel ought to be classified, the pixel will be skipped. Any remaining interpreter bias should not have an effect on accuracy assessment, since the points used in training and validating algorithms will be taken from the same pool, all gathered by the same person.
 
 Processing time for each algorithm may be too high to be feasible to do in a given amount of time for a large area, such as 4 PROBA-V tiles. To mitigate this risk, the algorithms will initially only be used to classify those pixels for which there is validation data. Since that is estimated to be around 300 pixels, there should not be any problems with it for any of the algorithms. Afterwards the classification will be rerun on larger datasets (half of a PROBA-V tile, one tile, two tiles, four tiles) until the processing time becomes longer than one day. In addition to lowering risks, this method will also allow comparing how each algorithm deals with increasing amounts of data.
+
+All of the analysis will be performed by using free and open-source software, namely \texttt{R} and its packages. All of the classification algorithms are freely available as \texttt{R} packages, and there is a number of different packages for time series analysis as well. This ensures that the software will be available both during the analysis phase of the thesis, as well as in the future in case the analysis was to be reproduced. In addition, all the code used in the analysis will be stored on GitHub for reproducibility purposes.
 
 \bibliography{bibliography}
 
