@@ -4,6 +4,7 @@
 \usepackage{xcolor} % Grey comments
 \usepackage[colorlinks, allcolors=blue]{hyperref}
 \usepackage{graphicx}
+\usepackage{pgfgantt} % Gantt chart
 \bibliographystyle{apalike}
 
 %opening
@@ -48,7 +49,7 @@ There is a wide variety of algorithms that can be used for fuzzy classification.
 
 The accuracy of classification results is not the only relevant difference between the algorithms. Another important aspect to consider is the processing time. It is especially important for global image processing, which is firmly in the realm of big data. Some algorithms are known to suffer from the curse of dimensionality, where a linear increase in input data results in a geometric increase in processing time \cite{walton2008subpixelrf}.
 
-In addition to algorithms, one aspect that is important for classification accuracy is the data (training variables) that the algorithm is fed. In this thesis, spectral variables (blue, red, near infrared, shortwave infrared bands), temporal variables (growing season start, duration, growing intensity) as well as auxiliary variables (height above average sea level, slope, vegetation indices) will be used to train all the algorithms.
+In addition to algorithms, one aspect that is important for classification accuracy is the data (training variables) that the algorithm is trained on. In this thesis, spectral variables (blue, red, near infrared, shortwave infrared bands), temporal variables (growing season start, duration, growing intensity) as well as auxiliary variables (height above average sea level, slope, vegetation indices) will be used to train all the algorithms. Such auxiliary information is known to improve forest detection as well as wetland detection \cite{sader1995wetlands}.
 
 Thus the goal of this thesis is to assess the accuracy of fuzzy land cover classification in the boreal forest-temperate broadleaf forest gradient zone using PROBA-V satellite imagery. The research questions that the thesis will attempt to answer are:
 
@@ -75,7 +76,7 @@ For deriving temporal data (vegetation growth phase, amplitude and period), a se
 
 The study area will be based on the PROBA-V tile 20,01. It spans from south Finland, known for boreal forests as well as a variety of lakes and boreal wetlands, to the middle of Lithuania, which includes both mixed and temperate broadleaf forests as well as protected wetlands. If time permits, tiles 20,02 (from middle of Lithuania to north of Bulgaria), 19,01 (south Sweden) and 19,02 (from north Poland and Germany to north Italy and Croatia) will also be used, by mosaicing them all into one large image (see figure \ref{AOI}).
 
-In addition to that, auxiliary variables will be used, namely the digital elevation model (DEM) from the NASA Global Land Survey. This elevation model is already used by PROBA-V product suppliers for image ortho-rectification \cite{probavguide}. Such auxiliary information is known to improve forest detection as well as wetland detection \cite{sader1995wetlands}. Vegetation indices, such as OSAVI, at particular months has also been found to allow detection of wetlands \cite{davranche2010wetland}.
+In addition to that, auxiliary variables will be used, namely the digital elevation model (DEM) from the NASA Global Land Survey. This elevation model is already used by PROBA-V product suppliers for image ortho-rectification \cite{probavguide}. Vegetation indices, such as OSAVI, at particular months has also been found to allow detection of wetlands \cite{davranche2010wetland}.
 
 \subsection{Classes}
 
@@ -93,34 +94,70 @@ The land cover classes that will be used for classification are based on the hyb
  \item Water
 \end{enumerate}
 
-\subsection{Collection of validation data}
+\subsection{Collection of training and validation data}
 
 Samples for training and validation will be obtained manually, by following a procedure adapted from \cite{defries1998training}:
 \begin{itemize}
  \item The chosen PROBA-V raster tile will be imported into QGIS as a boundary reference.
  \item The latest GlobCover dataset will be imported into QGIS in order to serve as a basis for land cover stratification. The raster will be converted to polygons and classes will be merged to conform to the classes listed in the previous section.
  \item 1000 points will be generated using stratified random sampling within the boundaries of the raster tile. GlobCover land cover types will be used as strata.
- \item Other layers, like Google Satellite (Digital Globe), Bing Maps, SENTINEL-2, OpenStreetMap, aerial photography as well as validation points from Geo Wiki validation contest II, will be put on top of the PROBA-V raster tile.
+ \item Other layers, like Google Satellite (e.g. Digital Globe), Bing Maps, SENTINEL-2, OpenStreetMap, aerial photography as well as validation points from Geo Wiki validation contest II, will be put on top of the PROBA-V raster tile. When there is an option, reference data closest to the date of the image to be classified will be preferred.
  \item A new point layer for determined class information will be created.
  \item For each randomly generated point, a new point will be added to the new point layer in the centre of the associated PROBA-V pixel.
  \item The new point will have its class fraction filled out for all the classes (one attribute per class). This will be determined using visual inspection and interpretation of all the aforementioned layers. To maximise the accuracy in mixed pixels, the fractions will be calculated by measuring the area each class occupies within the pixel.
  \item The process will be repeated until each class has a representative sample of pixels classified (a minimum of 30 pixels and 10 endmember pixels).
 \end{itemize}
 
-Some of the randomly generated points may be skipped, if enough samples of the particular land cover type had already been collected (for instance, water), in favour of those types that do not have enough or are more difficult to discern from remote sensing. Priority will also be given to endmember pixels, as some classification methods can only be trained on endmember pixels.
+Some of the randomly generated points may be skipped, if it is unclear from the reference data which classes the pixel contains. After 30 pixels have been classified, and there are fewer than 10 endmember pixels of a particular class, some mixed pixels may also be skipped. A large enough sample of endmember pixels is important for training algorithms that do not allow training on mixed pixels.
 
-The sample points will then be imported into R. Each attribute in R is available as a variable, so they can then be used in classification.
+The resulting sample points will then be imported into R. Each attribute in R is available as a variable, so they can then be used in classification.
 
 \subsection{Classification algorithms}
 
-Given the large number of options for the algorithms, all very different approaches to the same problem, the thesis will focus on assessing their performance when applied to real, large scale satellite imagery from the PROBA-V satellite spanning the gradient between boreal forests and deciduous forests in Europe. The algorithms tested will be:
+There will be four classification algorithms tested in total: fuzzy c-means, fuzzy neural network, random forest regression and multiclass gradient boosting. See table \ref{tbl-comparison} for a short comparison of the algorithm properties.
 
-\begin{itemize}
- \item Fuzzy c-means: semi-supervised, fully fuzzy, single-model statistical method
- \item Fuzzy neural network: fully supervised, fully fuzzy, single-model machine learning method
- \item Random forest regression: fully supervised, fully fuzzy, multiple-model machine learning method
- \item Multiclass gradient boosting: fully supervised, partially fuzzy, single-model machine learning method
-\end{itemize}
+\begin{table}
+  \begin{center}
+    \resizebox{\textwidth}{!}{
+      \begin{tabular}{lllll}
+	\hline
+	Algorithm name & Supervised? & Fuzzy? & Single-model? & Type\\
+	\hline
+	Fuzzy c-means & Partially & Yes & Yes & Statistical\\
+	Fuzzy neural network & Yes & Yes & Yes & Machine learning\\
+	Random forest regression & Yes & Yes & No & Machine learning\\
+	Multiclass gradient boosting & Yes & Partially & Yes & Machine learning\\
+	\hline
+      \end{tabular}
+    }
+  \end{center}
+  \caption{Feature comparison between classification algorithms whose classification accuracy will be compared in the thesis.}
+  \label{tbl-comparison}
+\end{table}
+
+\subsubsection{Fuzzy c-means}
+
+Fuzzy $c$-means, also called fuzzy $k$-means and supervised fuzzy $k$-means, is an algorithm based on the $k$-means clustering algorithm that attempts to classify pixels by identifying clusters by proximity in feature space. $k$-means is an unsupervised algorithm, and takes one parameter, $k$, for the number of clusters to create. These cluster centroids are usually selected randomly from all pixels, and clusters are formed by assigning each pixel to the class whose centre is the closest. Then the cluster centroids are recalculated, and the process is repeated until it converges. The supervised variety of this algorithm presets the cluster centroids to their known values from the training pixels, and the $c$-means or fuzzy $k$-means variety assigns each pixel a distance value from each class centroid to determine class membership. This makes the algorithm similar to maximum likelihood classification (it would be identical if the centroids were completely fixed). It also takes an extra parameter, called a fuzzification parameter, to determine the inverse of the distance from class centroids within which all pixels are said to belong exclusively to that class. A fuzzification parameter of 0 would result in hard classification, while a high value would make every pixel partially belong to all classes. \cite{hengl2004fuzzycmeans}
+
+The advantage of this algorithm is its simplicity: increasing the number of pixels should not result in high increase in processing time, as only the points' centroid and the distance from each class centroid to each pixel has to be calculated. The disadvantage is that it is only partially supervised, very little data from the training pixels are used (only the class centroid position from a weighted average).
+
+\subsubsection{Fuzzy neural network}
+
+Neural networks are a machine learning algorithm that works by making use of a layered architecture of an input layer, output layer, and a number of hidden layers in between. When training, the algorithm tries to assign weights to each node in the hidden layers so that given the input layer, the result would be the output layer. Initially values are assigned at random, and by using a back-propagation algorithm they are adjusted to better fit the output. Such a trained neural network can then predict the output layer values when given unclassified pixels as the input layer. \cite{foody1997fuzzynnet}
+
+Neural networks work with continuous values, therefore they can take mixed pixels as training input, and output continuous membership values for every class, which makes them well-suited for fuzzy classification tasks. However, the downside of neural network is that they require three parameters: the number of hidden layers, the number of neurons (nodes) per each hidden layer, and the number of back-propagation iterations. Each of these affect the ability of the neural network to generalise data instead of overfitting the training output, and there is no rule of thumb about what combination should work the best, requiring a lot of trial and error or Monte Carlo analysis to get satisfactory results.
+
+\subsubsection{Random forest}
+
+Random forest is another machine learning algorithm, based on building decision trees that could be used to determine the class of a pixel. The algorithm generates a (configurably) large number of decision trees, each based on a random (with replacement) training subsample, so that every tree in the model is unique. Then in order to determine which class a pixel belongs to, each tree casts a vote. With hard classification, the pixel is assigned the class with the majority vote. \cite{walton2008subpixelrf}
+
+With fuzzy classification, instead of using the majority vote, the fraction of votes can be used as an indication of class membership instead. However, the algorithm will have to be trained on endmember pixels only in that case. Alternatively, random forest is also capable of performing regressions, but only for single output variables. Thus by performing one regression for each class (binary relevance method), mixed pixels could be used for training, but the algorithm will not take other classes into account.
+
+\subsubsection{Gradient boosting}
+
+Gradient boosting is a machine learning algorithm highly related to random forest. The difference is that instead of building random trees and having them vote, the algorithm iteratively optimises a tree (or a small set of trees) to better fit the training data, while making sure not to add unnecessary complexity to the model by performing internal cross-validation at each step. Much like the two aforementioned machine learning methods, it internally uses continuous values, and the result can be expressed as a sum of all tree branch weights. \cite{friedman2001gradientboost}
+
+Just like with random forest, there are two ways to use this algorithm for fuzzy classification: the binary relevance method, or a multiclass method that gives the probability of a pixel to belong to each class, akin to the random forest vote fraction method. The same advantages and disadvantages apply.
 
 \subsection{Validation and visualisation}
 
@@ -139,6 +176,40 @@ These two statistics show how many percent did the algorithm either overrepresen
 These statistics allow comparing how the algorithm is capable of separating each class, much like a confusion matrix does in hard classification. A difference is that this approach does not give information about which classes the algorithm has trouble separating (as it is also a matter of degree in fuzzy classification). A total classification accuracy statistic can be obtained by taking a mean of all class RMSE and MAE statistics.
 
 \section{Time schedule and feasibility}
+
+\subsection{Time schedule}
+
+\begin{figure}
+  \resizebox{\textwidth}{!}{
+    \begin{ganttchart}[hgrid, vgrid]{22}
+      \gantttitle{2016}{13}
+      \gantttitle{2017}{9} \\
+      \gantttitlelist{5,...,26}{1} \\
+      \ganttbar{Sample collection}{1}{5} \\
+      \ganttbar{Thesis writing}{5}{11}
+      \ganttbar{Thesis writing}{14}{21} \\
+      \ganttgroup{Analysis}{4}{18} \\
+      \ganttbar{Preprocessing}{4}{6} \\
+      \ganttbar{Classification}{7}{11}
+      \ganttbar{Classification}{14}{18} \\
+      \ganttbar{Presentation}{10}{10} \\
+      \ganttmilestone{Midterm}{10} \\
+      \ganttgroup{Finalisation}{19}{22} \\
+      \ganttbar{Presentation}{22}{22} \\
+      \ganttmilestone{Thesis defence}{22}
+    \end{ganttchart}
+  }
+  \caption{Gantt chart of the time schedule. Numbers in the second line represent academic weeks.}
+  \label{fig-gantt}
+\end{figure}
+
+The thesis will take a total of 22 weeks, with a midterm presentation and a final thesis defence. See figure \ref{fig-gantt} for more details.
+
+\subsection{Feasibility and risks}
+
+Since training and validation data will be collected using visual interpretation, there is a risk of misinterpretation and interpreter bias. However, the risk will be mitigated by using a large number of reference layers for interpretation, including raster, vector, point data, and when necessary and possible, geotagged photos of the area. If it is still unclear how the pixel ought to be classified, the pixel will be skipped. Any remaining interpreter bias should not have an effect on accuracy assessment, since the points used in training and validating algorithms will be taken from the same pool, all gathered by the same person.
+
+Processing time for each algorithm may be too high to be feasible to do in a given amount of time for a large area, such as 4 PROBA-V tiles. To mitigate this risk, the algorithms will initially only be used to classify those pixels for which there is validation data. Since that is estimated to be around 300 pixels, there should not be any problems with it for any of the algorithms. Afterwards the classification will be rerun on larger datasets (half of a PROBA-V tile, one tile, two tiles, four tiles) until the processing time becomes longer than one day. In addition to lowering risks, this method will also allow comparing how each algorithm deals with increasing amounts of data.
 
 \bibliography{bibliography}
 
