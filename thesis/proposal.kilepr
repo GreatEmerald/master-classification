@@ -39,10 +39,10 @@ Mode=LaTeX
 
 [item:bibliography.bib]
 archive=true
-column=34
+column=32
 encoding=UTF-8
 highlight=BibTeX
-line=398
+line=472
 mode=BibTeX
 open=true
 order=1
@@ -69,22 +69,22 @@ order=-1
 
 [item:proposal.tex]
 archive=true
-column=39
+column=727
 encoding=UTF-8
 highlight=LaTeX
-line=106
+line=68
 mode=LaTeX
 open=true
 order=0
 
 [view-settings,view=0,item:bibliography.bib]
-CursorColumn=34
-CursorLine=398
+CursorColumn=32
+CursorLine=472
 JumpList=
-ViMarks=.,436,1,[,417,0,],-1,-1
+ViMarks=.,481,1,[,471,0,],-1,-1
 
 [view-settings,view=0,item:proposal.tex]
-CursorColumn=39
-CursorLine=106
+CursorColumn=727
+CursorLine=68
 JumpList=
-ViMarks=.,106,108,[,106,101,],106,108
+ViMarks=.,68,471,[,68,471,],68,471
