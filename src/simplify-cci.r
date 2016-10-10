@@ -42,3 +42,8 @@ reclassifier = c(
     160, 180, 160)
 CCI.simple = reclassify(CCI.crop, reclassifier, right=NA)
 writeRaster(CCI.simple, "/home/dainius/Downloads/probavextent/cci-simplified.tif")
+# Grid params: ~20-~30 x, ~55-~65 y; 10/10080 steps
+# One grid area is exactly 12196.1127540375
+# Create stratified random sample of 1000 points (9 classes since there is no permafrost)
+Samples = sampleStratified(CCI.simple, 112, sp=TRUE)
+writeOGR(Samples, "samples.gml", "samples", driver="GML")
