@@ -14,7 +14,7 @@ which(rowSums(samples@data) != 100)
 # Add "hardened" column: dominant land cover class
 samples$dominant = factor(apply(samples@data, 1, which.max), labels = colnames(samples@data)[1:9], ordered = FALSE)
 # Add a column that identifies endmembers
-samples$pure = apply(samples@data[,1:9], 1, max) > 90
+samples$pure = apply(samples@data[,1:9], 1, max) >= 90
 
 # Statistics!
 # "dominant" should be >=50 for all
