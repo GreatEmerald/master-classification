@@ -27,3 +27,6 @@ table(samples[samples$pure,]$dominant)/15*100
 # What to work on next!
 which.min(table(samples$dominant))
 which.min(table(samples[samples$pure,]$dominant))
+# How many are left!
+50-table(samples$dominant)
+15-table(samples[samples$pure,]$dominant)
