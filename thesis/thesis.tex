@@ -1,4 +1,4 @@
-\documentclass[a4paper,10pt]{article}
+\documentclass[a4paper,10pt]{book}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{textcomp} % Degree symbol
@@ -6,6 +6,7 @@
 \usepackage[colorlinks, allcolors=blue]{hyperref}
 \usepackage{graphicx}
 \usepackage{multirow} % Tables
+\usepackage{appendix}
 \usepackage{natbib}
 \bibliographystyle{apalike}
 
@@ -93,16 +94,16 @@ In order to make use of supervised classification algorithms, a representative d
 
 No such dataset was available at the time. The closest available was the Geo-Wiki Land Cover Classification Competition II result dataset. The participants of this competition were asked to identify up to three main land cover classes in a randomly selected 300 m resolution pixel and write down the class proportions. To do that, they had access to various satellite imagery and existing land cover classification maps. Each pixel could be validated by more than one person. While this dataset is close to what was needed for this study, several aspects made it unfit for use. First, within the area of interest, only 14 pixels were available. That is far from being enough, since classification algorithms need a representative sample of points for each class, of which in this study there were nine. Second, the contestants rarely agreed about the dominant classes and the proportions of each class in a pixel. Third, only up to three classes could be defined for each pixel, whereas all nine are required for this study. And fourth, the classification was based on a coarser resolution than the target in this study.
 
-This meant that ground truth had to be collected manually specifically for the purposes of this study. The target was to obtain at least 50 ground truth pixels for every class. A pixel was considered to belong to a certain class if that class had the majority fraction in the pixel. In addition, at least 15 pixels of each class had to be endmember pixels: ones that amount for 95\% or larger fractions within the pixel. The result was a dataset of 480 ground truth pixels in total.
+This meant that ground truth had to be collected manually specifically for the purposes of this study. Manual remote sensing image interpretation \citep{defries1998training} was used to achieve this. The target was to obtain at least 50 ground truth pixels for every class. A pixel was considered to belong to a certain class if that class had the majority fraction in the pixel. In addition, at least 15 pixels of each class had to be endmember pixels: ones that amount for 95\% or larger fractions within the pixel. The result was a dataset of 480 ground truth pixels in total.
 
-For determining which pixels to sample, a two-stage selection protocol was used. The first stage was stratified random sampling based on the 2010 CCI Land Cover product by the European Space Agency. Since this product uses a larger number of classes (since it is a hard rather than a fuzzy classification), some classes were merged into one to fit the classes desired in this study. See table \ref{tbl-classes} for more details.
+For determining which pixels to sample, a two-stage selection protocol was used. The first stage was stratified random sampling based on the 2010 CCI Land Cover product by the European Space Agency. Since this product uses a larger number of classes (since it is a hard rather than a fuzzy classification), some classes were merged into one to fit the classes desired in this study. See table \ref{tbl-classes} for more details. 112 pixels per class (total of 1008) were selected in this stage.
 
 \begin{table}
   \begin{center}
     \resizebox{\textwidth}{!}{
       \begin{tabular}{lp{9cm}l}
 	\hline
-	Class in this study & Equivalent classes in LC-CCI and their values & \\
+	Class in this study & Equivalent classes in LC-CCI and their digital numbers & \\
 	\hline
 	\multirow{4}{*}{Crops} & Cropland rainfed & 10 \\
 	  & Cropland rainfed - Herbaceous cover & 11 \\
@@ -155,18 +156,21 @@ For determining which pixels to sample, a two-stage selection protocol was used.
   \label{tbl-classes}
 \end{table}
 
-Samples for training and validation will be obtained manually, by following a procedure adapted from \citep{defries1998training}:
-\begin{itemize}
- \item The chosen PROBA-V raster tile will be imported into QGIS as a boundary reference. From it, a line grid will be created to serve as a boundary reference for every pixel of the original image.
- \item The latest LC-CCI dataset will be imported into QGIS in order to serve as a basis for land cover stratification. The raster will be converted to polygons and classes will be merged to conform to the classes listed in the previous section.
- \item A new point layer for determined class fractions will be created.
- \item Other layers, like OpenStreetMap, Google Satellite (e.g. Digital Globe), Bing Maps, SENTINEL-2 imagery, and aerial photography, will be put on top of the PROBA-V raster tile. When there is an option, reference data closest to the date of the image to be classified will be preferred.
- \item 1000 points will be generated using stratified random sampling within the boundaries of the PROBA-V raster tile. Merged LC-CCI land cover types will be used as strata. Each pixel that the points fall onto will be selected as a potential pixel to be used for class fraction determination.
- \item Each selected pixel will have its land cover class fractions filled out (one attribute per class, summing up to 100\%). These fractions will be determined using visual inspection and interpretation of all the aforementioned layers. To maximise the accuracy in mixed pixels, the fractions will be calculated by measuring the area each class occupies within the pixel, then dividing it by the total area the pixel occupies.
- \item The process will be repeated until each class has a representative sample of pixels classified (a minimum of 50 pixels per class and 15 endmember pixels among them).
-\end{itemize}
+The first stage selected pixels that were not always optimal for the needs of this study. First, endmember pixels were needed, while the vast majority of pixels are mixed. Second, the LC-CCI product uses coarser resolution pixels than the PROBA-V data used for classification, therefore the equivalent PROBA-V pixels were not necessarily of the desired land cover class. Third, LC-CCI classification was not always accurate, possibly due to inaccuracies in the classification algorithm used to derive it, and possibly due to land cover changes over time (PROBA-V data goes back only to 2013, three years later than what the LC-CCI product was made for). Fourth, the study requires ground truth where land cover types have remained constant over the last three years, wheras in some locations there was clear land cover change ocurring (mostly due to deforestation).
 
-Some of the randomly generated points may be skipped, if it is unclear from the reference data which classes the pixel contains. After 50 pixels have been classified, and there are fewer than 15 endmember pixels of a particular class among the pixels classified, some mixed pixels may also be skipped. A large enough sample of endmember pixels is important for training algorithms that do not allow training on mixed pixels.
+Therefore a systematic second stage selection was performed for each pixel selected in the first stage. Pixels within a 10 pixel radius from the first stage selection were manually checked, and the best pixel was selected for each. The first criterion considered was evident land cover change. No pixels with identifiable land cover change over the 2013-2016 period were used. The second criterion was uncertainty in identification of land cover fractions in the pixel. Pixels that had more unambiguous reference layers were preferred in order to minimise the uncertainty in the resulting dataset. The third criterion was the purity of the pixel. Pixels with one highly dominant land cover class were preferred, so that enough endmember pixels could be collected. The last criterion was the distance from the pixel selected in the first stage. In case all other criteria were equal for several pixels, the one closest to the pixel selected in the first stage was chosen. In case none of the pixels within the 10 pixel radius fulfilled the selection criteria, the area was skipped. In case the LC-CCI classification had mislabelled the area, a pixel of another class than the one desired could also be selected, provided it fulfills the above criteria. For example, the LC-CCI classification often confused urban and bare areas; in those cases, the best pixel was selected and identified appropriately, no matter which class it was labelled as in LC-CCI. See figure \ref{fig-sampling} for an example.
+
+\begin{figure}
+ \includegraphics[width=\textwidth]{./thesis-figures/classification-example.png}
+ \caption{An example of a ground truth pixel within an area misclassified by LC-CCI. Left: a true colour image of an area on Kotlin island, north of Kronstadt, Russia (Google Maps imagery). Right: LC-CCI classification of the same area. Red indicates urban areas, cream indicates sparsely vegetated areas, green indicates needleleaved evergreen forest. In reality, the area is mainly composed of wetland. The black point represents the first stage sample, the red point represents the second stage sample. The blue grid indicates PROBA-V pixel locations. The polygons around the second stage sample were used for measuring the area of each land cover type within the pixel. The result was 36\% wetland, 28\% urban, 23\% bare soil, 8\% grassland, 5\% shrubland, 0\% of the rest.}
+ \label{fig-sampling}
+\end{figure}
+
+Image interpretation, second stage sample selection and dataset creation were performed using QGIS 2.14.8 ``Essen'' software. To aid in visual interpretation in order to ensure that the gathered ground truth would have as little uncertainty as possible, open national data (orthophotos and topographical maps) from Finland, Estonia, Latvia and Lithuania was used in addition to open global data. In addition to GIS layers, panoramic photos were used (Google Street View, Yandex panoramas). For a full list of layers used for image interpretation, see Appendix \ref{app-layerlist}.
+
+In other to determine the class fractions within a PROBA-V pixel, instead of relying on subjective estimations or subdivision, land cover was outlined within a pixel by drawing multipart polygons for each class (except the dominant) within the pixel. Then by using a virtual attribute, the area of each polygon was calculated and divided by the total area of a pixel (which is constant among all pixels in the WGS84 coordinate reference system), giving a percentage fraction of each class. The fraction of the dominant class was then calculated by subtracting each of the other fractions from 100\%. Therefore the precision of the ground truth data is 1\% (ranging from 0\% to 100\%).
+
+Gathered ground truth data was stored as a point layer, with each point describing the PROBA-V pixel under it. In order to make certain that there are no issues with points falling on pixel borders, as well as to accurately know the boundaries of each pixel when drawing polygons on it, a line grid was generated in QGIS by using an imported PROBA-V image as a reference for the origin and size of each grid cell. Ground truth points were placed in the centre of the pixel they describe, and snapping (with topology checking) was used when drawing polygons in order to avoid geometry errors and imprecisions.
 
 The resulting sample points will then be imported into R. Each attribute in R is available as a variable, so they can then be used in classification.
 
@@ -240,6 +244,40 @@ $$ ME_c = {\displaystyle\sum_{i=1}^{n}{ (p_{i} - v_{i}) } \over{n}} $$
 Positive ME values mean that the algorithm tends to overrepresent class $c$ membership, negative ME values mean that it tends to underrepresent class $c$ membership on average in all pixels. An ME of 0 would mean that the algorithm is unbiased.
 
 \bibliography{bibliography}
+
+\begin{appendices}
+ \chapter{Visual interpretation layers}
+ \label{app-layerlist}
+ \begin{table}
+  \begin{center}
+    %\resizebox{\textwidth}{!}{
+      \begin{tabular}{llrl}
+	\hline
+	Layer provider & Layer type & Year & URL \\
+	\hline
+	ESA LC-CCI & Land cover & 2010 & \url{http://maps.elie.ucl.ac.be/CCI/viewer} \\
+	OpenStreetMap & Topographical & 2016 & \url{http://www.openstreetmap.org} \\
+	Google & Satellite & ?-2016 & \url{https://www.google.com/maps} \\
+	Google & Panoramic & 2009-2016 & \url{https://www.google.com/maps} \\
+	Bing & Satellite & ?-2016 & \url{https://www.bing.com/maps} \\
+	Yandex & Satellite & ?-2016 & \url{https://yandex.com/maps/} \\
+	Yandex & Panoramic & ?-2016 & \url{https://yandex.com/maps/} \\
+	Lithuania & Topographical & 2016 & \url{http://www.geoportal.lt} \\
+	Lithuania & Orthophoto & 2005-2015 & \url{http://www.geoportal.lt} \\
+	Latvia & Orthophoto & 2010-2011 & \url{http://www.lgia.gov.lv} \\
+	Latvia & Orthophoto & 2010 & \url{http://www.gisnet.lv/cgi-bin/osm_latvia} \\
+	Estonia & Topographical & 2016 & \url{http://geoportaal.maaamet.ee} \\
+	Estonia & Orthophoto & 2007-2009 & \url{http://geoportaal.maaamet.ee} \\
+	Finland & Topographical & 2016 & \url{http://kartat.kapsi.fi} \\
+	Finland & Orthophoto & 2006-2016 & \url{http://kartat.kapsi.fi} \\
+	\hline
+      \end{tabular}
+    %}
+  \end{center}
+  \caption{List of layers used to aid visual interpretation when gathering ground truth data. Most of the layers were accessed as WMS or TMS services (exceptions: Google Street View and Yandex accessed through a web interface; Google and Bing satellite data accessed using JavaScript API).}
+  \label{tbl-layers}
+\end{table}
+\end{appendices}
 
 \end{document}
 
