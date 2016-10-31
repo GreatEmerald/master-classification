@@ -2,7 +2,7 @@ library(raster)
 library(rgdal)
 # Merging CCI types:
 # Crops: 10 (Cropland rainfed), 11 (Cropland rainfed - Herbaceous cover), 12 (Cropland rainfed - Tree or shrub cover),
-#        13 (Cropland irrigated or post-flooding), 20 (Cropland irrigated or post-flooding),
+#        20 (Cropland irrigated or post-flooding),
 #        30 (Mosaic cropland (>50%) / natural vegetation (tree/shrub/herbaceous cover) (<50%))
 # Deciduous trees: 60 (Tree cover  broadleaved  deciduous  closed to open (>15%)),
 #                  61 (Tree cover  broadleaved  deciduous  closed (>40%)),
