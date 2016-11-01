@@ -204,6 +204,8 @@ While bare soil was mostly easy to distinguish from the other classes, the speci
 
 Wetlands were somewhat challenging to distinguish from grass and shrubs. This is by definition, since within the study area wetlands are covered by herbaceous or short woody vegetation. The distinguishing factor is whether the area is waterlogged or drained. However, this turned out to be a minor problem, because within the study area most wetlands are large, contiguous, often protected territories. They stand out, also by a more brown colour due to peat, from the surrounding environment at larger scales. Also, the LC-CCI map turned out to be rather accurate in detecting wetlands. Larger shrubs or young trees within wetlands were assigned to the shrub class. Another minor problem within wetlands was dealing with the seasonal change in herbaceous cover over the year, with plants taking up some area from open water in the summer. However, the changes were mostly small enough to not make a 1\% difference in the land cover fractions.
 
+All in all there are many sources of uncertainty when it comes to image interpretation. Within this study most of them have been dealt with either by the sampling design (skipping uncertain pixels) or special considerations as mentioned above. It also helps improve accuracy that the ground truth is in fractions, so the actual position of the land cover within the pixel does not matter, and small errors may compensate one another. Still, it is inevitable that some of the gathered ground truth will not match the reality precisely.
+
 \subsection{Model input data}
 
 The PROBA-V image that will be used to derive spectral data for classification will be selected from the ones available based on these criteria: the date of acquisition has to be during the summer of 2016, since that minimises the effects of snow and senescence \citep{bartalev2014probavboreal}; the number of good-quality pixels (not affected by clouds, sensor problems, etc.) in the tile should be as high as possible; and the spatial resolution of the image should be as fine as possible (ideally 100 m resolution). Composites of several days will be used to get higher quality images. Images closer to the present will be preferred if there are several images that match the previous criteria (i.e. their quality is equal).
@@ -216,7 +218,7 @@ A variety of vegetation indices are known to improve the separability of the wet
 
 \subsection{Classification algorithms}
 
-There will be four classification algorithms tested in total: fuzzy c-means, fuzzy neural network, random forest regression and multiclass gradient boosting. All of these algorithms are available as pacakges for the \texttt{R} programming language. See table \ref{tbl-comparison} for a short comparison of the properties of the chosen algorithms.
+There will be four classification algorithms tested in total: fuzzy c-means, fuzzy neural network, random forest regression and multiclass gradient boosting. All of these algorithms are available as packages for the \texttt{R} programming language. See table \ref{tbl-comparison} for a short comparison of the properties of the chosen algorithms.
 
 \begin{table}
   \begin{center}
@@ -290,7 +292,7 @@ Positive ME values mean that the algorithm tends to overrepresent class $c$ memb
  \label{app-layerlist}
  \begin{table}
   \begin{center}
-    %\resizebox{\textwidth}{!}{
+    \resizebox{\textwidth}{!}{
       \begin{tabular}{llrl}
 	\hline
 	Layer provider & Layer type & Year & URL \\
@@ -312,7 +314,7 @@ Positive ME values mean that the algorithm tends to overrepresent class $c$ memb
 	Finland & Orthophoto & 2006-2016 & \url{http://kartat.kapsi.fi} \\
 	\hline
       \end{tabular}
-    %}
+    }
   \end{center}
   \caption{List of layers used to aid visual interpretation when gathering ground truth data. Most of the layers were accessed as WMS or TMS services (exceptions: Google Street View and Yandex accessed through a web interface; Google and Bing satellite data accessed using JavaScript API).}
   \label{tbl-layers}
