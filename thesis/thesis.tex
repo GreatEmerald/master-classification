@@ -8,6 +8,7 @@
 \usepackage{multirow} % Tables
 \usepackage{appendix}
 \usepackage{natbib}
+\usepackage[caption=false]{subfig}
 \bibliographystyle{apalike}
 
 %opening
@@ -66,11 +67,7 @@ Thus the goal of this thesis is to improve large-scale land cover maps by perfor
 
 \section{Data and methods}
 
-\subsection{Input data}
-
-The PROBA-V image that will be used to derive spectral data for classification will be selected from the ones available based on these criteria: the date of acquisition has to be during the summer of 2016, since that minimises the effects of snow and senescence \citep{bartalev2014probavboreal}; the number of good-quality pixels (not affected by clouds, sensor problems, etc.) in the tile should be as high as possible; and the spatial resolution of the image should be as fine as possible (ideally 100 m resolution). Composites of several days will be used to get higher quality images. Images closer to the present will be preferred if there are several images that match the previous criteria (i.e. their quality is equal).
-
-For deriving temporal data (vegetation growth phase, amplitude and period), a series of images spanning the entire lifetime of the PROBA-V mission (2013-2016, 3 years) will be used. The variables will be extracted by performing harmonic analysis \citep{rayner1971introduction,jakubauskas2001harmonic} on NDVI time series of the imagery.
+\subsection{Study area and classes}
 
 \begin{figure}
  \includegraphics[width=\textwidth]{./proposal-figures/studyarea.png}
@@ -79,12 +76,6 @@ For deriving temporal data (vegetation growth phase, amplitude and period), a se
 \end{figure} 
 
 The study area will be based on the PROBA-V tile 20,01. It spans from south Finland, known for boreal forests as well as a variety of lakes and boreal wetlands, to the middle of Lithuania, which includes both mixed and temperate broadleaf forests as well as protected wetlands. If time permits, tiles 20,02 (from middle of Lithuania to north of Bulgaria), 19,01 (south Sweden) and 19,02 (from north Poland and Germany to north Italy and Croatia) will also be used, by mosaicing them all into one large image (see figure \ref{AOI}).
-
-In addition to that, auxiliary variables will be used in classification. In particular, the digital elevation model (DEM) from the NASA Global Land Survey will be used to derive elevation, slope and aspect terrain parameters. These parameters are known to increase the separability of vegetation classes \citep{burrough2001fuzzy}, and this particular DEM is already used by PROBA-V product suppliers for image ortho-rectification \citep{probavguide}.
-
-A variety of vegetation indices are known to improve the separability of the wetlands class \citep{zhao2009indices,davranche2010wetland}. However, since the PROBA-V sensor only captures four spectral bands, the choice of available vegetation indices is limited. Therefore two vegetation indices that can be calculated and are known to improve wetlands separability will be used: Optimised Soil-Adjusted Vegetation Index (OSAVI) and Land Surface Water Index (LSWI). While there is a possibility of using data from other sensors for deriving vegetation indices, attempting to match their pixels to those of PROBA-V is bound to introduce inaccuracies due to resampling, thus that will not be attempted.
-
-\subsection{Classes}
 
 The land cover classes that will be used for classification are based on the hybrid classification scheme by \citep{see2015hybrid}. The only change is the distinction between evergreen and deciduous tree cover (defined by whether the leaves have an annual senescence cycle or not). See table \ref{tbl-classes} for a full list.
 
@@ -168,11 +159,60 @@ Therefore a systematic second stage selection was performed for each pixel selec
 
 Image interpretation, second stage sample selection and dataset creation were performed using QGIS 2.14.8 ``Essen'' software. To aid in visual interpretation in order to ensure that the gathered ground truth would have as little uncertainty as possible, open national data (orthophotos and topographical maps) from Finland, Estonia, Latvia and Lithuania was used in addition to open global data. In addition to GIS layers, panoramic photos were used (Google Street View, Yandex panoramas). For a full list of layers used for image interpretation, see Appendix \ref{app-layerlist}.
 
-In other to determine the class fractions within a PROBA-V pixel, instead of relying on subjective estimations or subdivision, land cover was outlined within a pixel by drawing multipart polygons for each class (except the dominant) within the pixel. Then by using a virtual attribute, the area of each polygon was calculated and divided by the total area of a pixel (which is constant among all pixels in the WGS84 coordinate reference system), giving a percentage fraction of each class. The fraction of the dominant class was then calculated by subtracting each of the other fractions from 100\%. Therefore the precision of the ground truth data is 1\% (ranging from 0\% to 100\%).
+In other to determine the class fractions within a PROBA-V pixel, instead of relying on subjective estimations or subdivision, land cover was outlined within a pixel by drawing multipart polygons for each class (except the dominant) on top of the parts of the pixel that represented the class. This takes extra time and effort, but results in more precise fraction measurements. Then by using a virtual attribute, the area of each polygon was calculated and divided by the total area of a pixel (which is constant among all pixels in the WGS84 coordinate reference system), giving a percentage fraction of each class. The fraction of the dominant class was then calculated by subtracting each of the other fractions from 100\%. Therefore the precision of the ground truth data is 1\% (ranging from 0\% to 100\%).
 
 Gathered ground truth data was stored as a point layer, with each point describing the PROBA-V pixel under it. In order to make certain that there are no issues with points falling on pixel borders, as well as to accurately know the boundaries of each pixel when drawing polygons on it, a line grid was generated in QGIS by using an imported PROBA-V image as a reference for the origin and size of each grid cell. Ground truth points were placed in the centre of the pixel they describe, and snapping (with topology checking) was used when drawing polygons in order to avoid geometry errors and imprecisions.
 
-The resulting sample points will then be imported into R. Each attribute in R is available as a variable, so they can then be used in classification.
+The resulting sample points were then exported into a CSV file, which then was imported into R. Each attribute in R is available as a variable, so they can then be used in classification.
+
+\subsection{Uncertainty considerations}
+
+While care was taken to get reliable ground truth data, quite a few pixels chosen in the first selection stage had to be skipped due to too high uncertainty about the land cover fractions within the pixel, and there still exists a possibility of confusion between classes. Every class has its specifics.
+
+First of all, while a large number of imagery sources were used to determine the land cover, their date of acquisition varies between different sources. Some of the sources, like Bing, do not give information about the year the image was taken. If land cover changes that affect the class fractions were identified, such pixels were not used as ground truth, but there exists a possibility that there had been land cover changes that were not identified due to the lack of recent imagery.
+
+Another source of uncertainty comes from orthorectification of the imagery. Different sources were slightly offset from one another, in particular, Bing aerial imagery tended to be shifted around 16 metres from Google imagery of the same area in some places, and around 9 metres from national orthophoto imagery. When possible, Bing imagery was not used in favour of the other sources for drawing area measurement polygons. From those, the most recent or most detailed image was used.
+
+Similarly, the look angle of the sensors tended to vary between images. That had most impact for tall objects, like tree canopies. Like with the point above, the most recent or finer resolution image was used as the main reference in that case. In addition, for deciduous trees, the season when the image was taken had an effect on the perception of tree canopies. In summer images, the canopy would seem to take up more area of the pixel than in images taken in other seasons. In order to cope with this problem, for images taken in other seasons, the polygons drawn on top of the trees were made larger to compensate, by estimating the area the canopy would take up if it was summer time.
+
+Specifically for the crop class, there was a posibility of confusing it with the grass class for managed pastures. Crops were defined as managed herbaceous vegetation that is harvested at least once a year, thus pastures would rather fall into the grass class. But since pastures are also often managed, and there were not enough images to reliably detect whether at some point in the year the field is harvested, there may be confsing between the two. To mitigate this problem, panoramic images were used to identify cattle in the fields, whose presence would indicate whether the field is a pasture.
+
+The distinction between evergreen and deciduous trees was also challenging. Within the study area, forests and stands primarily include trees of genus \textit{Betula} L. (birch trees), genus \textit{Pinus} L. (pine trees), of whom mostly \textit{Pinus sylvestris} L. (scots pine), and genus \textit{Picea} Mill. (spruce trees), of whom mostly \textit{Picea abies} (L.) H. Karst. (Norway spruce). Spruce canopies are distinctly conical, which allows distinguishing them from birch trees, but not from young pine trees. Also, very fine resolution imagery is required to tell the canopy shape in the first place. Such imagery was mostly available only in Estonia and parts of Finland. Distinguishing between birch trees and pine trees is even more challenging, since their canopy shape is very similar when looking from the top.
+
+Two main approaches were used to deal with this source of uncertainty. The first approach was making use of imagery taken in seasons other than summer. In autumn, leaf senescence allows identifying deciduous trees directly by colour. In winter and spring, deciduous trees are difficult to discern from the forest floor, but by comparison with summer images, they show which areas consist of deciduous trees. In addition, such images reveal all evergreen trees within mixed forests. One pitfall of this approach could be that the changes in apparent tree cover between the images is not due to seasonality, but rather due to deforestation; however in practice, tree trunks are still visible in winter and spring imagery. With this approach, Estonian national imagery was most useful, since it was taken in late autumn and has a fine enough resolution to identify individual trees.
+
+\begin{figure}
+ \centering
+ \subfloat[A sampled area in the town of Jyv\"askyl\"a, Finland.]
+ {
+  \includegraphics[width=\textwidth]{./thesis-figures/sample-example.png}
+ }
+ 
+ \subfloat[The same area in Google Maps, using 3D view.]
+ {
+  \includegraphics[width=0.8\textwidth]{./thesis-figures/sample-3d.png}
+ }
+ \caption{A close-up example of a sampled area for which 3D view was available for improved distinction between classes. The resulting land cover fractions were 87\% urban, 8\% grass, 3\% shrubs, 1\% evergreen trees, 1\% deciduous trees, 0\% others.}
+ \label{fig-sampling-detailed}
+\end{figure}
+
+The second approach was to make use of auxiliary data. Most helpful were panoramic images, from which tree species could be identified directly. The limitation of this approach is that panoramic images are relatively scarce, limited to areas near roads. Also, typically only the first row of trees is visible in these images. But that is often enough to determine the proportion of deciduous and evergreen trees within a forest, and is useful when combined with remote sensing imagery, since by identifying the first tree row, further trees can be discerned by comparison. Another useful source of information were 3D models provided by Google Maps in certain areas. They are detailed enough to discern individual trees and their canopy shape, which allows identifying their type (see figure \ref{fig-sampling-detailed}). Other auxiliary data used were topographical maps, which sometimes marked forest types, and the LC-CCI classification map. Though this data was often not precise enough for the needs of this study. Lastly, in some images where the sun zenith angle was low, shadows could be used to determine the canopy shape of the first row of trees as well. But it was rather rare for this information to be useful, given the similarity in upper canopy between birch and pine trees.
+
+Shrubs were problematic to distinguish between grass and both types of trees. Shrubs were defined as woody plants lower than 3 metres in height. That includes young trees and hedges, but does not include most low underwood species like apple trees \textit{Malus pumila} Mill. However, since most remote sensing imagery used was 2D, determining the height was problematic. One approach to distinguishing shrubs from trees was by comparison with other tree stands in the immediate vicinity. Since for most imagery the look angle was not equal to nadir, or there were shadows visible, comparing them with tree stands allows identification of this class. Another approach was once again to use panoramic photos in order to either identify the type of plants directly, or to estimate the height of the plants. The distinction between tall herbacious species (grass) and short woody species (shrubs) was also problematic at times. Panoramic photos were used in that case as well. Another consideration for this class is that within the area of interest, shrublands are a transitory ecosystem between grasslands and forests, they do not normally form a climax community. Similarly, young trees are transitory between grasslands (or, in case of reforestation, forest floor) and forests. In order to deal with this temporal aspect, all the available imagery was checked for differences of appearance between the images of different dates. If a patch of plants within a pixel appeared either as grass or as tall trees in any of the images, such a pixel was not used as a sample.
+
+While bare soil was mostly easy to distinguish from the other classes, the specific case of roads lead to some uncertainty. Gravel roads were considered bare soil, while asphalt roads as well as roads made of concrete tiles were considered urban cover. In some of the imagery, the distinction of colour between the two was difficult to make, particularly in cases of eroded asphalt and asphalt covered by a thin layer of sand or dust. In those cases, panoramic photos were used to make a better distinction. Since there was a wealth of such photos taken on roads, this was for the most part a minor issue.
+
+Wetlands were somewhat challenging to distinguish from grass and shrubs. This is by definition, since within the study area wetlands are covered by herbaceous or short woody vegetation. The distinguishing factor is whether the area is waterlogged or drained. However, this turned out to be a minor problem, because within the study area most wetlands are large, contiguous, often protected territories. They stand out, also by a more brown colour due to peat, from the surrounding environment at larger scales. Also, the LC-CCI map turned out to be rather accurate in detecting wetlands. Larger shrubs or young trees within wetlands were assigned to the shrub class. Another minor problem within wetlands was dealing with the seasonal change in herbaceous cover over the year, with plants taking up some area from open water in the summer. However, the changes were mostly small enough to not make a 1\% difference in the land cover fractions.
+
+\subsection{Model input data}
+
+The PROBA-V image that will be used to derive spectral data for classification will be selected from the ones available based on these criteria: the date of acquisition has to be during the summer of 2016, since that minimises the effects of snow and senescence \citep{bartalev2014probavboreal}; the number of good-quality pixels (not affected by clouds, sensor problems, etc.) in the tile should be as high as possible; and the spatial resolution of the image should be as fine as possible (ideally 100 m resolution). Composites of several days will be used to get higher quality images. Images closer to the present will be preferred if there are several images that match the previous criteria (i.e. their quality is equal).
+
+For deriving temporal data (vegetation growth phase, amplitude and period), a series of images spanning the entire lifetime of the PROBA-V mission (2013-2016, 3 years) will be used. The variables will be extracted by performing harmonic analysis \citep{rayner1971introduction,jakubauskas2001harmonic} on NDVI time series of the imagery.
+
+In addition to that, auxiliary variables will be used in classification. In particular, the digital elevation model (DEM) from the NASA Global Land Survey will be used to derive elevation, slope and aspect terrain parameters. These parameters are known to increase the separability of vegetation classes \citep{burrough2001fuzzy}, and this particular DEM is already used by PROBA-V product suppliers for image ortho-rectification \citep{probavguide}.
+
+A variety of vegetation indices are known to improve the separability of the wetlands class \citep{zhao2009indices,davranche2010wetland}. However, since the PROBA-V sensor only captures four spectral bands, the choice of available vegetation indices is limited. Therefore two vegetation indices that can be calculated and are known to improve wetlands separability will be used: Optimised Soil-Adjusted Vegetation Index (OSAVI) and Land Surface Water Index (LSWI). While there is a possibility of using data from other sensors for deriving vegetation indices, attempting to match their pixels to those of PROBA-V is bound to introduce inaccuracies due to resampling, thus that will not be attempted.
 
 \subsection{Classification algorithms}
 
