@@ -85,6 +85,8 @@ cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160706/PROB
 DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/"
 OutputDir = "/home/greatemerald/composite"
 
-processProbaVbatch2(DataDir, pattern = glob2rx("*D*I*.tif"), tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
+# glob2rx("*D*I*.tif")
+processProbaVbatch2(DataDir, pattern = "NDVI.tif$", tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
                   QC_val = QC_val, outdir = OutputDir,
-                  ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1), overwrite=F)
+                  #ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1),
+                  overwrite=F)
