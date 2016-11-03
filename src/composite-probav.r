@@ -28,10 +28,11 @@ if (!("probaV" %in% installed.packages()[,"Package"]))
 }
 
 library(probaV)
+library(stringr)
+source("/home/greatemerald/processProbaVbatch2.R")
 
 TileOfInterest = "X20Y01"
-getProbaVinfo("/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160711/PROBAV_S5_TOC_20160711_100M_V001/", pattern=glob2rx("PROBAV*X20Y01*.tif"))
-head(getProbaVQClist()$all_bits)
+#getProbaVinfo("/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160711/PROBAV_S5_TOC_20160711_100M_V001/", pattern=glob2rx("PROBAV*X20Y01*.tif"))
 
 # True means must have, False means must not have, NA means don't care
 GetProbaVQCMask = function(bluegood = NA, redgood = NA, nirgood = NA, swirgood = NA, land = NA, ice = NA, cloud = NA, shadow = NA)
@@ -70,4 +71,20 @@ GetProbaVQCMask = function(bluegood = NA, redgood = NA, nirgood = NA, swirgood =
 
 QC.vals = GetProbaVQCMask(bluegood=TRUE, redgood=TRUE, nirgood=TRUE, swirgood=TRUE, ice=FALSE, cloud=FALSE, shadow=FALSE)
 
-cleanProbaV(f_data = , filename=filename, QC_val = QC.vals, fill=255, datatype="FLT4S", as.is = F, overwrite = T)
+
+cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160711/PROBAV_S5_TOC_20160711_100M_V001/PROBAV_S5_TOC_X20Y01_20160711_100M_V001_RADIOMETRY.tif",
+    filename="/home/greatemerald/filtered.tif", QC_val = QC.vals, fill=-1, datatype="INT2S", as.is = F, overwrite = T)
+cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160711/PROBAV_S5_TOC_20160711_100M_V001/PROBAV_S5_TOC_X20Y01_20160711_100M_V001_NDVI.tif",
+            filename="/home/greatemerald/filtered-ndvi.tif", QC_val = QC.vals, fill=255, datatype="FLT4S", as.is = F, overwrite = T)
+
+cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160706/PROBAV_S5_TOC_20160706_100M_V001/PROBAV_S5_TOC_X20Y01_20160706_100M_V001_RADIOMETRY.tif",
+            filename="/home/greatemerald/filtered-06.tif", QC_val = QC.vals, fill=-1, datatype="INT2S", as.is = F, overwrite = T)
+cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160706/PROBAV_S5_TOC_20160706_100M_V001/PROBAV_S5_TOC_X20Y01_20160706_100M_V001_NDVI.tif",
+            filename="/home/greatemerald/filtered-ndvi-06.tif", QC_val = QC.vals, fill=255, datatype="FLT4S", as.is = F, overwrite = T)
+
+DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/"
+OutputDir = "/home/greatemerald/composite"
+
+processProbaVbatch2(DataDir, pattern = glob2rx("*D*I*.tif"), tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
+                  QC_val = QC_val, outdir = OutputDir,
+                  ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1), overwrite=F)
