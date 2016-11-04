@@ -29,7 +29,7 @@ if (!("probaV" %in% installed.packages()[,"Package"]))
 
 library(probaV)
 library(stringr)
-source("/home/greatemerald/processProbaVbatch2.R")
+source("../../processProbaVbatch2.R")
 
 TileOfInterest = "X20Y01"
 #getProbaVinfo("/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160711/PROBAV_S5_TOC_20160711_100M_V001/", pattern=glob2rx("PROBAV*X20Y01*.tif"))
@@ -83,10 +83,17 @@ cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160706/PROB
             filename="/home/greatemerald/filtered-ndvi-06.tif", QC_val = QC.vals, fill=255, datatype="FLT4S", as.is = F, overwrite = T)
 
 DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/"
-OutputDir = "/home/greatemerald/composite"
+OutputDir = "../../composite"
 
 # glob2rx("*D*I*.tif")
 processProbaVbatch2(DataDir, pattern = "NDVI.tif$", tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
                   QC_val = QC_val, outdir = OutputDir,
                   #ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1),
                   overwrite=F)
+
+x = DataDir
+pattern = "NDVI.tif$"
+tiles = TileOfInterest
+start_date = "2016-06-01"
+end_date = "2016-08-31"
+outdir = OutputDir
