@@ -82,18 +82,18 @@ cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160706/PROB
 cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160706/PROBAV_S5_TOC_20160706_100M_V001/PROBAV_S5_TOC_X20Y01_20160706_100M_V001_NDVI.tif",
             filename="/home/greatemerald/filtered-ndvi-06.tif", QC_val = QC.vals, fill=255, datatype="FLT4S", as.is = F, overwrite = T)
 
-DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/"
+DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M"
 OutputDir = "../../composite"
 
+# Need a list of all numbered directories
+lf = list.files(DataDir)
+lf = lf[nchar(lf) == 8]
+DataDirs = paste0(DataDir,'/',lf)
+
+# Workaround, should be in the function call
+patterns = "NDVI.tif$"
 # glob2rx("*D*I*.tif")
-processProbaVbatch2(DataDir, pattern = "NDVI.tif$", tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
-                  QC_val = QC_val, outdir = OutputDir,
+processProbaVbatch2(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
+                  QC_val = QC.vals, outdir = OutputDir,
                   #ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1),
                   overwrite=F)
-
-x = DataDir
-pattern = "NDVI.tif$"
-tiles = TileOfInterest
-start_date = "2016-06-01"
-end_date = "2016-08-31"
-outdir = OutputDir

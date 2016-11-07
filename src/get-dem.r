@@ -2,6 +2,7 @@
 
 # URLs: ftp://ftp.glcf.umd.edu/glcf/GLSDEM/Degree_tiles/n060/GLSDEM_n060e025/GLSDEM_n060e025.tif.gz
 library(R.utils)
+library(landsat)
 
 TilesN = 55:65
 TilesE = 20:30
@@ -42,4 +43,21 @@ DEMMosaic = mosaic(dems, fun=mean, filename="../data/dem/mosaic.grd", overwrite=
 # USGS doesn't provide rasters for pure sea since it's 0 by definition, so fill it
 #DEMMosaic[is.na(DEMMosaic)] = 0
 DEMMosaic = reclassify(DEMMosaic, cbind(NA, 0))
-writeRaster(DEMMosaic, filename="../data/dem/mosaic.grd", overwrite=TRUE)
+writeRaster(DEMMosaic, filename="../data/dem/mosaic.tif", overwrite=TRUE)
+DEMMosaic = writeRaster(DEMMosaic, filename="../data/dem/mosaic.grd", overwrite=TRUE)
+
+# Resample the DEM to the PROBA-V pixels (the DEM is slightly more detailed)
+PVExample = raster("/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160711/PROBAV_S5_TOC_20160711_100M_V001/PROBAV_S5_TOC_X20Y01_20160711_100M_V001_NDVI.tif")
+DEMAligned = raster::resample(DEMMosaic, PVExample, method="bilinear", filename="../data/dem/dem.grd")
+writeRaster(DEMAligned, datatype="INT2S", filename="../data/dem/dem.tif")
+
+# Calculate aspect and slope
+DEMStats = terrain(DEMAligned, c("slope", "aspect", "TRI"), neighbors=4, filename="../data/dem/slopeaspect.grd")
+writeRaster(DEMStats, filename="../data/dem/slopeaspect.tif")
+
+# R3241-R5414
+# L2333-K4421-K5442
+# K-R 2-5
+# Filelist obtained via bash script:
+# rsync -arPv rsync://tiedostot.kartat.kapsi.fi/mml/korkeusmalli/hila_10m/etrs-tm35fin-n2000 | grep \.tif | awk '{print $5}' | grep -P "[K-R]" > filelist.txt
+
