@@ -83,7 +83,7 @@ cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160706/PROB
             filename="/home/greatemerald/filtered-ndvi-06.tif", QC_val = QC.vals, fill=255, datatype="FLT4S", as.is = F, overwrite = T)
 
 DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M"
-OutputDir = "../../composite"
+OutputDir = "../../userdata/composite"
 
 # Need a list of all numbered directories
 lf = list.files(DataDir)
@@ -97,3 +97,11 @@ processProbaVbatch2(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01",
                   QC_val = QC.vals, outdir = OutputDir,
                   #ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1),
                   overwrite=F)
+
+patterns = "RADIOMETRY.tif$"
+processProbaVbatch2(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
+                  QC_val = QC.vals, outdir = OutputDir,
+                  #ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1),
+                  overwrite=F)
+
+# Load all cleaned images and produce a maximum NDVI composite using overlay
