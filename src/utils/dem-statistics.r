@@ -11,22 +11,19 @@ CalculateDEMStatistics = function(input, outdir, reference)
     PVTPIFilename = paste0(outdir,"/pv-tpi.tif")
     PVAspectFilename = paste0(outdir,"/pv-aspect.tif")
     
-    # Calculate slope and TPI
+    # Calculate slope
     if (file.exists(SlopeFilename)) DEMSlope = raster(SlopeFilename)
     else DEMSlope = terrain(input, c("slope"), neighbors=4, datatype="FLT4S", filename=SlopeFilename)
-    if (file.exists(TPIFilename)) DEMTPI = raster(TPIFilename)
-    else DEMTPI = terrain(input, "tpi", datatype="FLT4S", filename=TPIFilename)
     
     # Resample all to PROBA-V pixels
-    #if (file.exists())  = raster()
     if (file.exists(PVHeightFilename)) PVHeight = raster(PVHeightFilename)
     else PVHeight = raster::resample(input, reference, method="bilinear", datatype="INT2S", filename=PVHeightFilename)
     if (file.exists(PVSlopeFilename)) PVSlope = raster(PVSlopeFilename)
     else PVSlope = raster::resample(DEMSlope, reference, method="bilinear", datatype="FLT4S", filename=PVSlopeFilename)
-    if (file.exists(PVTPIFilename)) PVTPI = raster(PVTPIFilename)
-    else PVTPI = raster::resample(DEMTPI, reference, method="bilinear", datatype="FLT4S", filename=PVTPIFilename)
-    
-    # Calculate aspect from the resampled data
+
+    # Calculate aspect and TPI from the resampled data
     if (file.exists(PVAspectFilename)) PVAspect = raster(PVAspectFilename)
     else PVAspect = terrain(PVHeight, c("aspect"), datatype="FLT4S", filename=PVAspectFilename)
+    if (file.exists(PVTPIFilename)) PVTPI = raster(PVTPIFilename)
+    else PVTPI = terrain(PVHeight, "tpi", datatype="FLT4S", filename=PVTPIFilename)
 }

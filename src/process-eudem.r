@@ -2,8 +2,8 @@
 # It has some gaps, so this depends on GLSDEM from get-dem.r to be there too
 
 library(raster)
-source("raster-utils.r")
-source("dem-statistics.r")
+source("utils/raster-utils.r")
+source("utils/dem-statistics.r")
 
 # Each PROBA-V tile is exactly four EUDEM tiles.
 # Downloaded from http://www.eea.europa.eu/data-and-maps/data/eu-dem#tab-original-data (no API as far as I know)
