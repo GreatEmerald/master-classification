@@ -3,8 +3,8 @@
 # URLs: ftp://ftp.glcf.umd.edu/glcf/GLSDEM/Degree_tiles/n060/GLSDEM_n060e025/GLSDEM_n060e025.tif.gz
 library(R.utils)
 library(landsat)
-source("raster-utils.r")
-source("dem-statistics.r")
+source("utils/raster-utils.r")
+source("utils/dem-statistics.r")
 
 GLSDir = "../../userdata/dem/glsdem"
 TilesN = 55:61

@@ -71,17 +71,6 @@ GetProbaVQCMask = function(bluegood = NA, redgood = NA, nirgood = NA, swirgood =
 
 QC.vals = GetProbaVQCMask(bluegood=TRUE, redgood=TRUE, nirgood=TRUE, swirgood=TRUE, ice=FALSE, cloud=FALSE, shadow=FALSE)
 
-
-cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160711/PROBAV_S5_TOC_20160711_100M_V001/PROBAV_S5_TOC_X20Y01_20160711_100M_V001_RADIOMETRY.tif",
-    filename="/home/greatemerald/filtered.tif", QC_val = QC.vals, fill=-1, datatype="INT2S", as.is = F, overwrite = T)
-cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160711/PROBAV_S5_TOC_20160711_100M_V001/PROBAV_S5_TOC_X20Y01_20160711_100M_V001_NDVI.tif",
-            filename="/home/greatemerald/filtered-ndvi.tif", QC_val = QC.vals, fill=255, datatype="FLT4S", as.is = F, overwrite = T)
-
-cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160706/PROBAV_S5_TOC_20160706_100M_V001/PROBAV_S5_TOC_X20Y01_20160706_100M_V001_RADIOMETRY.tif",
-            filename="/home/greatemerald/filtered-06.tif", QC_val = QC.vals, fill=-1, datatype="INT2S", as.is = F, overwrite = T)
-cleanProbaV(f_data = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/20160706/PROBAV_S5_TOC_20160706_100M_V001/PROBAV_S5_TOC_X20Y01_20160706_100M_V001_NDVI.tif",
-            filename="/home/greatemerald/filtered-ndvi-06.tif", QC_val = QC.vals, fill=255, datatype="FLT4S", as.is = F, overwrite = T)
-
 DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M"
 OutputDir = "../../userdata/composite"
 
@@ -92,16 +81,39 @@ DataDirs = paste0(DataDir,'/',lf)
 
 # Workaround, should be in the function call
 patterns = "NDVI.tif$"
+OutputDir = "../../userdata/composite/ndvi"
 # glob2rx("*D*I*.tif")
 processProbaVbatch2(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
                   QC_val = QC.vals, outdir = OutputDir,
                   #ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1),
                   overwrite=F)
 
+OutputDir = "../../userdata/composite/radiometry"
 patterns = "RADIOMETRY.tif$"
 processProbaVbatch2(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
                   QC_val = QC.vals, outdir = OutputDir,
-                  #ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1),
+                  ncores = 3,#(detectCores(all.tests = FALSE, logical = TRUE)-1),
                   overwrite=F)
 
 # Load all cleaned images and produce a maximum NDVI composite using overlay
+# First, get which of the dates has the highest NDVI
+OutputDir = "../../userdata/composite/ndvi"
+NDVIs = stack(list.files(OutputDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
+# This somehow doesn't work, so store things in memory instead
+#MaxNDVI = calc(NDVIs, fun=which.max, datatype="INT2U", filename=paste0(OutputDir, "/maxndvi.tif"))
+temp = which.max(NDVIs)
+MaxNDVI = writeRaster(temp, filename=paste0(OutputDir, "/maxndvi.tif"), datatype="INT2S")
+rm(temp)
+
+OutputDir = "../../userdata/composite/radiometry"
+Bands = c("BLUE", "RED", "NIR", "SWIR")
+for (i in 1:length(Bands))
+{
+    Radiometry = stack(list.files(OutputDir, pattern=glob2rx(paste0("*", Bands[i], "*.tif")), full.names = TRUE))
+    stackSelect(Radiometry, MaxNDVI, datatype="INT2S", filename=paste0(OutputDir, "/", Bands[i], "_composite.tif"))
+}
+# Also write a multilayer file (for visualisation etc.)
+Composite = writeRaster(stack(paste0(OutputDir, "/RED_composite.tif"), paste0(OutputDir, "/NIR_composite.tif"),
+    paste0(OutputDir, "/BLUE_composite.tif"), paste0(OutputDir, "/SWIR_composite.tif")), datatype="INT2S",
+    filename=paste0(OutputDir, "/composite.tif"))
+plotRGB(Composite)

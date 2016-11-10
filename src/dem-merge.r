@@ -10,4 +10,7 @@ EUFiles = paste0(EUDir, "/", files)
 MergedFiles = paste0(MergedDir, "/", files)
 
 for (i in 1:length(files))
-    raster::merge(raster(EUFiles[i]), raster(GLSFiles[i]), filename=MergedFiles[i], overwrite=TRUE)
+{
+    if (!file.exists(MergedFiles[i]))
+        raster::merge(raster(EUFiles[i]), raster(GLSFiles[i]), filename=MergedFiles[i])
+}
