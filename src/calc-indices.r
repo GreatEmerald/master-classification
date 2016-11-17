@@ -4,7 +4,7 @@
 library(raster)
 
 Dir = "../../userdata/composite/"
-Radiometry = raster(paste0(Dir, "radiometry/composite.tif"))
+Radiometry = brick(paste0(Dir, "radiometry/composite.tif"))
 # 1.16 * ((NIR-RED)/(NIR+RED+0.16))
 #OSAVI = calc(Radiometry, fun=function(x){1.16 * ((x[2]-x[3])/(x[2]+x[3]+0.16))},
 OSAVI = overlay(Radiometry, fun=function(RED, NIR, BLUE, SWIR){return(1.16 * ((NIR-RED)/(NIR+RED+0.16)))},
@@ -20,3 +20,4 @@ NDVI = stackSelect(NDVIs, MaxNDVI, datatype="FLT4S", filename=paste0(Dir, "ndvi/
 
 Everything = stack(NDVI, OSAVI, LSWI)
 Everything = writeRaster(Everything, datatype="FLT4S", filename=paste0(Dir, "indices.tif"), overwrite=TRUE)
+plotRGB(Everything)
