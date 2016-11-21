@@ -3,11 +3,11 @@ library(Hmisc)
 library(GSIF)
 library(caret)
 source("utils/load-data.r")
+source("utils/accuracy-statistics.r")
 
 # Load data
 alldata = LoadClassificationData()
 pixels = LoadTrainingPixels()
-#puredata = alldata[alldata$pure]
 
 # There are two ways: either use the built-in method of using a multinomial logistic regression
 # with endmembers, or use weighted averages with all pixels.
@@ -26,6 +26,7 @@ sqrt(mean(unlist(cmeans.mnlr@mu@data*100 - alldata@data[names(cmeans.mnlr@mu@dat
 mean(abs(unlist(cmeans.mnlr@mu@data*100 - alldata@data[names(cmeans.mnlr@mu@data)])))
 # ME
 mean(unlist(cmeans.mnlr@mu@data*100 - alldata@data[names(cmeans.mnlr@mu@data)]))
+AccuracyStats(cmeans.mnlr@mu@data*100, alldata@data[names(cmeans.mnlr@mu@data)])
 
 # Now with weighted means
 
@@ -54,4 +55,12 @@ cmeans.wm = spfkm(formula("dominant~red+nir+blue+swir+osavi+lswi+height+slope+as
 # Hard total classification accuracy: 11%, even worse
 sum(cmeans.wm@predicted@data[[1]] == alldata$dominant) / length(alldata)
 # If looking at input data: 14%, still really bad
-sum(cmeans.mnlr@predicted@data[fold,][[1]] == alldata[fold,]$dominant) / length(alldata[fold,])
+sum(cmeans.wm@predicted@data[fold,][[1]] == alldata[fold,]$dominant) / length(alldata[fold,])
+
+# RMSE
+sqrt(mean(unlist(cmeans.wm@mu@data*100 - alldata@data[names(cmeans.wm@mu@data)])^2))
+# MAE
+mean(abs(unlist(cmeans.wm@mu@data*100 - alldata@data[names(cmeans.wm@mu@data)])))
+# ME
+mean(unlist(cmeans.wm@mu@data*100 - alldata@data[names(cmeans.wm@mu@data)]))
+# These stats are better, especially RMSE, so fewer big mistakes
