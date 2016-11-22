@@ -38,10 +38,19 @@ LoadTrainingRasters = function()
     return(rasters)
 }
 
-LoadTrainingPixels = function(filename = "../../userdata/pixels.tif")
+LoadTrainingPixels = function(tiffile = "../../userdata/pixels.tif", rfile="../../userdata/pixels.rds")
 {
-    rasters = brick(filename)
-    names(rasters) = c("red", "nir", "blue", "swir", "ndvi", "osavi", "lswi",
-        "height", "slope", "aspect", "tpi")
-    return(as(rasters, "SpatialPixelsDataFrame"))
+    if (!file.exists(rfile))
+    {
+        rasters = brick(tiffile)
+        names(rasters) = c("red", "nir", "blue", "swir", "ndvi", "osavi", "lswi",
+            "height", "slope", "aspect", "tpi")
+        pixels = as(rasters, "SpatialPixelsDataFrame")
+        saveRDS(pixels, compress = "bzip2", file = rfile)
+    }
+    else
+    {
+        pixels = readRDS(rfile)
+    }
+    return(pixels)
 }

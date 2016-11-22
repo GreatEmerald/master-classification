@@ -17,6 +17,7 @@ ymax <- 59
 bands_select <- '(BLUE)' 
 bands_sel <- paste(bands_select,'_sm.tif$', sep = "")
 vrt_name <- file.path(paste0(OutputDir,"/",TileOfInterest, "_",paste0(bands_select, collapse = "_"), ".vrt"))
+vrt_name
 
 # Select all dates of the blue band
 b_vrt <- timeVrtProbaV(IntermediaryDir, pattern = bands_sel, vrt_name = vrt_name, tile = TileOfInterest,
@@ -32,7 +33,7 @@ bands_select <- '(BLUE)'
 bands_sel <- paste(bands_select,'_sm.tif$', sep = "")
 
 cloud_filter(x = b_vrt, probav_sm_dir = IntermediaryDir, pattern = bands_sel,
-                          tiles = TileOfInterest, minrows = 15, mc.cores = 16,
+                          tiles = TileOfInterest, minrows = 15, mc.cores = 0,
                           logfile=logfile, overwrite=TRUE, span=0.3, 
                           cf_bands = c(1), thresholds=c(-80, Inf), 
                           filename = out_name)
