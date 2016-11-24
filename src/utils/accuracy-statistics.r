@@ -7,3 +7,18 @@ AccuracyStats = function(predicted, observed)
     ME = mean(unlist(predicted - observed))
     return(data.frame(RMSE, MAE, ME))
 }
+
+AccuracyStatTable = function(predicted, observed)
+{
+    Result = AccuracyStats(predicted, observed)
+    row.names(Result) = "Overall"
+    for (i in 1:ncol(observed))
+    {
+        RMSE = sqrt(mean(unlist(predicted[,i] - observed[,i])^2))
+        MAE = mean(abs(unlist(predicted[,i] - observed[,i])))
+        ME = mean(unlist(predicted[,i] - observed[,i]))
+        Result = rbind(Result, data.frame(RMSE, MAE, ME))
+        row.names(Result)[i+1] = names(observed[i])
+    }
+    return(Result)
+}

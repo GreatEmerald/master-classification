@@ -1,5 +1,6 @@
 # Clean images using the time series method
 library(probaV)
+library(tools)
 source("utils/set-temp-path.r")
 source("../../cloud_filter.r") # JD's extra utility script
 
@@ -8,37 +9,35 @@ OutputDir = "../../userdata/composite/tscleaned/"
 TileOfInterest = "X20Y01"
 
 # Subset for testing
-xmin <- 27
-xmax <- 28
-ymin <- 58
-ymax <- 59
+#xmin <- 27
+#xmax <- 28
+#ymin <- 58
+#ymax <- 59
 
-# select bands and create virtual name output
-bands_select <- '(BLUE)' 
-bands_sel <- paste(bands_select,'_sm.tif$', sep = "")
-vrt_name <- file.path(paste0(OutputDir,"/",TileOfInterest, "_",paste0(bands_select, collapse = "_"), ".vrt"))
-vrt_name
+# Create a virtual raster (faster stack) from all blue bands
+VrtPattern = "(BLUE)_sm.tif$"
+VrtName = file.path(paste0(OutputDir,TileOfInterest, "_",paste0(VrtPattern, collapse = "_"), ".vrt"))
+Vrt = timeVrtProbaV(IntermediaryDir, pattern = VrtPattern, vrt_name = VrtName, tile = TileOfInterest,
+    return_raster = TRUE)#,
+    #te = c(xmin, ymin, xmax, ymax))
 
-# Select all dates of the blue band
-b_vrt <- timeVrtProbaV(IntermediaryDir, pattern = bands_sel, vrt_name = vrt_name, tile = TileOfInterest,
-    return_raster = T,
-    #start_date = "2015-10-21", end_date = "2016-03-01",
-    te = c(xmin, ymin, xmax, ymax))
+# QC file and log file names
+QCFile = paste0(OutputDir, 'cloud_filter.envi')
+LogFile = paste0(OutputDir, 'cloud_filter.log')
 
-# create output folder and name
-out_name <- paste0(OutputDir, 'cloud_filter.envi')
-logfile <- paste0(OutputDir, 'cloud_filter.log')
-
-bands_select <- '(BLUE)' 
-bands_sel <- paste(bands_select,'_sm.tif$', sep = "")
-
-cloud_filter(x = b_vrt, probav_sm_dir = IntermediaryDir, pattern = bands_sel,
-                          tiles = TileOfInterest, minrows = 15, mc.cores = 0,
-                          logfile=logfile, overwrite=TRUE, span=0.3, 
-                          cf_bands = c(1), thresholds=c(-80, Inf), 
-                          filename = out_name)
-
-blue_c_filter <- brick(out_name)
+Cores = 31
+psnice(value = min(Cores - 1, 19))
+QCMask = cloud_filter(x = Vrt, probav_sm_dir = IntermediaryDir, pattern = VrtPattern,
+    tiles = TileOfInterest, minrows = 1, mc.cores = Cores, logfile=LogFile, overwrite=TRUE,
+    span=0.3, cf_bands = c(1), thresholds=c(-30, Inf), filename = QCFile)
 
 # select date
-blue_c_filter <- subset(blue_c_filter ,1)
+which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V001_BLUE_sm.tif")
+#spplot(Vrt[[124]])
+#spplot(QCMask[[124]])
+#spplot(Vrt[[128]])
+#spplot(QCMask[[128]])
+#spplot(Vrt[[140]])
+#spplot(QCMask[[140]])
+#spplot(Vrt[[132]])
+#spplot(QCMask[[132]])
