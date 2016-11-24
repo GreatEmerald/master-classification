@@ -1,5 +1,6 @@
 # Merge the original validation data with extracted parameters for model input
 library(raster); source("utils/set-temp-path.r")
+source("utils/load-data.r")
 
 # Original data
 samples = read.csv("../data/samples.csv")
@@ -15,13 +16,7 @@ samples$dominant = factor(apply(samples@data, 1, which.max), labels = colnames(s
 samples$pure = apply(samples@data[,1:9], 1, max) >= 95
 
 # Extract data from rasters
-rasterfiles = c("../../userdata/composite/radiometry/composite.tif",
-    "../../userdata/composite/indices.tif",
-    "../../userdata/dem/merged/pv-height.tif",
-    "../../userdata/dem/merged/pv-slope.tif",
-    "../../userdata/dem/merged/pv-aspect.tif",
-    "../../userdata/dem/merged/pv-tpi.tif")
-rasters = stack(rasterfiles)
+rasters = stack(TrainingFiles)
 rasters$composite.1 = rasters$composite.1 / 2000
 rasters$composite.2 = rasters$composite.2 / 2000
 rasters$composite.3 = rasters$composite.3 / 2000
@@ -29,8 +24,7 @@ rasters$composite.4 = rasters$composite.4 / 2000
 data = extract(rasters, samples, method="simple", cellnumbers=TRUE, sp=TRUE)
 
 # Give nice names and units
-names(data) = c(names(samples), "cell.no", "red", "nir", "blue", "swir", "ndvi", "osavi", "lswi",
-    "height", "slope", "aspect", "tpi")
+names(data) = c(names(samples), "cell.no", TrainingNames)
 
 # Save it
 write.csv(data, "../data/variables.csv")
@@ -39,16 +33,16 @@ write.csv(data, "../data/variables.csv")
 pixels = raster::mask(rasters, samples, filename="../../userdata/pixels.tif", overwrite=TRUE)
 
 # Data exploration
-cor(data@data[names(data) != "dominant"])
+#cor(data@data[names(data) != "dominant"])
 # Correlations are logical. OSAVI and NDVI are too correlated, and red and blue are quite close too.
-hist(data@data[,"water"]) # Base data is often zero-inflated
-hist(data@data[,"cell.no"]) # Not biased
-hist(data@data[,"red"]) # Lognormal
-hist(data@data[,"nir"]) # Bimodal normal
-hist(data@data[,"swir"]) # Bimodal normal
-hist(data@data[,"ndvi"]) # Reversed lognormal
-hist(data@data[,"lswi"]) # Normal
-hist(data@data[,"height"]) # Zero-inflated normal
-hist(data@data[,"slope"]) # Lognormal
-hist(data@data[,"aspect"]) # Pi-inflated uniform
-hist(data@data[,"tpi"]) # Normal
+#hist(data@data[,"water"]) # Base data is often zero-inflated
+#hist(data@data[,"cell.no"]) # Not biased
+#hist(data@data[,"red"]) # Lognormal
+#hist(data@data[,"nir"]) # Bimodal normal
+#hist(data@data[,"swir"]) # Bimodal normal
+#hist(data@data[,"ndvi"]) # Reversed lognormal
+#hist(data@data[,"lswi"]) # Normal
+#hist(data@data[,"height"]) # Zero-inflated normal
+#hist(data@data[,"slope"]) # Lognormal
+#hist(data@data[,"aspect"]) # Pi-inflated uniform
+#hist(data@data[,"tpi"]) # Normal
