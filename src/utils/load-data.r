@@ -34,7 +34,7 @@ LoadValidationData = function(...)
 LoadTrainingData = function(...)
 {
     alldata = LoadClassificationData(...)
-    return(alldata[13:22])
+    return(alldata[13:length(names(alldata))])
 }
 
 LoadTrainingRasters = function()

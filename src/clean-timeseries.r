@@ -41,3 +41,6 @@ which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V001_BLUE_sm.tif")
 #spplot(QCMask[[140]])
 #spplot(Vrt[[132]])
 #spplot(QCMask[[132]])
+
+# Apply mask to data
+# Basically that means cleaning data all over again, file by file.

@@ -29,22 +29,29 @@ DataDirs = paste0(DataDir,'/',lf)
 patterns = "NDVI.tif$"
 OutputDir = "../../userdata/composite/ndvi"
 # glob2rx("*D*I*.tif")
-processProbaVbatch2(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
+processProbaVbatch(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
                   QC_val = QC.vals, outdir = OutputDir,
                   #ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1),
                   overwrite=F)
 
 OutputDir = "../../userdata/composite/radiometry"
 patterns = "RADIOMETRY.tif$"
-processProbaVbatch2(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
+processProbaVbatch(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
                   QC_val = QC.vals, outdir = OutputDir,
                   ncores = 3,#(detectCores(all.tests = FALSE, logical = TRUE)-1),
                   overwrite=F)
 
 # Load all cleaned images and produce a maximum NDVI composite using overlay
-# First, get which of the dates has the highest NDVI
 OutputDir = "../../userdata/composite/ndvi"
 NDVIs = stack(list.files(OutputDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
+
+# Next, apply additional time-series-based cleaning to NDVI
+# Needs clean-timeseries.r to have been run
+TSCleanDir = "../../userdata/composite/tscleaned/"
+QCMask = brick(paste0(TSCleanDir, "compressed.tif"))
+CleanNDVIs = mask(NDVIs, QCMask, filename=paste0(TSCleanDir, "NDVIs.tif"), maskvalue = c(0, 2))
+
+# First, get which of the dates has the highest NDVI
 # This somehow doesn't work, so store things in memory instead
 #MaxNDVI = calc(NDVIs, fun=which.max, datatype="INT2U", filename=paste0(OutputDir, "/maxndvi.tif"))
 temp = which.max(NDVIs)

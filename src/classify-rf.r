@@ -1,7 +1,6 @@
 # Classification using Random Forest regression, one model per variable
 library(ranger)
 library(caret)
-library(scales)
 source("utils/load-data.r")
 source("utils/accuracy-statistics.r")
 
