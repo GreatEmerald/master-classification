@@ -175,8 +175,11 @@ sum(cmeans.wm@predicted@data[[1]] == alldata$dominant) / length(alldata)
 # If looking at input data: 14%, still really bad
 sum(cmeans.wm@predicted@data[fold,][[1]] == alldata[fold,]$dominant) / length(alldata[fold,])
 
-# These stats are better, especially RMSE, so fewer big mistakes
+# These stats are better, especially RMSE of 35.5, but still really bad
 AccuracyStats(cmeans.wm@mu@data*100, alldata@data[names(cmeans.wm@mu@data)])
+AccuracyStatTable(cmeans.wm@mu@data*100, alldata@data[names(cmeans.wm@mu@data)])
+# Compared to everything 11%: RMSE of 27.4
+AccuracyStats(100.0/9.0, alldata@data[names(cmeans.wm@mu@data)])
 
 step = data.frame(RMSE = numeric(), MAE = numeric(), ME = numeric(), fuzzy.e = numeric())
 workingsteps = seq(0, 10, 0.1)

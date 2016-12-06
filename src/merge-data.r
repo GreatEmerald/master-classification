@@ -30,7 +30,7 @@ names(data) = c(names(samples), "cell.no", TrainingNames)
 write.csv(data, "../data/variables.csv")
 
 # Get a reduced raster for SpatialPixelsDataFrame
-pixels = raster::mask(rasters, samples, filename="../../userdata/pixels.tif", overwrite=TRUE)
+pixels = raster::mask(rasters, samples, filename="../../userdata/pixels.tif", overwrite=TRUE, progress="text")
 
 # Data exploration
 #cor(data@data[names(data) != "dominant"])

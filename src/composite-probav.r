@@ -11,8 +11,10 @@
 
 library(probaV)
 library(stringr)
+library(foreach)
+library(doParallel)
+source("utils/set-temp-path.r")
 source("utils/GetProbaVQCMask.r")
-#source("../../processProbaVbatch2.R")
 
 TileOfInterest = "X20Y01"
 QC.vals = GetProbaVQCMask(bluegood=TRUE, redgood=TRUE, nirgood=TRUE, swirgood=TRUE, ice=FALSE, cloud=FALSE, shadow=FALSE)
@@ -42,31 +44,42 @@ processProbaVbatch(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", 
                   overwrite=F)
 
 # Load all cleaned images and produce a maximum NDVI composite using overlay
-OutputDir = "../../userdata/composite/ndvi"
+OutputDir = "../../userdata/composite"
 NDVIs = stack(list.files(OutputDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
 
 # Next, apply additional time-series-based cleaning to NDVI
 # Needs clean-timeseries.r to have been run
-TSCleanDir = "../../userdata/composite/tscleaned/"
-QCMask = brick(paste0(TSCleanDir, "compressed.tif"))
-CleanNDVIs = mask(NDVIs, QCMask, filename=paste0(TSCleanDir, "NDVIs.tif"), maskvalue = c(0, 2))
+CleanNDVI = brick(paste0(OutputDir, "/tscleaned/CleanNDVI.tif"))
+names(CleanNDVI) = names(NDVIs)
+CleanSummerNDVI = subset(CleanNDVI,
+    which(names(CleanNDVI) == "PROBAV_S5_TOC_X20Y01_20160601_100M_V001_NDVI_sm"):
+        which(names(CleanNDVI) == "PROBAV_S5_TOC_X20Y01_20160826_100M_V001_NDVI_sm"))
 
 # First, get which of the dates has the highest NDVI
-# This somehow doesn't work, so store things in memory instead
-#MaxNDVI = calc(NDVIs, fun=which.max, datatype="INT2U", filename=paste0(OutputDir, "/maxndvi.tif"))
-temp = which.max(NDVIs)
-MaxNDVI = writeRaster(temp, filename=paste0(OutputDir, "/maxndvi.tif"), datatype="INT2S")
+# This doesn't work probably due to which.max confustion, so store things in memory instead
+# MaxNDVI = calc(CleanSummerNDVI, fun=which.max, datatype="INT2U", filename=paste0(OutputDir, "/maxndvi.tif"),
+#    overwrite=TRUE, progress="text")
+temp = which.max(CleanSummerNDVI)
+MaxNDVI = writeRaster(temp, filename=paste0(OutputDir, "/maxndvi.tif"), datatype="INT2S",
+    overwrite=TRUE, progress="text")
 rm(temp)
 
-OutputDir = "../../userdata/composite/radiometry"
-Bands = c("BLUE", "RED", "NIR", "SWIR")
-for (i in 1:length(Bands))
+SemiCleanRadDir = "../../userdata/semicleaned/radiometry"
+#for (i in 1:length(Bands))
+registerDoParallel(cores = 4)
+foreach(i=1:length(Bands), .p) %dopar%
 {
-    Radiometry = stack(list.files(OutputDir, pattern=glob2rx(paste0("*", Bands[i], "*.tif")), full.names = TRUE))
-    stackSelect(Radiometry, MaxNDVI, datatype="INT2S", filename=paste0(OutputDir, "/", Bands[i], "_composite.tif"))
+    Bands = c("BLUE", "RED0", "NIR0", "SWIR")
+    Radiometry = stack(list.files(SemiCleanRadDir, pattern=glob2rx(paste0("*", Bands[i], "*.tif")),
+        full.names = TRUE))
+    SummerRadiometry = subset(Radiometry,
+        which(names(Radiometry) == paste0("PROBAV_S5_TOC_X20Y01_20160601_100M_V001_",Bands[i],"_sm")):
+        which(names(Radiometry) == paste0("PROBAV_S5_TOC_X20Y01_20160826_100M_V001_",Bands[i],"_sm")))
+    stackSelect(SummerRadiometry, MaxNDVI, datatype="INT2S", overwrite=TRUE, progress="text",
+        filename=paste0(OutputDir, "/", Bands[i], "_composite.tif"))
 }
 # Also write a multilayer file (for visualisation etc.)
-Composite = writeRaster(stack(paste0(OutputDir, "/RED_composite.tif"), paste0(OutputDir, "/NIR_composite.tif"),
+Composite = writeRaster(stack(paste0(OutputDir, "/RED0_composite.tif"), paste0(OutputDir, "/NIR0_composite.tif"),
     paste0(OutputDir, "/BLUE_composite.tif"), paste0(OutputDir, "/SWIR_composite.tif")), datatype="INT2S",
-    filename=paste0(OutputDir, "/composite.tif"))
+    filename=paste0(OutputDir, "/composite.tif"), progress="text")
 plotRGB(Composite)

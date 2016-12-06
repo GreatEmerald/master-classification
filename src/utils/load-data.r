@@ -4,7 +4,7 @@ library(raster)
 # These need to be kept in sync; use this file for reference
 TrainingNames = c("red", "nir", "blue", "swir", "ndvi", "osavi", "lswi", "is.water",
         "height", "slope", "aspect", "tpi")
-TrainingFiles = c("../../userdata/composite/radiometry/composite.tif",
+TrainingFiles = c("../../userdata/composite/composite.tif",
         "../../userdata/composite/indices.tif",
         "../../userdata/composite/watermask.tif",
         "../../userdata/dem/merged/pv-height.tif",

@@ -4,14 +4,15 @@
 
 library(probaV)
 library(tools)
+source("utils/set-temp-path.r")
 source("utils/GetProbaVQCMask.r")
 
 TileOfInterest = "X20Y01"
 QC.vals = GetProbaVQCMask(bluegood=TRUE, redgood=TRUE, nirgood=TRUE, swirgood=TRUE,
     ice=FALSE, cloud=FALSE, shadow=FALSE)
-DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S1_TOC_100M"
-NDVIOutputDir = "../../userdata/composite/1day/ndvi"
-RadiometryOutputDir = "../../userdata/composite/1day/radiometry"
+DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M"
+NDVIOutputDir = "../../userdata/semicleaned/ndvi"
+RadiometryOutputDir = "../../userdata/semicleaned/radiometry"
 
 # Need a list of all YYYYMMDD numbered directories; these are Collection 0
 lf = list.files(DataDir)
@@ -38,11 +39,11 @@ for (dir in lf)
 }
 DataDirs = c(DataDirs, paste0(DataDir,'/',Col1Dirs))
 
-psnice(value = 1)
+psnice(value = 3)
 # First process radiometry (it can then be used for further cleaning of Collection 0)
 processProbaVbatch(DataDirs, tiles = TileOfInterest, QC_val = QC.vals, overwrite=FALSE,
-    pattern = "RADIOMETRY.tif$", outdir = RadiometryOutputDir, ncores = 2)
+    pattern = "RADIOMETRY.tif$", outdir = RadiometryOutputDir, ncores = 4)
 
 # Then process NDVI (for use in time series)
 processProbaVbatch(DataDirs, tiles = TileOfInterest, QC_val = QC.vals, overwrite=FALSE,
-    pattern = "NDVI.tif$", outdir = NDVIOutputDir, ncores = 2)
+    pattern = "NDVI.tif$", outdir = NDVIOutputDir, ncores = 4)
