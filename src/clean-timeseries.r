@@ -42,5 +42,11 @@ which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V001_BLUE_sm.tif")
 #spplot(Vrt[[132]])
 #spplot(QCMask[[132]])
 
-# Apply mask to data
-# Basically that means cleaning data all over again, file by file.
+# Apply mask to data: NDVI
+OutputDir = "../../userdata/composite/ndvi"
+NDVIs = stack(list.files(OutputDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
+TSCleanDir = "../../userdata/composite/tscleaned/"
+QCMask = brick(paste0(TSCleanDir, "compressed.tif"))
+CleanNDVI = mask(NDVIs, QCMask, maskvalue=c(2,0),
+    filename=paste0(TSCleanDir, "CleanNDVI.tif"), datatype="FLT4S", progress="text")
+
