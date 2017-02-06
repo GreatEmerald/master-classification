@@ -26,10 +26,13 @@ QCFile = paste0(OutputDir, 'cloud_filter.envi')
 LogFile = paste0(OutputDir, 'cloud_filter.log')
 
 Cores = 31
+Rows = 3
 psnice(value = min(Cores - 1, 19))
-QCMask = cloud_filter(x = Vrt, probav_sm_dir = IntermediaryDir, pattern = VrtPattern,
-    tiles = TileOfInterest, minrows = 1, mc.cores = Cores, logfile=LogFile, overwrite=TRUE,
-    span=0.3, cf_bands = c(1), thresholds=c(-30, Inf), filename = QCFile)
+system.time(
+    QCMask <- cloud_filter(x = Vrt, probav_sm_dir = IntermediaryDir, pattern = VrtPattern,
+        tiles = TileOfInterest, minrows = Rows, mc.cores = Cores, logfile=LogFile, overwrite=TRUE,
+        span=0.3, cf_bands = c(1), thresholds=c(-30, Inf), filename = QCFile)
+)
 
 # select date
 which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V001_BLUE_sm.tif")
