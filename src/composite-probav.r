@@ -52,8 +52,8 @@ NDVIs = stack(list.files(OutputDir, pattern=glob2rx("*NDVI*.tif"), full.names = 
 CleanNDVI = brick(paste0(OutputDir, "/tscleaned/CleanNDVI.tif"))
 names(CleanNDVI) = names(NDVIs)
 CleanSummerNDVI = subset(CleanNDVI,
-    which(names(CleanNDVI) == "PROBAV_S5_TOC_X20Y01_20160601_100M_V001_NDVI_sm"):
-        which(names(CleanNDVI) == "PROBAV_S5_TOC_X20Y01_20160826_100M_V001_NDVI_sm"))
+    which(names(CleanNDVI) == "PROBAV_S5_TOC_X20Y01_20160601_100M_V101_NDVI_sm"):
+        which(names(CleanNDVI) == "PROBAV_S5_TOC_X20Y01_20160826_100M_V101_NDVI_sm"))
 
 # First, get which of the dates has the highest NDVI
 # This doesn't work probably due to which.max confustion, so store things in memory instead
@@ -73,8 +73,8 @@ foreach(i=1:length(Bands), .p) %dopar%
     Radiometry = stack(list.files(SemiCleanRadDir, pattern=glob2rx(paste0("*", Bands[i], "*.tif")),
         full.names = TRUE))
     SummerRadiometry = subset(Radiometry,
-        which(names(Radiometry) == paste0("PROBAV_S5_TOC_X20Y01_20160601_100M_V001_",Bands[i],"_sm")):
-        which(names(Radiometry) == paste0("PROBAV_S5_TOC_X20Y01_20160826_100M_V001_",Bands[i],"_sm")))
+        which(names(Radiometry) == paste0("PROBAV_S5_TOC_X20Y01_20160601_100M_V101_",Bands[i],"_sm")):
+        which(names(Radiometry) == paste0("PROBAV_S5_TOC_X20Y01_20160826_100M_V101_",Bands[i],"_sm")))
     stackSelect(SummerRadiometry, MaxNDVI, datatype="INT2S", overwrite=TRUE, progress="text",
         filename=paste0(OutputDir, "/", Bands[i], "_composite.tif"))
 }
