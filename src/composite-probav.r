@@ -16,40 +16,14 @@ library(doParallel)
 source("utils/set-temp-path.r")
 source("utils/GetProbaVQCMask.r")
 
-TileOfInterest = "X20Y01"
-QC.vals = GetProbaVQCMask(bluegood=TRUE, redgood=TRUE, nirgood=TRUE, swirgood=TRUE, ice=FALSE, cloud=FALSE, shadow=FALSE)
-
-DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M"
-OutputDir = "../../userdata/composite"
-
-# Need a list of all numbered directories
-lf = list.files(DataDir)
-lf = lf[nchar(lf) == 8]
-DataDirs = paste0(DataDir,'/',lf)
-
-# Workaround, should be in the function call
-patterns = "NDVI.tif$"
-OutputDir = "../../userdata/composite/ndvi"
-# glob2rx("*D*I*.tif")
-processProbaVbatch(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
-                  QC_val = QC.vals, outdir = OutputDir,
-                  #ncores = (detectCores(all.tests = FALSE, logical = TRUE)-1),
-                  overwrite=F)
-
-OutputDir = "../../userdata/composite/radiometry"
-patterns = "RADIOMETRY.tif$"
-processProbaVbatch(DataDirs, tiles = TileOfInterest, start_date = "2016-06-01", end_date = "2016-08-31",
-                  QC_val = QC.vals, outdir = OutputDir,
-                  ncores = 3,#(detectCores(all.tests = FALSE, logical = TRUE)-1),
-                  overwrite=F)
+OutputDir = "../../userdata/composite/"
+SemiCleanRadDir = "../../userdata/semicleaned/radiometry"
+SemiCleanNDVIDir = "../../userdata/semicleaned/ndvi"
 
 # Load all cleaned images and produce a maximum NDVI composite using overlay
-OutputDir = "../../userdata/composite"
-NDVIs = stack(list.files(OutputDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
-
-# Next, apply additional time-series-based cleaning to NDVI
-# Needs clean-timeseries.r to have been run
-CleanNDVI = brick(paste0(OutputDir, "/tscleaned/CleanNDVI.tif"))
+# Needs clean-timeseries.r to have been run!
+CleanNDVI = brick(paste0(OutputDir, "tscleaned/CleanNDVI.tif"))
+NDVIs = stack(list.files(SemiCleanNDVIDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
 names(CleanNDVI) = names(NDVIs)
 CleanSummerNDVI = subset(CleanNDVI,
     which(names(CleanNDVI) == "PROBAV_S5_TOC_X20Y01_20160601_100M_V101_NDVI_sm"):
@@ -60,11 +34,10 @@ CleanSummerNDVI = subset(CleanNDVI,
 # MaxNDVI = calc(CleanSummerNDVI, fun=which.max, datatype="INT2U", filename=paste0(OutputDir, "/maxndvi.tif"),
 #    overwrite=TRUE, progress="text")
 temp = which.max(CleanSummerNDVI)
-MaxNDVI = writeRaster(temp, filename=paste0(OutputDir, "/maxndvi.tif"), datatype="INT2S",
+MaxNDVI = writeRaster(temp, filename=paste0(OutputDir, "maxndvi.tif"), datatype="INT2S",
     overwrite=TRUE, progress="text")
 rm(temp)
 
-SemiCleanRadDir = "../../userdata/semicleaned/radiometry"
 #for (i in 1:length(Bands))
 registerDoParallel(cores = 4)
 foreach(i=1:length(Bands), .p) %dopar%
@@ -79,7 +52,7 @@ foreach(i=1:length(Bands), .p) %dopar%
         filename=paste0(OutputDir, "/", Bands[i], "_composite.tif"))
 }
 # Also write a multilayer file (for visualisation etc.)
-Composite = writeRaster(stack(paste0(OutputDir, "/RED0_composite.tif"), paste0(OutputDir, "/NIR0_composite.tif"),
-    paste0(OutputDir, "/BLUE_composite.tif"), paste0(OutputDir, "/SWIR_composite.tif")), datatype="INT2S",
-    filename=paste0(OutputDir, "/composite.tif"), progress="text")
+Composite = writeRaster(stack(paste0(OutputDir, "RED0_composite.tif"), paste0(OutputDir, "NIR0_composite.tif"),
+    paste0(OutputDir, "BLUE_composite.tif"), paste0(OutputDir, "SWIR_composite.tif")), datatype="INT2S",
+    filename=paste0(OutputDir, "composite.tif"), progress="text")
 plotRGB(Composite)
