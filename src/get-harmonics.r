@@ -6,8 +6,8 @@ source("utils/set-temp-path.r")
 
 # create output name on the metrics
 OutputDir = "../../userdata/timeseries/"
-OutputFile = paste0(OutputDir, "harmonics.envi")
-LogFile = paste0(OutputDir, "harmonics.log")
+OutputFile = paste0(OutputDir, "harmonic-coefficients.tif")
+LogFile = paste0(OutputDir, "get-harmonics.log")
 TileOfInterest = "X20Y01"
 SemiCleanDir = "../../userdata/semicleaned/"
 
@@ -43,7 +43,7 @@ paste("layers:", nlayers(Vrt), "bands:", paste0(Bands, collapse = " "), "dates:"
 psnice(value = min(Cores - 1, 19))
 # Bug
 out_name = OutputFile
-Harmonics = system.time(getHarmMetricsSpatial(Vrt, TS, minrows = RowsPerThread, mc.cores = Cores,
+system.time(getHarmMetricsSpatial(Vrt, TS, minrows = RowsPerThread, mc.cores = Cores,
     logfile=LogFile, overwrite=TRUE, span=0.3, cf_bands = 1, thresholds=c(-30, Inf),
     filename = OutputFile, order = 2, datatype="FLT4S"))
 
@@ -57,25 +57,33 @@ amplituder = function(co, si)
     return(sqrt(co^2 + si^2))
 }
 
-# Apply phaser and amplituder to our test data
-LakeCoeffs = brick(OutputFile)
+# Calculate phase and amplitude from our data
+Coeffs = brick(OutputFile)
+# Parameters, in order:
 # min max intercept co si co2 si2 co3 si3 trend (blue, NDVI)
 # min max intercept co si co2 si2 trend (blue, NDVI)
-#spplot(LakeCoeffs[[20]])
-#p1 = phaser(LakeCoeffs[[12]], LakeCoeffs[[13]])
-p1 = phaser(LakeCoeffs[[4]], LakeCoeffs[[5]])
+#spplot(Coeffs[[20]])
+#p1 = phaser(Coeffs[[12]], Coeffs[[13]])
+p1 = overlay(Coeffs[[4]], Coeffs[[5]], fun=phaser,
+    filename=paste0(OutputDir, "phase1.tif"), progress="text")
 #spplot(p1)
-#a1 = amplituder(LakeCoeffs[[12]], LakeCoeffs[[13]])
-a1 = amplituder(LakeCoeffs[[4]], LakeCoeffs[[5]])
+#a1 = amplituder(Coeffs[[12]], Coeffs[[13]])
+a1 = overlay(Coeffs[[4]], Coeffs[[5]], fun=amplituder,
+    filename=paste0(OutputDir, "amplitude1.tif"), progress="text")
 #spplot(a1)
-#p2 = phaser(LakeCoeffs[[14]], LakeCoeffs[[15]])
-p2 = phaser(LakeCoeffs[[6]], LakeCoeffs[[7]])
+#p2 = phaser(Coeffs[[14]], Coeffs[[15]])
+p2 = overlay(Coeffs[[6]], Coeffs[[7]], fun=phaser,
+    filename=paste0(OutputDir, "phase2.tif"), progress="text")
 #spplot(p2)
-#a2 = amplituder(LakeCoeffs[[14]], LakeCoeffs[[15]])
-a2 = amplituder(LakeCoeffs[[6]], LakeCoeffs[[7]])
+#a2 = amplituder(Coeffs[[14]], Coeffs[[15]])
+a2 = (Coeffs[[6]], Coeffs[[7]], fun=amplituder,
+    filename=paste0(OutputDir, "amplitude2.tif"), progress="text")
 #spplot(a2)
-#p3 = phaser(LakeCoeffs[[18]], LakeCoeffs[[19]])
+#p3 = phaser(Coeffs[[18]], Coeffs[[19]])
 #spplot(p3)
-#a3 = amplituder(LakeCoeffs[[18]], LakeCoeffs[[19]])
+#a3 = amplituder(Coeffs[[18]], Coeffs[[19]])
 #spplot(a3)
-brick(p1, a1, p2, a2, filename=paste0(OutputDir, "phase-amplitude.tif"), overwrite=TRUE)
+
+# Create final output
+brick(Coeffs[[1]], Coeffs[[2]], Coeffs[[3]], Coeffs[[8]], p1, a1, p2, a2,
+    filename=paste0(OutputDir, "phase-amplitude.tif"), overwrite=TRUE)
