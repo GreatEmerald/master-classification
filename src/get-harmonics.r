@@ -1,4 +1,8 @@
 # Calculate time series metrics from all current data
+#
+# Input: cloud-free NDVI images, one multiband file
+# Output: a multiband file with harmonic parameters
+
 #library(robustbase)
 library(probaV)
 library(tools)

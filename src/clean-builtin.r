@@ -1,6 +1,8 @@
-# Clean PROBA-V files using builtin masks
-# For Collection 1, should result in clean files; for Collection 0, cleans only partially
-# (see clean-timeseries.r for the latter)
+# Clean PROBA-V files using built-in cloud mask from QC layer.
+#
+# Inputs: raw NDVI and radiometry from PROBA-V.
+#     Paths found automatically on the VITO VM. Can be rerun to catch new files.
+# Output: NDVI and radiometry files with NAs instead of values of bad pixels.
 
 library(probaV)
 library(tools)
