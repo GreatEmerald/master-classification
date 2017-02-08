@@ -13,10 +13,10 @@ OutputDir = "../../userdata/composite/tscleaned/"
 TileOfInterest = "X20Y01"
 
 # Subset for testing
-#xmin <- 27
-#xmax <- 28
-#ymin <- 58
-#ymax <- 59
+xmin <- 27
+xmax <- 28
+ymin <- 58
+ymax <- 59
 
 # Create a virtual raster (faster stack) from all blue bands
 VrtPattern = "(BLUE)_sm.tif$"
@@ -27,11 +27,11 @@ Vrt = timeVrtProbaV(IntermediaryDir, pattern = VrtPattern, vrt_name = VrtName, t
     #te = c(xmin, ymin, xmax, ymax))
 
 # QC file and log file names
-QCFile = paste0(OutputDir, 'ts-mask-whole.tif')
+QCFile = paste0(OutputDir, 'ts-mask-whole-optimised.tif')
 LogFile = paste0(OutputDir, 'ts-cleaning.log')
 
-Cores = 16
-Rows = 12
+Cores = 30
+Rows = 6
 psnice(value = min(Cores - 1, 19))
 system.time(
     QCMask <- cloud_filter(x = Vrt, probav_sm_dir = IntermediaryDir, pattern = VrtPattern,
@@ -40,11 +40,15 @@ system.time(
 )
 
 # select date
-which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V101_BLUE_sm.tif")
-#spplot(Vrt[[124]])
-#spplot(QCMask[[124]])
-#spplot(Vrt[[128]])
-#spplot(QCMask[[128]])
+QCMask = brick(QCFile)
+#plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V101_BLUE_sm.tif")]],
+#    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+#plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V101_BLUE_sm.tif")]],
+#    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+#plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160821_100M_V101_BLUE_sm.tif")]],
+#    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+#plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160821_100M_V101_BLUE_sm.tif")]],
+#    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
 #spplot(Vrt[[140]])
 #spplot(QCMask[[140]])
 #spplot(Vrt[[132]])
@@ -54,7 +58,6 @@ which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V101_BLUE_sm.tif")
 NDVIDir = "../../userdata/semicleaned/ndvi"
 NDVIs = stack(list.files(NDVIDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
 TSCleanDir = "../../userdata/composite/tscleaned/"
-QCMask = brick(QCFile)
 CleanNDVI = mask(NDVIs, QCMask, maskvalue=c(2,0),
     filename=paste0(TSCleanDir, "CleanNDVI.tif"), datatype="FLT4S", progress="text",
     overwrite=TRUE, options=c("COMPRESS=DEFLATE", "ZLEVEL=9", "NUMTHREADS=30"))
