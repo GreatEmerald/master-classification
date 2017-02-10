@@ -6,13 +6,14 @@ library(raster); source("utils/set-temp-path.r")
 library(probaV)
 library(foreach)
 library(doParallel)
+library(iterators)
 library(tools)
 
 QCMaskFile = "../../userdata/composite/tscleaned/ts-mask-whole-optimised.tif"
 CloudyFileDirectory = "../../userdata/semicleaned/ndvi/"
 CloudyFilePattern = "NDVI_sm.tif$"
 TileOfInterest = "X20Y01"
-CleanFile = "../../userdata/composite/tscleaned/CleanNDVI.tif"
+CleanDirectory = "../../userdata/cleaned/ndvi/"
 
 CloudyVrt = timeVrtProbaV(CloudyFileDirectory, pattern = CloudyFilePattern,
     vrt_name = tempfile("CloudyVrt", rasterOptions()$tmpdir, ".vrt"),
@@ -21,16 +22,16 @@ QCMask = brick(QCMaskFile)
 
 if (nlayers(CloudyVrt) != nlayers(QCMask))
     stop("Number of layers does not match!")
-LayerNames = names(CloudyVrt)
+LayerNames = names(QCMask) = names(CloudyVrt)
 
-Cores = 31
+# One thread eats around 840 MB max, so limit to 20 cores for 16 GiB
+# Alternatively, set rasterOptions() memory settings
+Cores = 20
 psnice(value = min(Cores - 1, 19))
 registerDoParallel(cores = Cores)
-LoopCount = nlayers(CloudyVrt)
-CleanStack = foreach(i=1:LoopCount, .packages = "raster", .verbose = TRUE, .combine = stack, .multicombine = TRUE) %dopar%
+foreach(i=iter(LayerNames), .packages = "raster", .verbose = TRUE, .inorder = FALSE) %dopar%
 {
-    rasterOptions(format="GTiff", datatype="FLT4S", progress="text", timer=TRUE)
-    mask(CloudyVrt[[i]], QCMask[[i]], maskvalue=c(2,0))
+    mask(CloudyVrt[[i]], QCMask[[i]], maskvalue=c(2,0),
+        filename=paste0(CleanDirectory, i), datatype="FLT4S", progress="text",
+        options=c("COMPRESS=DEFLATE", "ZLEVEL=9"))
 }
-writeRaster(CleanStack, filename=CleanFile, datatype="FLT4S", progress="text",
-    overwrite=TRUE, options=c("COMPRESS=DEFLATE", "ZLEVEL=9", "NUMTHREADS=4"))
