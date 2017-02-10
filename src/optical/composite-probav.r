@@ -16,13 +16,15 @@ library(doParallel)
 source("utils/set-temp-path.r")
 source("utils/GetProbaVQCMask.r")
 
-OutputDir = "../../userdata/composite/"
-SemiCleanRadDir = "../../userdata/semicleaned/radiometry"
-SemiCleanNDVIDir = "../../userdata/semicleaned/ndvi"
+OutputDir = "../../userdata/indices/"
+SemiCleanRadDir = "../../userdata/semicleaned/radiometry/"
+SemiCleanNDVIDir = "../../userdata/semicleaned/ndvi/"
+CleanNDVIDir = "../../userdata/composite/tscleaned/"
+TempDir = "../../userdata/temp/"
 
 # Load all cleaned images and produce a maximum NDVI composite using overlay
 # Needs clean-timeseries.r to have been run!
-CleanNDVI = brick(paste0(OutputDir, "tscleaned/CleanNDVI.tif"))
+CleanNDVI = brick(paste0(CleanNDVIDir, "CleanNDVI.tif"))
 NDVIs = stack(list.files(SemiCleanNDVIDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
 names(CleanNDVI) = names(NDVIs)
 CleanSummerNDVI = subset(CleanNDVI,
@@ -34,7 +36,7 @@ CleanSummerNDVI = subset(CleanNDVI,
 # MaxNDVI = calc(CleanSummerNDVI, fun=which.max, datatype="INT2U", filename=paste0(OutputDir, "/maxndvi.tif"),
 #    overwrite=TRUE, progress="text")
 temp = which.max(CleanSummerNDVI)
-MaxNDVI = writeRaster(temp, filename=paste0(OutputDir, "maxndvi.tif"), datatype="INT2S",
+MaxNDVI = writeRaster(temp, filename=paste0(TempDir, "maxndvi.tif"), datatype="INT2S",
     overwrite=TRUE, progress="text")
 rm(temp)
 
@@ -49,7 +51,7 @@ foreach(i=1:length(Bands), .p) %dopar%
         which(names(Radiometry) == paste0("PROBAV_S5_TOC_X20Y01_20160601_100M_V101_",Bands[i],"_sm")):
         which(names(Radiometry) == paste0("PROBAV_S5_TOC_X20Y01_20160826_100M_V101_",Bands[i],"_sm")))
     stackSelect(SummerRadiometry, MaxNDVI, datatype="INT2S", overwrite=TRUE, progress="text",
-        filename=paste0(OutputDir, "/", Bands[i], "_composite.tif"))
+        filename=paste0(OutputDir, Bands[i], "_composite.tif"))
 }
 # Also write a multilayer file (for visualisation etc.)
 Composite = writeRaster(stack(paste0(OutputDir, "RED0_composite.tif"), paste0(OutputDir, "NIR0_composite.tif"),

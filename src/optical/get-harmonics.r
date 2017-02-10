@@ -13,7 +13,9 @@ OutputDir = "../../userdata/harmonics/"
 OutputFile = paste0(OutputDir, "harmonic-coefficients.tif")
 LogFile = paste0(OutputDir, "get-harmonics.log")
 TileOfInterest = "X20Y01"
+SemiCleanNDVIDir = "../../userdata/semicleaned/ndvi/"
 SemiCleanDir = "../../userdata/semicleaned/"
+QCFile = "../../userdata/composite/tscleaned/ts-mask-whole-optimised.tif"
 
 # Subset for testing
 #xmin <- 27
@@ -21,14 +23,17 @@ SemiCleanDir = "../../userdata/semicleaned/"
 #ymin <- 58
 #ymax <- 59
 
-BandPattern = "(BLUE|NDVI)_sm.tif$"
+#BandPattern = "(BLUE|NDVI)_sm.tif$"
+#VrtFilename = paste0(OutputDir, "harmonics2.vrt")
+
+BandPattern = "NDVI_sm.tif$"
 VrtFilename = paste0(OutputDir, "harmonics2.vrt")
 
 # Create virtual stack
-Vrt = timeVrtProbaV(SemiCleanDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
+Vrt = timeVrtProbaV(SemiCleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
     return_raster = TRUE)#, te = c(xmin, ymin, xmax, ymax))
 
-TS = timeVrtProbaV(SemiCleanDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
+TS = timeVrtProbaV(SemiCleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
     return_raster = FALSE)#, te = c(xmin, ymin, xmax, ymax))
 
 Bands = TS[TS$date == TS$date[1], 'band']
@@ -43,13 +48,15 @@ Cores = 31
 paste("layers:", nlayers(Vrt), "bands:", paste0(Bands, collapse = " "), "dates:", length(Dates),
     "blocks:", blockSize(Vrt, minrows = RowsPerThread)$n, "cores:", Cores)
 
+QC = brick(QCFile)
+
 # run system time
 psnice(value = min(Cores - 1, 19))
 # Bug
 #out_name = OutputFile
 system.time(getHarmMetricsSpatial(Vrt, TS, minrows = RowsPerThread, mc.cores = Cores,
-    logfile=LogFile, overwrite=TRUE, span=0.3, cf_bands = 1, thresholds=c(-30, Inf),
-    filename = OutputFile, order = 2, datatype="FLT4S"))
+    logfile=LogFile, overwrite=TRUE, #qc=QC, #span=0.3, cf_bands = 1, thresholds=c(-30, Inf),
+    filename = OutputFile, order = 2, datatype="FLT4S", progress="text"))
 
 phaser = function(co, si)
 {
