@@ -41,18 +41,30 @@ system.time(
 
 # select date
 QCMask = brick(QCFile)
-#plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V101_BLUE_sm.tif")]],
-#    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
-#plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V101_BLUE_sm.tif")]],
-#    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
-#plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160821_100M_V101_BLUE_sm.tif")]],
-#    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
-#plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160821_100M_V101_BLUE_sm.tif")]],
-#    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
-#spplot(Vrt[[140]])
-#spplot(QCMask[[140]])
-#spplot(Vrt[[132]])
-#spplot(QCMask[[132]])
+plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160711_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160821_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160821_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160621_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160621_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160826_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160826_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160601_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160601_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160611_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
+plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160611_100M_V101_BLUE_sm.tif")]],
+    xlim=c(xmin, xmax), ylim=c(ymin, ymax))
 
 # Apply mask to data: NDVI
 NDVIDir = "../../userdata/semicleaned/ndvi"
