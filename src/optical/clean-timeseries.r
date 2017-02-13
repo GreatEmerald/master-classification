@@ -66,11 +66,3 @@ plot(Vrt[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160611_100M_V101_BLUE_sm.t
 plot(QCMask[[which(names(Vrt) == "PROBAV_S5_TOC_X20Y01_20160611_100M_V101_BLUE_sm.tif")]],
     xlim=c(xmin, xmax), ylim=c(ymin, ymax))
 
-# Apply mask to data: NDVI
-NDVIDir = "../../userdata/semicleaned/ndvi"
-NDVIs = stack(list.files(NDVIDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
-TSCleanDir = "../../userdata/composite/tscleaned/"
-CleanNDVI = mask(NDVIs, QCMask, maskvalue=c(2,0),
-    filename=paste0(TSCleanDir, "CleanNDVI.tif"), datatype="FLT4S", progress="text",
-    overwrite=TRUE, options=c("COMPRESS=DEFLATE", "ZLEVEL=9", "NUMTHREADS=30"))
-
