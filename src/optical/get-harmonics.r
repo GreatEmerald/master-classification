@@ -13,9 +13,9 @@ OutputDir = "../../userdata/harmonics/"
 OutputFile = paste0(OutputDir, "harmonic-coefficients.tif")
 LogFile = paste0(OutputDir, "get-harmonics.log")
 TileOfInterest = "X20Y01"
-SemiCleanNDVIDir = "../../userdata/semicleaned/ndvi/"
-SemiCleanDir = "../../userdata/semicleaned/"
-QCFile = "../../userdata/composite/tscleaned/ts-mask-whole-optimised.tif"
+CleanNDVIDir = "../../userdata/cleaned/ndvi/"
+CleanDir = "../../userdata/cleaned/"
+TempDir = "../../userdata/temp/"
 
 # Subset for testing
 #xmin <- 27
@@ -27,36 +27,27 @@ QCFile = "../../userdata/composite/tscleaned/ts-mask-whole-optimised.tif"
 #VrtFilename = paste0(OutputDir, "harmonics2.vrt")
 
 BandPattern = "NDVI_sm.tif$"
-VrtFilename = paste0(OutputDir, "harmonics2.vrt")
+VrtFilename = paste0(TempDir, "harmonics.vrt")
 
 # Create virtual stack
-Vrt = timeVrtProbaV(SemiCleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
+Vrt = timeVrtProbaV(CleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
     return_raster = TRUE)#, te = c(xmin, ymin, xmax, ymax))
 
-TS = timeVrtProbaV(SemiCleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
+TS = timeVrtProbaV(CleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
     return_raster = FALSE)#, te = c(xmin, ymin, xmax, ymax))
 
-Bands = TS[TS$date == TS$date[1], 'band']
-Dates = TS[TS$band == Bands[1], 'date']
+RowsPerThread = 14
+Cores = 16
 
-Dates2 = TS[TS$band == Bands[2], 'date']
-Dates == Dates2
+paste("layers:", nlayers(Vrt), "dates:", "blocks:", blockSize(Vrt, minrows = RowsPerThread)$n, "cores:", Cores)
 
-RowsPerThread = 6
-Cores = 31
-
-paste("layers:", nlayers(Vrt), "bands:", paste0(Bands, collapse = " "), "dates:", length(Dates),
-    "blocks:", blockSize(Vrt, minrows = RowsPerThread)$n, "cores:", Cores)
-
-QC = brick(QCFile)
-
-# run system time
-psnice(value = min(Cores - 1, 19))
-# Bug
-#out_name = OutputFile
-system.time(getHarmMetricsSpatial(Vrt, TS, minrows = RowsPerThread, mc.cores = Cores,
-    logfile=LogFile, overwrite=TRUE, #qc=QC, #span=0.3, cf_bands = 1, thresholds=c(-30, Inf),
-    filename = OutputFile, order = 2, datatype="FLT4S", progress="text"))
+if (!file.exists(OutputFile))
+{
+    psnice(value = min(Cores - 1, 19))
+    system.time(Coeffs <- getHarmMetricsSpatial(Vrt, TS, minrows = RowsPerThread, mc.cores = Cores,
+        logfile=LogFile, overwrite=TRUE, filename = OutputFile, order = 2, datatype="FLT4S", progress="text"))
+} else
+    Coeffs = brick(OutputFile)
 
 phaser = function(co, si)
 {
@@ -69,33 +60,19 @@ amplituder = function(co, si)
 }
 
 # Calculate phase and amplitude from our data
-Coeffs = brick(OutputFile)
 # Parameters, in order:
 # min max intercept co si co2 si2 co3 si3 trend (blue, NDVI)
 # min max intercept co si co2 si2 trend (blue, NDVI)
-#spplot(Coeffs[[20]])
-#p1 = phaser(Coeffs[[12]], Coeffs[[13]])
 p1 = overlay(Coeffs[[4]], Coeffs[[5]], fun=phaser)
-#spplot(p1)
-#a1 = amplituder(Coeffs[[12]], Coeffs[[13]])
 a1 = overlay(Coeffs[[4]], Coeffs[[5]], fun=amplituder)
-#spplot(a1)
-#p2 = phaser(Coeffs[[14]], Coeffs[[15]])
 p2 = overlay(Coeffs[[6]], Coeffs[[7]], fun=phaser)
-#spplot(p2)
-#a2 = amplituder(Coeffs[[14]], Coeffs[[15]])
 a2 = overlay(Coeffs[[6]], Coeffs[[7]], fun=amplituder)
-#spplot(a2)
-#p3 = phaser(Coeffs[[18]], Coeffs[[19]])
-#spplot(p3)
-#a3 = amplituder(Coeffs[[18]], Coeffs[[19]])
-#spplot(a3)
 
 # Get mean NDVI value
 # Could probably try to get it from trend and intercept, but rounding errors might be severe
-CleanNDVI = brick("../../userdata/composite/tscleaned/CleanNDVI.tif")
-MeanNDVI = mean(CleanNDVI)
+MeanNDVI = mean(Vrt, na.rm=TRUE)
 
 # Create final output
-brick(MeanNDVI, p1, a1, p2, a2,
-    filename=paste0(OutputDir, "phase-amplitude.tif"), overwrite=TRUE)
+FinalStack = stack(MeanNDVI, p1, a1, p2, a2)
+brick(FinalStack, filename=paste0(OutputDir, "phase-amplitude.tif"), datatype="FLT4S", overwrite=TRUE,
+    progress="text", options=c("COMPRESS=DEFLATE", "ZLEVEL=9", "NUMTHREADS=4"))

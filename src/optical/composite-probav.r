@@ -18,15 +18,12 @@ source("utils/GetProbaVQCMask.r")
 
 OutputDir = "../../userdata/indices/"
 SemiCleanRadDir = "../../userdata/semicleaned/radiometry/"
-SemiCleanNDVIDir = "../../userdata/semicleaned/ndvi/"
-CleanNDVIDir = "../../userdata/composite/tscleaned/"
+CleanNDVIDir = "../../userdata/cleaned/ndvi/"
 TempDir = "../../userdata/temp/"
 
 # Load all cleaned images and produce a maximum NDVI composite using overlay
-# Needs clean-timeseries.r to have been run!
-CleanNDVI = brick(paste0(CleanNDVIDir, "CleanNDVI.tif"))
-NDVIs = stack(list.files(SemiCleanNDVIDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
-names(CleanNDVI) = names(NDVIs)
+# Needs clean-timeseries.r and apply-timeseries-mask.r to have been run!
+CleanNDVI = stack(list.files(CleanNDVIDir, pattern=glob2rx("*NDVI*.tif"), full.names = TRUE))
 CleanSummerNDVI = subset(CleanNDVI,
     which(names(CleanNDVI) == "PROBAV_S5_TOC_X20Y01_20160601_100M_V101_NDVI_sm"):
         which(names(CleanNDVI) == "PROBAV_S5_TOC_X20Y01_20160826_100M_V101_NDVI_sm"))
@@ -35,16 +32,16 @@ CleanSummerNDVI = subset(CleanNDVI,
 # This doesn't work probably due to which.max confustion, so store things in memory instead
 # MaxNDVI = calc(CleanSummerNDVI, fun=which.max, datatype="INT2U", filename=paste0(OutputDir, "/maxndvi.tif"),
 #    overwrite=TRUE, progress="text")
-temp = which.max(CleanSummerNDVI)
-MaxNDVI = writeRaster(temp, filename=paste0(TempDir, "maxndvi.tif"), datatype="INT2S",
-    overwrite=TRUE, progress="text")
-rm(temp)
+#temp = which.max(CleanSummerNDVI)
+#MaxNDVI = writeRaster(temp, filename=paste0(TempDir, "maxndvi.tif"), datatype="INT2S",
+#    overwrite=TRUE, progress="text")
+#rm(temp)
+MaxNDVI = brick(paste0(TempDir, "maxndvi.tif"))
 
-#for (i in 1:length(Bands))
-registerDoParallel(cores = 4)
-foreach(i=1:length(Bands), .p) %dopar%
+Bands = c("BLUE", "RED0", "NIR0", "SWIR")
+registerDoParallel(cores = length(Bands))
+foreach(i=1:length(Bands), .packages="raster", .inorder=FALSE) %dopar%
 {
-    Bands = c("BLUE", "RED0", "NIR0", "SWIR")
     Radiometry = stack(list.files(SemiCleanRadDir, pattern=glob2rx(paste0("*", Bands[i], "*.tif")),
         full.names = TRUE))
     SummerRadiometry = subset(Radiometry,
@@ -56,5 +53,5 @@ foreach(i=1:length(Bands), .p) %dopar%
 # Also write a multilayer file (for visualisation etc.)
 Composite = writeRaster(stack(paste0(OutputDir, "RED0_composite.tif"), paste0(OutputDir, "NIR0_composite.tif"),
     paste0(OutputDir, "BLUE_composite.tif"), paste0(OutputDir, "SWIR_composite.tif")), datatype="INT2S",
-    filename=paste0(OutputDir, "composite.tif"), progress="text")
+    filename=paste0(OutputDir, "composite.tif"), progress="text", options=c("COMPRESS=DEFLATE", "ZLEVEL=9", "NUMTHREADS=4"))
 plotRGB(Composite)
