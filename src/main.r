@@ -30,6 +30,8 @@ source("elevation/dem-merge.r")
 
 ## Validation data: preprocess and merge into a coherent file with everything
 
+# Remove NAs because the algorithms cannot handle them
+source("validation/remove-nas.r")
 # Preprocess CCI land cover (for reference when gathering data only!)
 source("validation/simplify-cci.r")
 # Read validation data CSV and convert into SpatialPointsDataFrame
