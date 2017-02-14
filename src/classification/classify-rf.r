@@ -2,6 +2,7 @@
 library(ranger)
 library(caret)
 library(raster)
+library(fields)
 source("utils/set-temp-path.r")
 source("utils/load-data.r")
 source("utils/accuracy-statistics.r")
@@ -13,7 +14,6 @@ folds = createFolds(alldata$cropland, 2)
 fold = folds$Fold1
 
 Formula = paste0("water~", paste(TrainingNames, collapse = "+"))
-Formula = update.formula(Formula, "~.-ndvi")
 rf.water = ranger(Formula, alldata[fold,]@data)
 rf.water$variable.importance
 predicted.water = predict(rf.water, alldata[fold,]@data)
@@ -27,23 +27,47 @@ AccuracyStats(predictedh.water$predictions, alldata@data$water)
 
 # Create a full prediction table
 FullFormula = paste0("~", paste(TrainingNames, collapse = "+"))
-FullFormula = update.formula(FullFormula, "~.-ndvi")
 Predictions = matrix(ncol=length(ValidationNames), nrow=nrow(alldata@data),
     dimnames=list(list(), ValidationNames))
+Importances = data.frame()
 for (Class in ValidationNames)
 {
     print(Class)
     Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
     set.seed(0xbadcafe)
-    rfmodel = holdoutRF(Formula, alldata@data)
+    rfmodel = holdoutRF(Formula, alldata@data, scale.permutation.importance=TRUE)
     #print(rfmodel$variable.importance)
     #barplot(rfmodel$variable.importance, main=Class)
+    Importances = rbind(Importances, rfmodel$variable.importance)
+    names(Importances) = names(rfmodel$variable.importance)
+    row.names(Importances)[nrow(Importances)] = Class
     rfprediction = predict(rfmodel$rf1, alldata@data)
     # RMSE=20-10. Amazing. Better than 27.
     #print(AccuracyStats(rfprediction$predictions, alldata@data[,Class]))
     Predictions[,Class] = rfprediction$predictions
 }
 AccuracyStatTable(Predictions, alldata@data[,ValidationNames])
+sort(colSums(Importances))
+
+image.plot(1:9,1:16,as.matrix(Importances),axes=FALSE, xlab = "Class", ylab = "Covariate")
+points(0,0)
+axis(side=1, at=1:9, labels=row.names(Importances), las=2)
+axis(side=2, at=1:16, labels=names(Importances), las=1)
+
+
+min.z <- min(Importances)
+max.z <- max(Importances)
+z.yellows <- min.z + (max.z - min.z)/64*c(20,45) 
+# print the labels
+for(i in 1:9){
+  for(j in 1:16){
+    if((Importances[i,j] > z.yellows[1])&(Importances[i,j] < z.yellows[2])){
+      text(i,j,round(Importances[i,j]), col="black", cex = 0.8)
+    }else{
+      text(i,j,round(Importances[i,j]), col="white", cex = 0.8)     
+    }
+  }
+}
 
 # Scale prediction table
 ScaledPredictions = Predictions
@@ -51,7 +75,7 @@ for (i in 1:nrow(Predictions))
 {
     ScaledPredictions[i,] = Predictions[i,] / sum(Predictions[i,]) * 100
 }
-# 17.8 overall
+# 16.9 overall
 AccuracyStatTable(ScaledPredictions, alldata@data[,ValidationNames])
 
 

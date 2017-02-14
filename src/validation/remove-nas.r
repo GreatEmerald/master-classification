@@ -40,6 +40,7 @@ FillRasterNAs = function(InputFile, OutputFile, RasterOptions = c("COMPRESS=DEFL
     if (file.exists(OutputFile))
     {
         message(paste("File", OutputFile, "already exists, skipping."))
+        return()
     }
     InputRaster = brick(InputFile)
     InputType = dataType(InputRaster)
@@ -67,3 +68,14 @@ FillRasterNAs("../../userdata/dem/merged/pv-height.tif", paste0(OutputDir, "pv-h
 FillRasterNAs("../../userdata/dem/merged/pv-slope.tif", paste0(OutputDir, "pv-slope.tif"))
 FillRasterNAs("../../userdata/dem/merged/pv-aspect.tif", paste0(OutputDir, "pv-aspect.tif"))
 FillRasterNAs("../../userdata/dem/merged/pv-tpi.tif", paste0(OutputDir, "pv-tpi.tif"))
+FillRasterNAs("../../userdata/harmonics/phase-amplitude.tif", paste0(OutputDir, "phase-amplitude.tif"))
+
+# DEM ones that use focal have edge effects, so have to process twice
+FillRasterNAs(paste0(OutputDir, "pv-aspect.tif"), paste0(OutputDir, "pv-aspect-2.tif"))
+FillRasterNAs(paste0(OutputDir, "pv-tpi.tif"), paste0(OutputDir, "pv-tpi-2.tif"))
+# And harmonics require a lot of data, so also large spaces with NAs (in clumps)
+FillRasterNAs(paste0(OutputDir, "phase-amplitude.tif"), paste0(OutputDir, "phase-amplitude-2.tif"))
+FillRasterNAs(paste0(OutputDir, "phase-amplitude-2.tif"), paste0(OutputDir, "phase-amplitude-3.tif"))
+FillRasterNAs(paste0(OutputDir, "phase-amplitude-3.tif"), paste0(OutputDir, "phase-amplitude-4.tif"))
+FillRasterNAs(paste0(OutputDir, "phase-amplitude-4.tif"), paste0(OutputDir, "phase-amplitude-5.tif"))
+FillRasterNAs(paste0(OutputDir, "phase-amplitude-5.tif"), paste0(OutputDir, "phase-amplitude-6.tif"))

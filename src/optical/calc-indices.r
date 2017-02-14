@@ -5,7 +5,7 @@
 library(raster); source("utils/set-temp-path.r")
 source("utils/GetProbaVQCMask.r")
 
-Dir = "../../userdata/indices/"
+Dir = "../../userdata/indices-no-na/"
 #SemiCleanDir = "../../userdata/semicleaned/"
 Radiometry = brick(paste0(Dir, "composite.tif"))
 OSAVI = overlay(Radiometry, fun=function(RED, NIR, BLUE, SWIR){return(1.16 * ((NIR-RED)/(NIR+RED+0.16)))},
