@@ -13,24 +13,14 @@ set.seed(0xbadcafe)
 folds = createFolds(alldata$cropland, 2)
 fold = folds$Fold1
 
-Formula = paste0("water~", paste(TrainingNames, collapse = "+"))
-rf.water = ranger(Formula, alldata[fold,]@data)
-rf.water$variable.importance
-predicted.water = predict(rf.water, alldata[fold,]@data)
-AccuracyStats(predicted.water$predictions, alldata[-fold,]@data$water)
-
-rfh.water = holdoutRF(Formula, alldata@data)
-rfh.water$variable.importance
-predictedh.water = predict(rfh.water$rf1, alldata@data)
-# RMSE=11.0 (without ts-cleaning: 11.5). Amazing. Better than 27.
-AccuracyStats(predictedh.water$predictions, alldata@data$water)
+TN = GetTrainingNames(exclude=c("osavi", "aspect", "is.water", "height"))
 
 # Create a full prediction table
-FullFormula = paste0("~", paste(TrainingNames, collapse = "+"))
-Predictions = matrix(ncol=length(ValidationNames), nrow=nrow(alldata@data),
-    dimnames=list(list(), ValidationNames))
+FullFormula = paste0("~", paste(TN, collapse = "+"))
+Predictions = matrix(ncol=length(GetValidationNames()), nrow=nrow(alldata@data),
+    dimnames=list(list(), GetValidationNames()))
 Importances = data.frame()
-for (Class in ValidationNames)
+for (Class in GetValidationNames())
 {
     print(Class)
     Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
@@ -46,21 +36,22 @@ for (Class in ValidationNames)
     #print(AccuracyStats(rfprediction$predictions, alldata@data[,Class]))
     Predictions[,Class] = rfprediction$predictions
 }
-AccuracyStatTable(Predictions, alldata@data[,ValidationNames])
+AccuracyStatTable(Predictions, alldata@data[,GetValidationNames()])
 sort(colSums(Importances))
 
-image.plot(1:9,1:16,as.matrix(Importances),axes=FALSE, xlab = "Class", ylab = "Covariate")
+image.plot(1:length(GetValidationNames()), 1:length(TN), as.matrix(Importances),
+    axes=FALSE, xlab = "Class", ylab = "Covariate")
 points(0,0)
-axis(side=1, at=1:9, labels=row.names(Importances), las=2)
-axis(side=2, at=1:16, labels=names(Importances), las=1)
+axis(side=1, at=1:length(GetValidationNames()), labels=row.names(Importances), las=2)
+axis(side=2, at=1:length(TN), labels=names(Importances), las=1)
 
 
 min.z <- min(Importances)
 max.z <- max(Importances)
 z.yellows <- min.z + (max.z - min.z)/64*c(20,45) 
 # print the labels
-for(i in 1:9){
-  for(j in 1:16){
+for(i in 1:length(GetValidationNames())){
+  for(j in 1:length(TN)){
     if((Importances[i,j] > z.yellows[1])&(Importances[i,j] < z.yellows[2])){
       text(i,j,round(Importances[i,j]), col="black", cex = 0.8)
     }else{
@@ -76,7 +67,7 @@ for (i in 1:nrow(Predictions))
     ScaledPredictions[i,] = Predictions[i,] / sum(Predictions[i,]) * 100
 }
 # 16.9 overall
-AccuracyStatTable(ScaledPredictions, alldata@data[,ValidationNames])
+AccuracyStatTable(ScaledPredictions, alldata@data[,GetValidationNames()])
 
 
 # Try making a full-raster prediction
