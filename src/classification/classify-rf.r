@@ -10,15 +10,12 @@ source("utils/accuracy-statistics.r")
 alldata = LoadClassificationData()
 
 set.seed(0xbadcafe)
-folds = createFolds(alldata$cropland, 2)
-fold = folds$Fold1
+folds = createFolds(alldata$cropland, 4)
 
-TN = GetTrainingNames(exclude=c("osavi", "aspect", "is.water", "height"))
+TN = GetTrainingNames()#exclude=c("osavi", "aspect", "is.water", "height"))
 
-# Create a full prediction table
+# Get and plot variable importance
 FullFormula = paste0("~", paste(TN, collapse = "+"))
-Predictions = matrix(ncol=length(GetValidationNames()), nrow=nrow(alldata@data),
-    dimnames=list(list(), GetValidationNames()))
 Importances = data.frame()
 for (Class in GetValidationNames())
 {
@@ -26,17 +23,11 @@ for (Class in GetValidationNames())
     Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
     set.seed(0xbadcafe)
     rfmodel = holdoutRF(Formula, alldata@data, scale.permutation.importance=TRUE)
-    #print(rfmodel$variable.importance)
-    #barplot(rfmodel$variable.importance, main=Class)
     Importances = rbind(Importances, rfmodel$variable.importance)
     names(Importances) = names(rfmodel$variable.importance)
     row.names(Importances)[nrow(Importances)] = Class
-    rfprediction = predict(rfmodel$rf1, alldata@data)
-    # RMSE=20-10. Amazing. Better than 27.
-    #print(AccuracyStats(rfprediction$predictions, alldata@data[,Class]))
-    Predictions[,Class] = rfprediction$predictions
 }
-AccuracyStatTable(Predictions, alldata@data[,GetValidationNames()])
+
 sort(colSums(Importances))
 
 image.plot(1:length(GetValidationNames()), 1:length(TN), as.matrix(Importances),
@@ -60,15 +51,35 @@ for(i in 1:length(GetValidationNames())){
   }
 }
 
-# Scale prediction table
-ScaledPredictions = Predictions
-for (i in 1:nrow(Predictions))
+# Do 4-fold cross-validation
+FullFormula = paste0("~", paste(TN, collapse = "+"))
+ASTs = data.frame()
+for (i in 1:length(folds))
 {
-    ScaledPredictions[i,] = Predictions[i,] / sum(Predictions[i,]) * 100
+    Predictions = matrix(ncol=length(GetValidationNames()), nrow=nrow(alldata@data[folds[[i]],]),
+        dimnames=list(list(), GetValidationNames()))
+    for (Class in GetValidationNames())
+    {
+        print(Class)
+        Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
+        rfmodel = ranger(Formula, alldata@data[-folds[[i]],], seed = 0xbadcafe)
+        rfprediction = predict(rfmodel, alldata@data[folds[[i]],])
+        Predictions[,Class] = rfprediction$predictions
+    }
+    ScaledPredictions = Predictions
+    for (n in 1:nrow(Predictions))
+    {
+        ScaledPredictions[n,] = Predictions[n,] / sum(Predictions[n,]) * 100
+    }
+    AST = AccuracyStatTable(ScaledPredictions, alldata@data[folds[[i]],GetValidationNames()])
+    AST$class = factor(rownames(AST))
+    if (nrow(ASTs) == 0)
+        ASTs = AST
+    else
+        ASTs = rbind(ASTs, AST)
 }
-# 16.9 overall
-AccuracyStatTable(ScaledPredictions, alldata@data[,GetValidationNames()])
-
+CVAST = stats::aggregate(ASTs[,-(which(names(ASTs) == "class"))], by=list(class=ASTs$class), FUN=mean)
+CVAST[match(AST$class, CVAST$class),]
 
 # Try making a full-raster prediction
 TrainingRasters = stack(TrainingFiles)
