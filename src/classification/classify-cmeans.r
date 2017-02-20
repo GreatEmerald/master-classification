@@ -2,12 +2,14 @@
 library(Hmisc)
 library(GSIF)
 library(caret)
+library(ggplot2)
 source("utils/load-data.r")
 source("utils/accuracy-statistics.r")
 
 # Load data
 alldata = LoadClassificationData()
-pixels = LoadTrainingPixels()
+alldata$dominant = as.character(alldata$dominant)
+pixels = LoadTrainingPixels(exclude="is.water") # Not excluding is.water leads to very strange issues
 
 # There are two ways: either use the built-in method of using a multinomial logistic regression
 # with endmembers, or use weighted averages with all pixels.
@@ -16,131 +18,110 @@ pixels = LoadTrainingPixels()
 
 terms = names(pixels)
 FullFormula = formula(paste0("dominant~", paste(terms, collapse="+")))
-FullFormula = update.formula(FullFormula, "~ . -ndvi") # Drop NDVI due to collinearity with OSAVI
-FullFormula = update.formula(FullFormula, "~ . -is.water") # For some reason is.water gives an error, drop
 
 cmeans.mnlr = spfkm(FullFormula, alldata[alldata$pure,], pixels)
 
-# Hard total classification accuracy: 12%, pretty bad
-sum(cmeans.mnlr@predicted@data[[1]] == alldata$dominant) / length(alldata)
-# If looking at only pure data: 20%, still really bad
-sum(cmeans.mnlr@predicted@data[alldata$pure,][[1]] == alldata[alldata$pure,]$dominant) / length(alldata[alldata$pure,])
-AccuracyStats(cmeans.mnlr@mu@data*100, alldata@data[names(cmeans.mnlr@mu@data)])
-# Compared to pure uncertainty: 11% of each class... and it's better.
+# Hard total classification accuracy: 53%, pretty good
+sum(cmeans.mnlr@predicted@data[[1]] == alldata@data[order(alldata@data$cell.no),"dominant"]) / length(alldata)
+# RMSE of 23.61
+AccuracyStats(cmeans.mnlr@mu@data*100, alldata@data[order(alldata@data$cell.no), names(cmeans.mnlr@mu@data)])
+# Compared to pure uncertainty: 11% of each class is worse at 27.38
 AccuracyStats(100.0/9.0, alldata@data[names(cmeans.mnlr@mu@data)])
-# Compared to pure water: our classifier is a bit better!
+# Compared to pure water: our classifier is much better!
 uncertainty = alldata@data[names(cmeans.mnlr@mu@data)]
 uncertainty$water = 100
 uncertainty[,names(uncertainty) != "water"] = 0
 AccuracyStats(uncertainty, alldata@data[names(cmeans.mnlr@mu@data)])
 
 # Try normalising values
-logitTransform = function(p) { log(p/(1-p)) }
-asinTransform = function(p) { asin(sqrt(p)) }
+logitTransform = function(p) { log((p/max(p))/(1-(p/max(p)))) }
+asinTransform = function(p) { asin(sqrt(p/max(p))) }
 pixelsTransformed = pixels
 hist(asinTransform(pixels$red)); pixelsTransformed$red = asinTransform(pixels$red)
-hist(asinTransform(pixels$nir)); pixelsTransformed$nir = asinTransform(pixels$nir)
+hist(pixels$nir)
 hist(asinTransform(pixels$blue)); pixelsTransformed$blue = asinTransform(pixels$blue)
-hist(asinTransform(pixels$swir)); pixelsTransformed$swir = asinTransform(pixels$swir)
+hist(pixels$swir)
 hist(asinTransform(pixels$osavi))
-hist(asinTransform(pixels$lswi))
-hist(log(pixels$height))
+hist(pixels$lswi)
+hist(pixels$height)
 hist(asinTransform(pixels$slope)); pixelsTransformed$slope = asinTransform(pixels$slope)
 hist(pixels$aspect)
 hist(pixels$tpi)
-hist(pixels$is.water)
+hist(pixels$mean.ndvi)
+hist(pixels$phase1)
+hist(asinTransform(pixels$amplitude1)); pixelsTransformed$amplitude1 = asinTransform(pixels$amplitude1)
+hist(pixels$phase2)
+hist(asinTransform(pixels$amplitude2)); pixelsTransformed$amplitude2 = asinTransform(pixels$amplitude2)
 
-cmeans.mnlr.transf = spfkm(FullFormula, alldata[alldata$pure,], pixelsTransformed)
+transdata = alldata
+transdata$red = asinTransform(transdata$red)
+transdata$blue = asinTransform(transdata$blue)
+transdata$slope = asinTransform(transdata$slope)
+transdata$amplitude1 = asinTransform(transdata$amplitude1)
+transdata$amplitude2 = asinTransform(transdata$amplitude2)
 
-# Hard total classification accuracy: 11%, worse
-sum(cmeans.mnlr.transf@predicted@data[[1]] == alldata$dominant) / length(alldata)
-# If looking at only pure data: 20%, still really bad
-sum(cmeans.mnlr.transf@predicted@data[alldata$pure,][[1]] == alldata[alldata$pure,]$dominant) / length(alldata[alldata$pure,])
-# Marginally better, 37.6 rather than 38
-AccuracyStats(cmeans.mnlr.transf@mu@data*100, alldata@data[names(cmeans.mnlr.transf@mu@data)])
-# Compared to pure uncertainty: 11% of each class... and it's better.
+cmeans.mnlr.transf = spfkm(FullFormula, transdata[transdata$pure,], pixelsTransformed)
+
+# Marginally better, 23.27 rather than 23.61
+AccuracyStats(cmeans.mnlr.transf@mu@data*100, alldata@data[order(alldata@data$cell.no), names(cmeans.mnlr.transf@mu@data)])
+# Compared to pure uncertainty: 11% of each class
 AccuracyStats(100.0/9.0, alldata@data[names(cmeans.mnlr.transf@mu@data)])
-# Compared to pure water: our classifier is a bit better!
+# Compared to pure water
 AccuracyStats(uncertainty, alldata@data[names(cmeans.mnlr@mu@data)])
 
-# Drop terms to find the best combination
-terms = labels(terms(FullFormula))
-step = data.frame(RMSE = numeric(), MAE = numeric(), ME = numeric(), Formula = character())
-for (term in terms)
-{
-    Formula = update.formula(FullFormula, paste0("~ . -", term))
-    print(Formula)
-    cmeans = spfkm(Formula, alldata[alldata$pure,], pixelsTransformed)
-    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[names(cmeans@mu@data)])
-    step = rbind(step, data.frame(AS, Formula = Reduce(paste0, deparse(Formula))))
-}
-# Best RMSE (37.5) when dropping OSAVI. Doesn't bias it either.
-StepFormula = update.formula(FullFormula, "~ . -osavi")
-terms = labels(terms(StepFormula))
-step = data.frame(RMSE = numeric(), MAE = numeric(), ME = numeric(), Formula = character())
-for (term in terms)
-{
-    Formula = update.formula(StepFormula, paste0("~ . -", term))
-    print(Formula)
-    cmeans = spfkm(Formula, alldata[alldata$pure,], pixelsTransformed)
-    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[names(cmeans@mu@data)])
-    step = rbind(step, data.frame(AS, Formula = Reduce(paste0, deparse(Formula))))
-}
-# Best unbiased RMSE (36.9) when dropping LSWI
-StepFormula = update.formula(StepFormula, "~ . -lswi")
-terms = labels(terms(StepFormula))
-step = data.frame(RMSE = numeric(), MAE = numeric(), ME = numeric(), Formula = character())
-for (term in terms)
-{
-    Formula = update.formula(StepFormula, paste0("~ . -", term))
-    print(Formula)
-    cmeans = spfkm(Formula, alldata[alldata$pure,], pixelsTransformed)
-    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[names(cmeans@mu@data)])
-    step = rbind(step, data.frame(AS, Formula = Reduce(paste0, deparse(Formula))))
-}
-# Best unbiased RMSE (36.7) when dropping blue
-StepFormula = update.formula(StepFormula, "~ . -blue")
-terms = labels(terms(StepFormula))
-step = data.frame(RMSE = numeric(), MAE = numeric(), ME = numeric(), Formula = character())
-for (term in terms)
-{
-    Formula = update.formula(StepFormula, paste0("~ . -", term))
-    print(Formula)
-    cmeans = spfkm(Formula, alldata[alldata$pure,], pixelsTransformed)
-    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[names(cmeans@mu@data)])
-    step = rbind(step, data.frame(AS, Formula = Reduce(paste0, deparse(Formula))))
-}
-# Nothing better than dominant ~ red + nir + swir + height + slope + aspect + tpi. Stop.
-StepFormula = update.formula(StepFormula, "~ . -tpi")
-terms = labels(terms(StepFormula))
-step = data.frame(RMSE = numeric(), MAE = numeric(), ME = numeric(), Formula = character())
-for (term in terms)
-{
-    Formula = update.formula(StepFormula, paste0("~ . -", term))
-    print(Formula)
-    cmeans = spfkm(Formula, alldata[alldata$pure,], pixelsTransformed)
-    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[names(cmeans@mu@data)])
-    step = rbind(step, data.frame(AS, Formula = Reduce(paste0, deparse(Formula))))
-}
+# What about fuzzification?
 
-# So that doesn't help much at all. But the fuzzification factor may change things quite a bit.
 step = data.frame(RMSE = numeric(), MAE = numeric(), ME = numeric(), fuzzy.e = numeric())
-workingsteps = seq(0, 10, 0.1)
-workingsteps = workingsteps[!workingsteps %in% 1.0] # Skip some due to errors
+workingsteps = seq(1.1, 10, 0.1)
 for (fuzz in workingsteps)
 {
-    cmeans = spfkm(FullFormula, alldata[alldata$pure,], pixelsTransformed, fuzzy.e = fuzz)
-    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[names(cmeans@mu@data)])
+    cmeans = spfkm(FullFormula, alldata[alldata$pure,], pixels, fuzzy.e = fuzz)
+    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[order(alldata@data$cell.no), names(cmeans@mu@data)])
     step = rbind(step, data.frame(AS, fuzzy.e = fuzz))
 }
+View(step[order(step$RMSE),])
+# Best RMSE 21.78 at 1.5, this makes a lot of difference
+
+# Drop terms to find the best combination
+
+StepFormula = FullFormula
+CmeansStep = function(StepFormula, class.c = NULL, class.sd = NULL, subset = alldata$pure)
+{
+    terms = labels(terms(StepFormula))
+    step = data.frame(RMSE = numeric(), MAE = numeric(), ME = numeric(), Formula = character())
+    for (term in terms)
+    {
+        Formula = update.formula(StepFormula, paste0("~ . -", term))
+        print(Formula)
+        try({
+            cmeans <- spfkm(Formula, alldata[subset,], pixels, class.c = class.c, class.sd = class.sd, fuzzy.e=1.5)
+            AS = AccuracyStats(cmeans@mu@data*100, alldata@data[order(alldata@data$cell.no), names(cmeans@mu@data)])
+            step = rbind(step, data.frame(AS, Formula = Reduce(paste0, deparse(Formula))))
+        })
+    }
+    return(step)
+}
+step = CmeansStep(StepFormula)
+View(step[order(step$RMSE),])
+# Best RMSE (21.21) when dropping blue. Doesn't bias it either.
+StepFormula = update.formula(FullFormula, "~ . -blue")
+step = CmeansStep(StepFormula)
+View(step[order(step$RMSE),])
+# Best unbiased RMSE (21.00) when dropping aspect
+StepFormula = update.formula(StepFormula, "~ . -aspect")
+step = CmeansStep(StepFormula)
+View(step[order(step$RMSE),])
+# Nothing better than dominant ~ red + nir + swir + osavi + lswi + height + slope + 
+#    tpi + mean.ndvi + phase1 + amplitude1 + phase2 + amplitude2. Stop.
+
+# So that doesn't help much at all, less than 1 RMSE.
 
 # Now with weighted means
-
 set.seed(0xc0ffeed)
 folds = createFolds(alldata$cropland, 2)
 fold = folds$Fold1
 
-GetClassMeans = function(samples = 1:nrow(alldata), validation.idx = 1:9, training.idx = 13:23)
+GetClassMeans = function(samples = 1:nrow(alldata), validation.idx = 1:9, training.idx = 13:28)
 {
     combos = expand.grid(validation=validation.idx, training=training.idx)
     ClassMeans = function(x)
@@ -153,7 +134,7 @@ GetClassMeans = function(samples = 1:nrow(alldata), validation.idx = 1:9, traini
     return(c.means)
 }
 
-GetClassSDs = function(samples = 1:nrow(alldata), validation.idx = 1:9, training.idx = 13:23)
+GetClassSDs = function(samples = 1:nrow(alldata), validation.idx = 1:9, training.idx = 13:28)
 {
     combos = expand.grid(validation=validation.idx, training=training.idx)
     ClassSDs = function(x)
@@ -167,30 +148,81 @@ GetClassSDs = function(samples = 1:nrow(alldata), validation.idx = 1:9, training
     return(c.sds)
 }
 
+TestFormula = formula("dominant ~ red + nir + blue + swir + osavi + lswi + height + 
+    slope + aspect + tpi + mean.ndvi + phase1 + amplitude1 + 
+    phase2 + amplitude2")
 cmeans.wm = spfkm(FullFormula, alldata[fold,], pixels,
-    class.c = GetClassMeans(fold), class.sd = GetClassSDs(fold))
+    class.c = GetClassMeans(), class.sd = GetClassSDs())
 
-# Hard total classification accuracy: 11%, even worse
-sum(cmeans.wm@predicted@data[[1]] == alldata$dominant) / length(alldata)
-# If looking at input data: 14%, still really bad
-sum(cmeans.wm@predicted@data[fold,][[1]] == alldata[fold,]$dominant) / length(alldata[fold,])
+# Hard total classification accuracy: 49%, slightly worse
+sum(cmeans.wm@predicted@data[[1]] == alldata@data[order(alldata@data$cell.no),"dominant"]) / length(alldata)
 
-# These stats are better, especially RMSE of 35.5, but still really bad
-AccuracyStats(cmeans.wm@mu@data*100, alldata@data[names(cmeans.wm@mu@data)])
-AccuracyStatTable(cmeans.wm@mu@data*100, alldata@data[names(cmeans.wm@mu@data)])
+# RMSE of 24.37, also slightly worse
+AccuracyStats(cmeans.wm@mu@data*100, alldata@data[order(alldata@data$cell.no),names(cmeans.wm@mu@data)])
+AccuracyStatTable(cmeans.wm@mu@data*100, alldata@data[order(alldata@data$cell.no),names(cmeans.wm@mu@data)])
 # Compared to everything 11%: RMSE of 27.4
 AccuracyStats(100.0/9.0, alldata@data[names(cmeans.wm@mu@data)])
 
+qplot(blue, swir, data=alldata@data[alldata@data$pure,], colour=dominant)
+qplot(osavi, mean.ndvi, data=alldata@data[alldata@data$pure,], colour=dominant)
+
+# Fuzz
 step = data.frame(RMSE = numeric(), MAE = numeric(), ME = numeric(), fuzzy.e = numeric())
-workingsteps = seq(0, 10, 0.1)
-workingsteps = workingsteps[!workingsteps %in% 1.0] # Skip 1.0, that errors
-for (fuzz in seq(1.1, 10, 0.1))
+workingsteps = seq(1.1, 10, 0.1)
+for (fuzz in workingsteps)
 {
-    cmeans = spfkm(FullFormula, alldata[fold,], pixels, fuzzy.e = fuzz,
-        class.c = GetClassMeans(fold), class.sd = GetClassSDs(fold))
-    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[names(cmeans@mu@data)])
+    cmeans = spfkm(FullFormula, alldata, pixels, class.c = GetClassMeans(), class.sd = GetClassSDs(), fuzzy.e = fuzz)
+    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[order(alldata@data$cell.no), names(cmeans@mu@data)])
     step = rbind(step, data.frame(AS, fuzzy.e = fuzz))
 }
+View(step[order(step$RMSE),])
+# RMSE of 22.32, best consistently at 1.5
 
-AccuracyStats(100.0/9.0, alldata@data[names(cmeans@mu@data)])
-# Increasing fuzzification helps... but not as much as pure fuzz. Welp.
+# Try dropping using this method
+StepFormula = FullFormula
+step = CmeansStep(StepFormula, class.c = GetClassMeans(), class.sd = GetClassSDs(), subset=TRUE)
+View(step[order(step$RMSE),])
+# Dropping amplitude1: 21.99
+StepFormula = update.formula(StepFormula, "~ . -amplitude1")
+step = CmeansStep(StepFormula, class.c = GetClassMeans(), class.sd = GetClassSDs(), subset=TRUE)
+View(step[order(step$RMSE),])
+# Dropping blue: 21.84
+StepFormula = update.formula(StepFormula, "~ . -blue")
+step = CmeansStep(StepFormula, class.c = GetClassMeans(), class.sd = GetClassSDs(), subset=TRUE)
+View(step[order(step$RMSE),])
+# Dropping amplitude2: 21.69
+StepFormula = update.formula(StepFormula, "~ . -amplitude2")
+step = CmeansStep(StepFormula, class.c = GetClassMeans(), class.sd = GetClassSDs(), subset=TRUE)
+View(step[order(step$RMSE),])
+# Dropping tpi: 21.60
+StepFormula = update.formula(StepFormula, "~ . -tpi")
+step = CmeansStep(StepFormula, class.c = GetClassMeans(), class.sd = GetClassSDs(), subset=TRUE)
+View(step[order(step$RMSE),])
+# Dropping red: 21.57
+StepFormula = update.formula(StepFormula, "~ . -red")
+step = CmeansStep(StepFormula, class.c = GetClassMeans(), class.sd = GetClassSDs(), subset=TRUE)
+View(step[order(step$RMSE),])
+# Dropping lswi: 21.54
+StepFormula = update.formula(StepFormula, "~ . -lswi")
+step = CmeansStep(StepFormula, class.c = GetClassMeans(), class.sd = GetClassSDs(), subset=TRUE)
+View(step[order(step$RMSE),])
+# Dropping aspect: 21.51
+StepFormula = update.formula(StepFormula, "~ . -aspect")
+step = CmeansStep(StepFormula, class.c = GetClassMeans(), class.sd = GetClassSDs(), subset=TRUE)
+View(step[order(step$RMSE),])
+# Dropping swir: 21.44
+StepFormula = update.formula(StepFormula, "~ . -swir")
+step = CmeansStep(StepFormula, class.c = GetClassMeans(), class.sd = GetClassSDs(), subset=TRUE)
+View(step[order(step$RMSE),])
+# No more improvements, stop. Best formula:
+# dominant ~ nir + osavi + height + slope + mean.ndvi + phase1 + phase2
+
+cmeans.wm = spfkm(StepFormula, alldata[fold,], pixels,
+    class.c = GetClassMeans(), class.sd = GetClassSDs())
+AccuracyStatTable(cmeans.wm@mu@data*100, alldata@data[names(cmeans.wm@mu@data)])
+
+qplot(aspect, tpi, data=alldata@data[alldata@data$pure,], colour=dominant)
+
+cmeans.test = spfkm(formula("dominant~red+nir"), alldata[fold,], pixels,
+    class.c = GetClassMeans(), class.sd = GetClassSDs())
+AccuracyStatTable(cmeans.test@mu@data*100, alldata@data[names(cmeans.test@mu@data)])

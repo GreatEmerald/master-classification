@@ -8,11 +8,14 @@ source("utils/load-data.r")
 source("utils/accuracy-statistics.r")
 
 alldata = LoadClassificationData()
+# Bare soil with NAs: 352 364 475
+bsna = c(352, 364, 476)
+#alldata@data = alldata@data[-bsna,]
 
 set.seed(0xbadcafe)
 folds = createFolds(alldata$cropland, 4)
 
-TN = GetTrainingNames()#exclude=c("osavi", "aspect", "is.water", "height"))
+TN = GetTrainingNames(exclude=c("osavi"))#, "aspect", "is.water", "height"))
 
 # Get and plot variable importance
 FullFormula = paste0("~", paste(TN, collapse = "+"))
@@ -80,23 +83,8 @@ for (i in 1:length(folds))
 }
 CVAST = stats::aggregate(ASTs[,-(which(names(ASTs) == "class"))], by=list(class=ASTs$class), FUN=mean)
 CVAST[match(AST$class, CVAST$class),]
-
-# Try making a full-raster prediction
-TrainingRasters = stack(TrainingFiles)
-names(TrainingRasters) = TrainingNames
-
-Formula = paste0("water~", paste(TrainingNames, collapse = "+"))
-Formula = update.formula(Formula, "~.-ndvi")
-rf.water = ranger(Formula, alldata@data)
-# Predict a block of 1/5 of the data that does not have NAs (two pixels at the edge have NAs)
-predicted.water = predict(rf.water, getValuesBlock(TrainingRasters, 2016*4, 2014, 2016, 2016), num.threads=31)
-# Recreate a raster
-pred.matrix = matrix(predicted.water$predictions, nrow=2014, ncol=2016, byrow=TRUE)
-pred.raster = raster(pred.matrix, crs=crs(TrainingRasters),
-    xmn=extent(TrainingRasters)@xmin + (extent(TrainingRasters)@xmax - extent(TrainingRasters)@xmin) / 5 * 1,
-    ymn=extent(TrainingRasters)@ymin +
-        2 * (extent(TrainingRasters)@ymax - extent(TrainingRasters)@ymin) / dim(TrainingRasters)[2],
-    xmx=extent(TrainingRasters)@xmin + (extent(TrainingRasters)@xmax - extent(TrainingRasters)@xmin) / 5 * 2,
-    ymx=extent(TrainingRasters)@ymax - (extent(TrainingRasters)@ymax - extent(TrainingRasters)@ymin) / 5 * 4)
-spplot(pred.raster)
-pred.raster = writeRaster(pred.raster, filename="../../userdata/waterpredictiontemp.tif", overwrite=TRUE)
+#bs: 20.02770 with reduced dataset, 19.90767 without, so keeping it in is fine
+# Full dataset: 21.01049
+# Without OSAVI: 21.10414
+# Without OSAVI and aspect: 21.02937
+# Without 4 variables: 20.99727

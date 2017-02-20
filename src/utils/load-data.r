@@ -52,12 +52,12 @@ LoadTrainingRasters = function(uncorelated = FALSE, exclude=c())
 }
 
 LoadTrainingPixels = function(tiffile = "../../userdata/indices-no-na/pixels.tif",
-    rfile="../../userdata/indices-no-na/pixels.rds")
+    rfile="../../userdata/indices-no-na/pixels.rds", exclude=c())
 {
     if (!file.exists(rfile))
     {
         rasters = brick(tiffile)
-        names(rasters) = TrainingNames
+        names(rasters) = GetTrainingNames()
         pixels = as(rasters, "SpatialPixelsDataFrame")
         saveRDS(pixels, compress = "bzip2", file = rfile)
     }
@@ -65,6 +65,14 @@ LoadTrainingPixels = function(tiffile = "../../userdata/indices-no-na/pixels.tif
     {
         pixels = readRDS(rfile)
     }
+    
+    if (length(exclude) > 0)
+        for (i in 1:length(exclude))
+            if (exclude[i] %in% names(pixels))
+                pixels = pixels[-which(names(pixels) == exclude[i])]
+            else
+                warning("Asked to exclude a non-existent covariate")
+            
     return(pixels)
 }
 
