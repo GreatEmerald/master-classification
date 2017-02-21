@@ -15,10 +15,11 @@ ImpureValidation = ValidationData@data[!AllData@data$pure,]
 # Create an evaluation function so we can see RMSEs in progress
 
 TrainMatrix = xgb.DMatrix(as.matrix(PureData), label=as.numeric(PureLabels)-1)
-Model = xgboost(TrainMatrix, nrounds=10, objective="multi:softprob", num_class = 9)
+Model = xgboost(TrainMatrix, nrounds=14, objective="multi:softprob", num_class = 9,
+    params=list(eta=0.05, max_depth=7))
 
 PredRaw = predict(Model, newdata=as.matrix(ImpureData))
 Prediction = matrix(PredRaw, byrow=TRUE, ncol=9, dimnames=list(list(), levels(PureLabels)))
 Prediction = data.frame(Prediction)[names(ImpureValidation)]*100
-# 23, better than 11%, but not by much
+# 21.78, amazing
 AccuracyStatTable(Prediction, ImpureValidation)
