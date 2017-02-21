@@ -26,8 +26,13 @@ maxs = apply(ScaleData, 2, max)
 mins = apply(ScaleData, 2, min)
 ScaleData = as.data.frame(scale(ScaleData, center = mins, scale = maxs - mins))
 
-# Try using scaled data first
-Formula = paste0(paste0(ValidationNames, collapse="+"),"~",paste0(names(TrainingData), collapse="+"))
+# Naive attempt at raw data
+Formula = paste0(paste0(GetValidationNames(), collapse="+"),"~",paste0(names(TrainingData), collapse="+"))
+Model = neuralnet(Formula, AllData@data[fold,], 12, lifesign="full", stepmax=100000, rep=5, threshold=10)
+plot(Model)
+Prediction = compute(Model, AllData@data[-fold,names(TrainingData)])
+
+# Try using scaled data
 Model = neuralnet(Formula, ScaleData[fold,], 9, lifesign="full", stepmax=1000000)
 plot(Model)
 Prediction = compute(Model, ScaleData[-fold,names(TrainingData)])
@@ -55,10 +60,10 @@ for (i in 1:nrow(Prediction$net.result))
         sum(Prediction$net.result[i,]+abs(min(Prediction$net.result[i,])))*100
 }
 PredMinScale = data.frame(PredMinScale)
-names(PredMinScale) = ValidationNames
+names(PredMinScale) = GetValidationNames()
 
 # RMSE of 24, in line with gradient boosting results (quite poor) and somewhat biased
-AccuracyStatTable(PredMinScale, AllData@data[-fold,ValidationNames])
+AccuracyStatTable(PredMinScale, AllData@data[-fold,GetValidationNames()])
 
 # Normalise by using cutoff
 TruncateNNPrediction = function(prediction)
@@ -80,10 +85,10 @@ for (i in 1:nrow(PredCutScale))
     PredCutScale[i,] = PredCutScale[i,] / sum(PredCutScale[i,])*100
 }
 PredCutScale = data.frame(PredCutScale)
-names(PredCutScale) = ValidationNames
+names(PredCutScale) = GetValidationNames()
 
 # Still 24 RMSE, this is better for water but more biased
-AccuracyStatTable(PredCutScale, AllData@data[-fold,ValidationNames])
+AccuracyStatTable(PredCutScale, AllData@data[-fold,GetValidationNames()])
 
 
 ## Retry using non-transformed data
@@ -93,7 +98,7 @@ maxs = apply(ScaleDataUntransf, 2, max)
 mins = apply(ScaleDataUntransf, 2, min)
 ScaleDataUntransf = as.data.frame(scale(ScaleDataUntransf, center = mins, scale = maxs - mins))
 
-ModelUntransf = neuralnet(Formula, ScaleDataUntransf[fold,], 9, lifesign="full", stepmax=1000000)
+ModelUntransf = neuralnet(Formula, ScaleDataUntransf[fold,], 12, lifesign="full", stepmax=200000, rep=5, threshold=0.015)
 plot(ModelUntransf)
 PredictionUntransf = compute(ModelUntransf, ScaleDataUntransf[-fold,names(TrainingData)])
 
