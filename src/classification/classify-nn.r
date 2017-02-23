@@ -81,22 +81,32 @@ maxs = apply(ScaleDataUntransf, 2, max)
 mins = apply(ScaleDataUntransf, 2, min)
 ScaleDataUntransf = as.data.frame(scale(ScaleDataUntransf, center = mins, scale = maxs - mins))
 
-ASTs = data.frame()
-for (f in 1:length(folds))
+NNCV = function(filename=paste0(OutputDir, "stat-neuralnetworks.csv"), exclude=c(), ...)
 {
-    set.seed(0xfedbeef)
-    ModelUntransf = neuralnet(Formula, ScaleDataUntransf[-folds[[f]],], 11, lifesign="full", rep=10, threshold=0.15)
-    PredictionUntransf = compute(ModelUntransf, ScaleDataUntransf[folds[[f]],TrainingNames], rep=which.min(ModelUntransf$result.matrix[1,]))
-
-    AST = AccuracyStatTable(ScaleNNPrediction(PredictionUntransf$net.result), AllData@data[folds[[f]],GetValidationNames()])
-    AST$class = factor(rownames(AST))
-    if (nrow(ASTs) == 0)
-        ASTs = AST
-    else
-        ASTs = rbind(ASTs, AST)
+    TrainingNames = GetTrainingNames(exclude=exclude)
+    Formula = paste0(paste0(GetValidationNames(), collapse="+"),"~",paste0(TrainingNames, collapse="+"))
+    PredictionsPerFold = data.frame()
+    for (f in 1:length(folds))
+    {
+        set.seed(0xfedbeef)
+        ModelUntransf = neuralnet(Formula, ScaleDataUntransf[-folds[[f]],], lifesign="minimal", rep=10, ...)
+        PredictionUntransf = compute(ModelUntransf, ScaleDataUntransf[folds[[f]],TrainingNames], rep=which.min(ModelUntransf$result.matrix[1,]))
+    
+        if (nrow(PredictionsPerFold) == 0)
+            PredictionsPerFold = ScaleNNPrediction(PredictionUntransf$net.result)
+        else
+            PredictionsPerFold = rbind(PredictionsPerFold, ScaleNNPrediction(PredictionUntransf$net.result))
+    }
+    Validator = AllData@data[unlist(folds),GetValidationNames()]
+    AST = AccuracyStatTable(PredictionsPerFold, Validator)
+    print(AST)
+    plot(unlist(PredictionsPerFold), unlist(Validator))
+    write.csv(AST, paste0(OutputDir, "stat-neuralnetworks.csv"))
 }
-CVAST = stats::aggregate(ASTs[,-(which(names(ASTs) == "class"))], by=list(class=ASTs$class), FUN=mean)
-write.csv(CVAST[match(AST$class, CVAST$class),], paste0(OutputDir, "stat-neuralnetworks.csv"))
+# Unoptimised
+NNCV(paste0(OutputDir, "stat-neuralnetworks-unoptimised.csv"), hidden=11, threshold=0.15)
+# Optimised
+NNCV(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2", "tpi"), hidden=9, threshold=0.10)
 # 0.15: 22.75
 
 # No scaling: 24.5
