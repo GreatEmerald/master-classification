@@ -17,7 +17,7 @@ bsna = c(352, 364, 476)
 set.seed(0xbadcafe)
 folds = createFolds(alldata$cropland, 4)
 
-TN = GetTrainingNames()#exclude=c("osavi", "aspect", "is.water", "height"))
+TN = GetTrainingNames(exclude=c("osavi"))#, "aspect", "is.water", "height"))
 
 # Get and plot variable importance
 FullFormula = paste0("~", paste(TN, collapse = "+"))
@@ -57,34 +57,45 @@ for(i in 1:length(GetValidationNames())){
 }
 
 # Do 4-fold cross-validation
-FullFormula = paste0("~", paste(TN, collapse = "+"))
-ASTs = data.frame()
-for (i in 1:length(folds))
+RFCV = function(exclude=c(), filename=paste0(OutputDir, "stat-randomforest.csv"))
 {
-    Predictions = matrix(ncol=length(GetValidationNames()), nrow=nrow(alldata@data[folds[[i]],]),
-        dimnames=list(list(), GetValidationNames()))
-    for (Class in GetValidationNames())
+    TN = GetTrainingNames(exclude=exclude)
+    FullFormula = paste0("~", paste(TN, collapse = "+"))
+    PredictionsPerFold = data.frame()
+    for (i in 1:length(folds))
     {
-        print(Class)
-        Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
-        rfmodel = ranger(Formula, alldata@data[-folds[[i]],], seed = 0xbadcafe)
-        rfprediction = predict(rfmodel, alldata@data[folds[[i]],])
-        Predictions[,Class] = rfprediction$predictions
+        Predictions = matrix(ncol=length(GetValidationNames()), nrow=nrow(alldata@data[folds[[i]],]),
+            dimnames=list(list(), GetValidationNames()))
+        for (Class in GetValidationNames())
+        {
+            print(Class)
+            Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
+            rfmodel = ranger(Formula, alldata@data[-folds[[i]],], seed = 0xbadcafe)
+            rfprediction = predict(rfmodel, alldata@data[folds[[i]],])
+            Predictions[,Class] = rfprediction$predictions
+        }
+        ScaledPredictions = Predictions
+        for (n in 1:nrow(Predictions))
+        {
+            ScaledPredictions[n,] = Predictions[n,] / sum(Predictions[n,]) * 100
+        }
+        if (nrow(PredictionsPerFold) == 0)
+            PredictionsPerFold = ScaledPredictions
+        else
+            PredictionsPerFold = rbind(PredictionsPerFold, ScaledPredictions)
     }
-    ScaledPredictions = Predictions
-    for (n in 1:nrow(Predictions))
-    {
-        ScaledPredictions[n,] = Predictions[n,] / sum(Predictions[n,]) * 100
-    }
-    AST = AccuracyStatTable(ScaledPredictions, alldata@data[folds[[i]],GetValidationNames()])
-    AST$class = factor(rownames(AST))
-    if (nrow(ASTs) == 0)
-        ASTs = AST
-    else
-        ASTs = rbind(ASTs, AST)
+    Validator = alldata@data[unlist(folds),GetValidationNames()]
+    AST = AccuracyStatTable(PredictionsPerFold, Validator)
+    print(AST)
+    plot(unlist(PredictionsPerFold), unlist(Validator))
+    write.csv(AST, filename)
 }
-CVAST = stats::aggregate(ASTs[,-(which(names(ASTs) == "class"))], by=list(class=ASTs$class), FUN=mean)
-write.csv(CVAST[match(AST$class, CVAST$class),], paste0(OutputDir, "stat-randomforest.csv"))
+
+# Unoptimised
+RFCV(filename = paste0(OutputDir, "stat-randomforest-unoptimsed.csv"))
+# Optimised
+RFCV(exclude=c("osavi", "aspect", "is.water", "height"))
+
 #bs: 20.02770 with reduced dataset, 19.90767 without, so keeping it in is fine
 # Full dataset: 21.01049
 # Without OSAVI: 21.10414

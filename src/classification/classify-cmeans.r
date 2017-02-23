@@ -123,26 +123,7 @@ View(step[order(step$RMSE),])
 
 # So that doesn't help much at all, less than 1 RMSE.
 
-# Repeat with 4-fold cross-validation
-ASTs = data.frame()
-for (i in 1:length(folds))
-{
-    cmeans = spfkm(StepFormula, alldata[-folds[[i]],], pixels, fuzzy.e=1.5)
-    AST = AccuracyStatTable(cmeans@mu@data[folds[[i]],]*100, alldata@data[folds[[i]], names(cmeans@mu@data)])
-    AST$class = factor(rownames(AST))
-    if (nrow(ASTs) == 0)
-        ASTs = AST
-    else
-        ASTs = rbind(ASTs, AST)
-}
-CVAST = stats::aggregate(ASTs[,-(which(names(ASTs) == "class"))], by=list(class=ASTs$class), FUN=mean)
-write.csv(CVAST[match(AST$class, CVAST$class),], paste0(OutputDir, "stat-cmeans.csv"))
-
 # Now with weighted means
-set.seed(0xc0ffeed)
-folds = createFolds(alldata$cropland, 4)
-fold = folds$Fold1
-
 GetClassMeans = function(samples = 1:nrow(alldata), validation.idx = 1:9, training.idx = 13:28)
 {
     combos = expand.grid(validation=validation.idx, training=training.idx)
@@ -245,6 +226,28 @@ AccuracyStatTable(cmeans.wm@mu@data*100, alldata@data[names(cmeans.wm@mu@data)])
 
 qplot(aspect, tpi, data=alldata@data[alldata@data$pure,], colour=dominant)
 
-cmeans.test = spfkm(formula("dominant~red+nir"), alldata[fold,], pixels,
-    class.c = GetClassMeans(), class.sd = GetClassSDs())
-AccuracyStatTable(cmeans.test@mu@data*100, alldata@data[names(cmeans.test@mu@data)])
+# Repeat with 4-fold cross-validation
+CMCV = function(StepFormula, filename=paste0(OutputDir, "stat-cmeans.csv"), ...)
+{
+    RoundPrediction = data.frame()
+    for (i in 1:length(folds))
+    {
+        cmeans = spfkm(StepFormula, alldata[-folds[[i]],], pixels, ...)
+        if (nrow(RoundPrediction) == 0)
+            RoundPrediction = cmeans@mu@data[folds[[i]],]*100
+        else
+            RoundPrediction = rbind(RoundPrediction, cmeans@mu@data[folds[[i]],]*100)
+    }
+    Validator = alldata@data[unlist(folds), names(cmeans@mu@data)]
+    AST = AccuracyStatTable(RoundPrediction, Validator)
+    print(AST)
+    plot(unlist(RoundPrediction), unlist(Validator))
+    write.csv(AST, filename)
+}
+
+# Unoptimised
+CMCV(FullFormula, filename = paste0(OutputDir, "stat-cmeans-unoptimised.csv"))#, class.c = GetClassMeans(), class.sd = GetClassSDs())
+# Optimised
+OptimalFormula1 = formula("dominant ~ red + nir + swir + osavi + lswi + height + slope + tpi + mean.ndvi + phase1 + amplitude1 + phase2 + amplitude2")
+OptimalFormula2 = formula("dominant ~ nir + osavi + height + slope + mean.ndvi + phase1 + phase2")
+CMCV(OptimalFormula2, fuzzy.e=1.5, class.c = GetClassMeans(), class.sd = GetClassSDs())
