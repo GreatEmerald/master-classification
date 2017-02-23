@@ -6,10 +6,17 @@ library(ggplot2)
 source("utils/load-data.r")
 source("utils/accuracy-statistics.r")
 
+OutputDir = "../data/"
+
 # Load data
 alldata = LoadClassificationData()
 alldata$dominant = as.character(alldata$dominant)
 pixels = LoadTrainingPixels(exclude="is.water") # Not excluding is.water leads to very strange issues
+# Sort pixels to match our dataframe
+pixels = pixels[match(alldata@data$cell.no, pixels@grid.index),]
+
+set.seed(0xc0ffeed)
+folds = createFolds(alldata$cropland, 4)
 
 # There are two ways: either use the built-in method of using a multinomial logistic regression
 # with endmembers, or use weighted averages with all pixels.
@@ -22,9 +29,9 @@ FullFormula = formula(paste0("dominant~", paste(terms, collapse="+")))
 cmeans.mnlr = spfkm(FullFormula, alldata[alldata$pure,], pixels)
 
 # Hard total classification accuracy: 53%, pretty good
-sum(cmeans.mnlr@predicted@data[[1]] == alldata@data[order(alldata@data$cell.no),"dominant"]) / length(alldata)
+sum(cmeans.mnlr@predicted@data[[1]] == alldata@data[["dominant"]]) / length(alldata)
 # RMSE of 23.61
-AccuracyStats(cmeans.mnlr@mu@data*100, alldata@data[order(alldata@data$cell.no), names(cmeans.mnlr@mu@data)])
+AccuracyStats(cmeans.mnlr@mu@data*100, alldata@data[, names(cmeans.mnlr@mu@data)])
 # Compared to pure uncertainty: 11% of each class is worse at 27.38
 AccuracyStats(100.0/9.0, alldata@data[names(cmeans.mnlr@mu@data)])
 # Compared to pure water: our classifier is much better!
@@ -63,7 +70,7 @@ transdata$amplitude2 = asinTransform(transdata$amplitude2)
 cmeans.mnlr.transf = spfkm(FullFormula, transdata[transdata$pure,], pixelsTransformed)
 
 # Marginally better, 23.27 rather than 23.61
-AccuracyStats(cmeans.mnlr.transf@mu@data*100, alldata@data[order(alldata@data$cell.no), names(cmeans.mnlr.transf@mu@data)])
+AccuracyStats(cmeans.mnlr.transf@mu@data*100, alldata@data[, names(cmeans.mnlr.transf@mu@data)])
 # Compared to pure uncertainty: 11% of each class
 AccuracyStats(100.0/9.0, alldata@data[names(cmeans.mnlr.transf@mu@data)])
 # Compared to pure water
@@ -76,7 +83,7 @@ workingsteps = seq(1.1, 10, 0.1)
 for (fuzz in workingsteps)
 {
     cmeans = spfkm(FullFormula, alldata[alldata$pure,], pixels, fuzzy.e = fuzz)
-    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[order(alldata@data$cell.no), names(cmeans@mu@data)])
+    AS = AccuracyStats(cmeans@mu@data*100, alldata@data[, names(cmeans@mu@data)])
     step = rbind(step, data.frame(AS, fuzzy.e = fuzz))
 }
 View(step[order(step$RMSE),])
@@ -95,7 +102,7 @@ CmeansStep = function(StepFormula, class.c = NULL, class.sd = NULL, subset = all
         print(Formula)
         try({
             cmeans <- spfkm(Formula, alldata[subset,], pixels, class.c = class.c, class.sd = class.sd, fuzzy.e=1.5)
-            AS = AccuracyStats(cmeans@mu@data*100, alldata@data[order(alldata@data$cell.no), names(cmeans@mu@data)])
+            AS = AccuracyStats(cmeans@mu@data*100, alldata@data[, names(cmeans@mu@data)])
             step = rbind(step, data.frame(AS, Formula = Reduce(paste0, deparse(Formula))))
         })
     }
@@ -116,9 +123,24 @@ View(step[order(step$RMSE),])
 
 # So that doesn't help much at all, less than 1 RMSE.
 
+# Repeat with 4-fold cross-validation
+ASTs = data.frame()
+for (i in 1:length(folds))
+{
+    cmeans = spfkm(StepFormula, alldata[-folds[[i]],], pixels, fuzzy.e=1.5)
+    AST = AccuracyStatTable(cmeans@mu@data[folds[[i]],]*100, alldata@data[folds[[i]], names(cmeans@mu@data)])
+    AST$class = factor(rownames(AST))
+    if (nrow(ASTs) == 0)
+        ASTs = AST
+    else
+        ASTs = rbind(ASTs, AST)
+}
+CVAST = stats::aggregate(ASTs[,-(which(names(ASTs) == "class"))], by=list(class=ASTs$class), FUN=mean)
+write.csv(CVAST[match(AST$class, CVAST$class),], paste0(OutputDir, "stat-cmeans.csv"))
+
 # Now with weighted means
 set.seed(0xc0ffeed)
-folds = createFolds(alldata$cropland, 2)
+folds = createFolds(alldata$cropland, 4)
 fold = folds$Fold1
 
 GetClassMeans = function(samples = 1:nrow(alldata), validation.idx = 1:9, training.idx = 13:28)

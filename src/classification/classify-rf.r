@@ -7,6 +7,8 @@ source("utils/set-temp-path.r")
 source("utils/load-data.r")
 source("utils/accuracy-statistics.r")
 
+OutputDir = "../data/"
+
 alldata = LoadClassificationData()
 # Bare soil with NAs: 352 364 475
 bsna = c(352, 364, 476)
@@ -15,7 +17,7 @@ bsna = c(352, 364, 476)
 set.seed(0xbadcafe)
 folds = createFolds(alldata$cropland, 4)
 
-TN = GetTrainingNames(exclude=c("osavi"))#, "aspect", "is.water", "height"))
+TN = GetTrainingNames()#exclude=c("osavi", "aspect", "is.water", "height"))
 
 # Get and plot variable importance
 FullFormula = paste0("~", paste(TN, collapse = "+"))
@@ -82,7 +84,7 @@ for (i in 1:length(folds))
         ASTs = rbind(ASTs, AST)
 }
 CVAST = stats::aggregate(ASTs[,-(which(names(ASTs) == "class"))], by=list(class=ASTs$class), FUN=mean)
-CVAST[match(AST$class, CVAST$class),]
+write.csv(CVAST[match(AST$class, CVAST$class),], paste0(OutputDir, "stat-randomforest.csv"))
 #bs: 20.02770 with reduced dataset, 19.90767 without, so keeping it in is fine
 # Full dataset: 21.01049
 # Without OSAVI: 21.10414

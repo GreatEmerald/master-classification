@@ -6,36 +6,19 @@ source("utils/accuracy-statistics.r")
 
 AllData = LoadClassificationData()
 TrainingData = LoadTrainingData()
+TrainingNames = GetTrainingNames(exclude=c("osavi", "amplitude1"))
+
+OutputDir = "../data/"
 
 set.seed(0xfedbeef)
-folds = createFolds(AllData$cropland, 2)
+folds = createFolds(AllData$cropland, 4)
 fold = folds$Fold1
 
-NormalData = AllData
-logitTransform = function(p) { log(p/(1-p)) }
-asinTransform = function(p) { asin(sqrt(p)) }
-NormalData$red = asinTransform(AllData$red)
-NormalData$nir = asinTransform(AllData$nir)
-NormalData$blue = asinTransform(AllData$blue)
-NormalData$swir = asinTransform(AllData$swir)
-NormalData$slope = asinTransform(AllData$slope)
-
-ScaleData = NormalData@data
-ScaleData$dominant = NULL
-maxs = apply(ScaleData, 2, max)
-mins = apply(ScaleData, 2, min)
-ScaleData = as.data.frame(scale(ScaleData, center = mins, scale = maxs - mins))
-
 # Naive attempt at raw data
-Formula = paste0(paste0(GetValidationNames(), collapse="+"),"~",paste0(names(TrainingData), collapse="+"))
+Formula = paste0(paste0(GetValidationNames(), collapse="+"),"~",paste0(TrainingNames, collapse="+"))
 Model = neuralnet(Formula, AllData@data[fold,], 12, lifesign="full", stepmax=100000, rep=5, threshold=10)
 plot(Model)
 Prediction = compute(Model, AllData@data[-fold,names(TrainingData)])
-
-# Try using scaled data
-Model = neuralnet(Formula, ScaleData[fold,], 9, lifesign="full", stepmax=1000000)
-plot(Model)
-Prediction = compute(Model, ScaleData[-fold,names(TrainingData)])
 
 # Normalise from min-max to sum to 100%
 ScaleNNPrediction = function(prediction, global=FALSE)
@@ -49,7 +32,7 @@ ScaleNNPrediction = function(prediction, global=FALSE)
         PredMinScale[i,] = (prediction[i,]+abs(Min)) / sum(prediction[i,]+abs(Min))*100
     }
     PredMinScale = data.frame(PredMinScale)
-    names(PredMinScale) = ValidationNames
+    names(PredMinScale) = GetValidationNames()
     return(PredMinScale)
 }
 
@@ -91,20 +74,34 @@ names(PredCutScale) = GetValidationNames()
 AccuracyStatTable(PredCutScale, AllData@data[-fold,GetValidationNames()])
 
 
-## Retry using non-transformed data
+## Retry using scaled data
 ScaleDataUntransf = AllData@data
 ScaleDataUntransf$dominant = NULL
 maxs = apply(ScaleDataUntransf, 2, max)
 mins = apply(ScaleDataUntransf, 2, min)
 ScaleDataUntransf = as.data.frame(scale(ScaleDataUntransf, center = mins, scale = maxs - mins))
 
-ModelUntransf = neuralnet(Formula, ScaleDataUntransf[fold,], 12, lifesign="full", stepmax=200000, rep=5, threshold=0.015)
-plot(ModelUntransf)
-PredictionUntransf = compute(ModelUntransf, ScaleDataUntransf[-fold,names(TrainingData)])
+ASTs = data.frame()
+for (f in 1:length(folds))
+{
+    set.seed(0xfedbeef)
+    ModelUntransf = neuralnet(Formula, ScaleDataUntransf[-folds[[f]],], 11, lifesign="full", rep=10, threshold=0.15)
+    PredictionUntransf = compute(ModelUntransf, ScaleDataUntransf[folds[[f]],TrainingNames], rep=which.min(ModelUntransf$result.matrix[1,]))
 
-# No scaling: 32, bad
-AccuracyStatTable(PredictionUntransf$net.result*100, AllData@data[-fold,ValidationNames])
-# Row-based scaling: 23, better
-AccuracyStatTable(ScaleNNPrediction(PredictionUntransf$net.result), AllData@data[-fold,ValidationNames])
-# Truncating: Still 23, slightly worse
-AccuracyStatTable(TruncateNNPrediction(PredictionUntransf$net.result), AllData@data[-fold,ValidationNames])
+    AST = AccuracyStatTable(ScaleNNPrediction(PredictionUntransf$net.result), AllData@data[folds[[f]],GetValidationNames()])
+    AST$class = factor(rownames(AST))
+    if (nrow(ASTs) == 0)
+        ASTs = AST
+    else
+        ASTs = rbind(ASTs, AST)
+}
+CVAST = stats::aggregate(ASTs[,-(which(names(ASTs) == "class"))], by=list(class=ASTs$class), FUN=mean)
+write.csv(CVAST[match(AST$class, CVAST$class),], paste0(OutputDir, "stat-neuralnetworks.csv"))
+# 0.15: 22.75
+
+# No scaling: 24.5
+#AccuracyStatTable(PredictionUntransf$net.result*100, AllData@data[-fold,GetValidationNames()])
+# Row-based scaling: 22.3, better
+#AccuracyStatTable(ScaleNNPrediction(PredictionUntransf$net.result), AllData@data[-fold,GetValidationNames()])
+# Truncating: 21.8, slightly better than scaling
+#AccuracyStatTable(TruncateNNPrediction(PredictionUntransf$net.result), AllData@data[-fold,GetValidationNames()])
