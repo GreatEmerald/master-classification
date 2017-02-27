@@ -57,7 +57,7 @@ for(i in 1:length(GetValidationNames())){
 }
 
 # Do 4-fold cross-validation
-RFCV = function(exclude=c(), filename=paste0(OutputDir, "stat-randomforest.csv"))
+RFCV = function(exclude=c(), filename=paste0(OutputDir, "stat-randomforest.csv"), ...)
 {
     TN = GetTrainingNames(exclude=exclude)
     FullFormula = paste0("~", paste(TN, collapse = "+"))
@@ -70,7 +70,7 @@ RFCV = function(exclude=c(), filename=paste0(OutputDir, "stat-randomforest.csv")
         {
             print(Class)
             Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
-            rfmodel = ranger(Formula, alldata@data[-folds[[i]],], seed = 0xbadcafe)
+            rfmodel = ranger(Formula, alldata@data[-folds[[i]],], seed = 0xbadcafe, ...)
             rfprediction = predict(rfmodel, alldata@data[folds[[i]],])
             Predictions[,Class] = rfprediction$predictions
         }
@@ -92,9 +92,9 @@ RFCV = function(exclude=c(), filename=paste0(OutputDir, "stat-randomforest.csv")
 }
 
 # Unoptimised
-RFCV(filename = paste0(OutputDir, "stat-randomforest-unoptimsed.csv"))
+RFCV(filename = paste0(OutputDir, "stat-randomforest-unoptimised.csv"))
 # Optimised
-RFCV(exclude=c("osavi", "aspect", "is.water", "height"))
+RFCV(exclude=c("osavi", "aspect", "is.water", "height"), splitrule="maxstat", alpha=0.9, minprop=0.11)
 
 #bs: 20.02770 with reduced dataset, 19.90767 without, so keeping it in is fine
 # Full dataset: 21.01049

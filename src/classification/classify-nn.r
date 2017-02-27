@@ -18,7 +18,7 @@ fold = folds$Fold1
 Formula = paste0(paste0(GetValidationNames(), collapse="+"),"~",paste0(TrainingNames, collapse="+"))
 Model = neuralnet(Formula, AllData@data[fold,], 12, lifesign="full", stepmax=100000, rep=5, threshold=10)
 plot(Model)
-Prediction = compute(Model, AllData@data[-fold,names(TrainingData)])
+Prediction = compute(Model, AllData@data[-fold,TrainingNames])
 
 # Normalise from min-max to sum to 100%
 ScaleNNPrediction = function(prediction, global=FALSE)
@@ -101,13 +101,12 @@ NNCV = function(filename=paste0(OutputDir, "stat-neuralnetworks.csv"), exclude=c
     AST = AccuracyStatTable(PredictionsPerFold, Validator)
     print(AST)
     plot(unlist(PredictionsPerFold), unlist(Validator))
-    write.csv(AST, paste0(OutputDir, "stat-neuralnetworks.csv"))
+    write.csv(AST, paste0(OutputDir, filename))
 }
 # Unoptimised
 NNCV(paste0(OutputDir, "stat-neuralnetworks-unoptimised.csv"), hidden=11, threshold=0.15)
-# Optimised
-NNCV(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2", "tpi"), hidden=9, threshold=0.10)
-# 0.15: 22.75
+# Optimised: 22.13
+NNCV(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2", "tpi"), hidden=9, threshold=0.05)
 
 # No scaling: 24.5
 #AccuracyStatTable(PredictionUntransf$net.result*100, AllData@data[-fold,GetValidationNames()])

@@ -33,7 +33,7 @@ for (Class in GetValidationNames())
 {
     print(Class)
     Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
-    rfmodel = ranger(Formula, alldata@data)
+    rfmodel = ranger(Formula, alldata@data, splitrule="maxstat", alpha=0.9, minprop=0.11)
 
     print(system.time(predicted <- predict(TrainingRasters, rfmodel, fun=RP, num.threads=Cores,
         filename=paste0(TempDir, Class, ".grd"), progress="text", overwrite=TRUE)))
@@ -50,5 +50,5 @@ system.time(ScaledPredictions <- calc(AllPredictions, RasterScaling, progress="t
 names(ScaledPredictions) = GetValidationNames()
 print("Writing...")
 ScaledPredictions = writeRaster(ScaledPredictions, filename = paste0(OutputDir, "randomforest.tif"),
-    datatype="INT1U", options=c("COMPRESS=DEFLATE", "ZLEVEL=9", "NUMTHREADS=4"))
+    datatype="INT1U", options=c("COMPRESS=DEFLATE", "ZLEVEL=9", "NUMTHREADS=4"), overwrite=TRUE)
 hdr(ScaledPredictions, "VRT")
