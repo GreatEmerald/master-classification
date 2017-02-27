@@ -24,7 +24,7 @@ TS = timeVrtProbaV(SemiCleanDir, pattern = BandPattern, vrt_name = VrtFilename, 
 
 # Try a pure cropland
 Samples = LoadClassificationData()
-z = zoo(c(Vrt[Samples[which.max(Samples$water),]$cell.no]), as.Date(getZ(Vrt), "%Y%j"))
+z = zoo(c(Vrt[Samples[315,]$cell.no]), as.Date(getZ(Vrt), "%Y%j"))
 
 # use smoothloes to create time series
 

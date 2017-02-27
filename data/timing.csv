@@ -1,0 +1,18 @@
+,Time,Mins,Hrs
+Dummy layer,309,5.15,0.09
+Dummy brick,537,8.95,0.15
+RF cropland,8320,138.67,2.31
+RF dec.trees,8867,147.78,2.46
+RF evgr.trees,8802,146.70,2.45
+RF shrubland,8536,142.27,2.37
+RF grassland,8486,141.43,2.36
+RF bare soil,8328,138.80,2.31
+RF wetland,6463,107.72,1.80
+RF urban,7318,121.97,2.03
+RF water,7420,123.67,2.06
+RF phase1 total,72540,1209.00,20.15
+RF phase2,1128,18.80,0.31
+RF total,73668,1227.80,20.46
+cmeans,1942,32.37,0.54
+Gradient boosting,1440,24.00,0.40
+Neural networks,1559,25.98,0.43
