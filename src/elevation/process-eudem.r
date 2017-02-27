@@ -1,6 +1,7 @@
 # Process EUDEM, the European Environment Agency DEM
 # It has some gaps, so this depends on GLSDEM from get-dem.r to be there too
 
+
 library(raster)
 source("utils/raster-utils.r")
 source("utils/dem-statistics.r")

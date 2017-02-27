@@ -16,12 +16,13 @@ samples$dominant = factor(apply(samples@data, 1, which.max), labels = colnames(s
 samples$pure = apply(samples@data[,1:9], 1, max) >= 95
 
 # Extract data from rasters
-rasters = stack(TrainingFiles)
-rasters$composite.1 = rasters$composite.1 / 2000
-rasters$composite.2 = rasters$composite.2 / 2000
-rasters$composite.3 = rasters$composite.3 / 2000
-rasters$composite.4 = rasters$composite.4 / 2000
+rasters = LoadTrainingRasters()
+#rasters$composite.1 = rasters$composite.1 / 2000
+#rasters$composite.2 = rasters$composite.2 / 2000
+#rasters$composite.3 = rasters$composite.3 / 2000
+#rasters$composite.4 = rasters$composite.4 / 2000
 data = extract(rasters, samples, method="simple", cellnumbers=TRUE, sp=TRUE)
+anyNA(data@data)
 
 # Give nice names and units
 names(data) = c(names(samples), "cell.no", TrainingNames)
@@ -30,7 +31,8 @@ names(data) = c(names(samples), "cell.no", TrainingNames)
 write.csv(data, "../data/variables.csv")
 
 # Get a reduced raster for SpatialPixelsDataFrame
-pixels = raster::mask(rasters, samples, filename="../../userdata/pixels.tif", overwrite=TRUE, progress="text")
+pixels = raster::mask(rasters, samples, filename="../../userdata/indices-no-na/pixels.tif",
+    overwrite=TRUE, progress="text", datatype="FLT4S")
 
 # Data exploration
 #cor(data@data[names(data) != "dominant"])
