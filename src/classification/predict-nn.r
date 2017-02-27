@@ -9,21 +9,20 @@ OutputDir = "../../userdata/predictions/"
 
 AllData = LoadClassificationData()
 TrainingData = LoadTrainingData()
-TrainingRasters = LoadTrainingRasters(exclude=c("osavi", "amplitude1"))
+TrainingRasters = LoadTrainingRasters(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2", "tpi"))
+TrainingNames = GetTrainingNames(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2", "tpi"))
 
 # The rasters need to be scaled to 0-1, which will take forever, but what can you do
-mins = maxs = c()
-for (i in 1:nlayers(TrainingRasters))
-{
-    mins = c(mins, TrainingRasters[[i]]@data@min)
-    names(mins)[i] = names(TrainingRasters)[i]
-    maxs = c(maxs, TrainingRasters[[i]]@data@max)
-    names(maxs)[i] = names(TrainingRasters)[i]
-}
-ScaledRasters = scale(TrainingRasters, center = mins, scale = maxs - mins)
+#mins = maxs = c()
+#for (i in 1:nlayers(TrainingRasters))
+#{
+#    mins = c(mins, TrainingRasters[[i]]@data@min)
+#    names(mins)[i] = names(TrainingRasters)[i]
+#    maxs = c(maxs, TrainingRasters[[i]]@data@max)
+#    names(maxs)[i] = names(TrainingRasters)[i]
+#}
 
-Formula = paste0(paste0(GetValidationNames(), collapse="+"),"~",paste0(names(TrainingData), collapse="+"))
-Formula = update.formula(Formula, "~ . -osavi -amplitude1")
+Formula = paste0(paste0(GetValidationNames(), collapse="+"),"~",paste0(TrainingNames, collapse="+"))
 
 ScaleDataUntransf = AllData@data
 ScaleDataUntransf$dominant = NULL
@@ -31,8 +30,11 @@ maxs = apply(ScaleDataUntransf, 2, max)
 mins = apply(ScaleDataUntransf, 2, min)
 ScaleDataUntransf = as.data.frame(scale(ScaleDataUntransf, center = mins, scale = maxs - mins))
 
+rasterOptions(chunksize=1e+08, maxmemory=1e+09)
+ScaledRasters = scale(TrainingRasters, center = mins[TrainingNames], scale = maxs[TrainingNames] - mins[TrainingNames])
+
 set.seed(0xfedbeef)
-ModelUntransf = neuralnet(Formula, ScaleDataUntransf, 11, lifesign="full", rep=10, threshold=0.15)
+ModelUntransf = neuralnet(Formula, ScaleDataUntransf, 9, lifesign="full", rep=10, threshold=0.05)
 
 ScaleNNPrediction = function(prediction, global=FALSE)
 {
