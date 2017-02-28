@@ -9,13 +9,25 @@
 \usepackage{appendix}
 \usepackage{natbib}
 \usepackage[caption=false]{subfig}
+\usepackage[super]{nth}
 \usepackage{amsmath} % For declaring own arctan2
 \DeclareMathOperator{\Arctan}{Arctan}
+\usepackage{tikz} % Flowcharts
+\usetikzlibrary{shapes,arrows, shadows, positioning}
 \bibliographystyle{apalike}
 
 %opening
 \title{Fuzzy land cover classification method assessment using PROBA-V satellite data}
 \author{Dainius Masili\=unas}
+
+% Flowchart blocks
+\tikzstyle{block} = [rectangle, draw, fill=blue!20, 
+    text width=8em, text centered, rounded corners, minimum height=3em]
+\tikzstyle{line} = [draw, -latex']
+\tikzstyle{data} = [trapezium, trapezium left angle=70, trapezium right angle=110, text centered, draw,
+    text width=6em, fill=blue!30, double copy shadow, minimum height=3em]
+\tikzstyle{datasingle} = [trapezium, trapezium left angle=70, trapezium right angle=110, text centered, draw,
+    text width=6em, fill=blue!30]
 
 \begin{document}
 
@@ -248,21 +260,80 @@ All in all there are many sources of uncertainty when it comes to image interpre
 
 \subsubsection{Data availability}
 
-Spectral data for this study was obtained from the PROBA-V sensor, provided by VITO. The PROBA-V sensor captures 4 spectral bands: blue, red, near infrared and shortwave infrared. In addition, VITO also provides an NDVI product calculated from the aforementioned bands. The data is provided as rasters in the WGS84 coordinate reference system. In this thesis, the 100 m resolution level 3 top-of-canopy reflectance product was used. This product is available in composites of five days, made by compositing five one-day composites by using maximum NDVI, after filtering out pixels of poor quality, such as incomplete data, sensor problems and extreme sun or look angles. A quality control layer is also provided, with information on whether a pixel is clouded, shadowed, on land or over water, and whether the sensors for each band were working according to specifications at the time of data acquisition \citep{probavguide2}.
+Spectral data for this study was obtained from the PROBA-V sensor, provided by VITO. The PROBA-V sensor captures 4 spectral bands: blue, red, near infrared and shortwave infrared. In addition, VITO also provides an NDVI product calculated from the aforementioned bands. The data is provided as rasters in the WGS84 coordinate reference system. In this thesis, the 100 m resolution level 3 top-of-canopy reflectance product was used. Despite the name of the product, the cartesian cell size varies depending on the latitude, since cell boundaries are defined by polar coordinates. On average, the cell size at the area of interest is approximately 109 $\times{}$ 221 m, stretched in the north-south direction. Each image of a 5-by-5-degree tile contains 10080 $\times{}$ 10080 pixels (101.6 megapixels) per band. Radiometry bands are stored as 16-bit signed integers, and NDVI is stored as 32-bit floating point units.
 
-The data comes in two collections, which differ in the algorithm used to detect clouds. A known limitation of the cloud detection algorithm used for Collection 0 data made it not suffient to fully detect all clouds. A reprocessing campaign using a more accurate algorithm that resulted in Collection 1 data \citep{probavguide2} was ongoing at the time of writing, with the oldest images being reprocessed first. At the time of running the algorithms, most data was already processed to Collection 1, with the only gap being the month of November, 2016.
+This product is available in composites of five days, made by compositing five one-day composites by using maximum NDVI, after filtering out pixels of poor quality, such as incomplete data, sensor problems and extreme sun or look angles. A quality control layer is also provided, with information on whether a pixel is clouded, shadowed, on land or over water, and whether the sensors for each band were working according to specifications at the time of data acquisition \citep{probavguide2}.
+
+The data comes in two collections, which differ in the algorithm used to detect clouds. A known limitation of the cloud detection algorithm used for Collection 0 data made it not suffient to fully detect all clouds. A reprocessing campaign using a more accurate algorithm that resulted in Collection 1 data \citep{probavguide2} was ongoing at the time of writing, with the oldest images being reprocessed first. At the time of running the algorithms, most data was already processed to Collection 1, with the only gaps being the month of November, 2016 and the single date of June 6, 2016. Collection 0 data was used for those dates.
 
 \subsubsection{Data preprocessing}
+\label{sec-spectral-preprocessing}
 
-While Collection 1 improved the cloud detection algorithm, it still does not detect clouds over water well enough, and tends to confuse bare soil with clouds. In addition, cloud shadow detection has become worse, with one-pixel-wide shadows not being masked properly.
+Spectral data preprocessing involved four major steps: cloud filtering using the built-in quality control layers, cloud filtering by discarding temporal outliers, compositing and deriving indices from the composite. See figure \ref{fig-optical-flowchart} for more details. All preprocessing, algorithm training and prediction was done on a shared virtual machine provided by VITO, which had 32 processor cores (Intel Xeon E3, 2.4 GHz) and 32.8 gigabytes of memory.
 
-Due to the problems with cloud masking in the provided data, extra cloud masking and compositing was performed on the five-day composites. A composite was created from the images of the whole summer of 2016 (2016-06-01 to 2016-08-31, 18 images in total). This was selected to minimise the effects of snow and senescence \citep{bartalev2014probavboreal}.
+% TODO: make colours better and reflect in caption
+\begin{figure}
+  \centering
+  \begin{tikzpicture}[node distance = 0.5cm, auto]
+      % Optical
+      \node [data] (radiometry) {832 radiometry layers};
+      \node [data, left= of radiometry] (ndvi) {208 NDVI layers};
+      \node [data, right= of radiometry] (qc) {208 quality control layers};
+      \node [block, below= of ndvi] (clean-builtin) {Cloud masking (QC layer)};
+      \node [block, below= of clean-builtin] (clean-timeseries) {Cloud masking (time series)};
+      \node [block, below= of clean-timeseries] (get-harmonics) {Harmonic analysis};
+      \node [block, right= of get-harmonics] (composite-probav) {Maximum-NDVI compositing};
+      \node [data, below= of composite-probav] (composite) {Summer 2016 radiometry composite};
+      \node [block, right= of composite] (calc-indices) {OSAVI and LSWI calculation};
+      \node [data, below= of calc-indices] (indices) {6 summer 2016 parameters};
+      \node [data, below= of get-harmonics] (harmonics) {5 NDVI time series parameters};
+      \node [datasingle, below= of qc] (iswater) {Water mask};
+      % Draw edges
+      \path [line] (radiometry) -- (clean-builtin);
+      \path [line] (ndvi) -- (clean-builtin);
+      \path [line] (qc) -- (clean-builtin);
+      \path [line] (clean-builtin) -- (clean-timeseries);
+      \path [line] (clean-timeseries) -- (composite-probav);
+      \path [line] (clean-builtin) -- (composite-probav);
+      \path [line] (composite-probav) -- (composite);
+      \path [line] (composite) -- (calc-indices);
+      \path [line] (qc) -- (iswater);
+      \path [line] (calc-indices) -- (indices);
+      \path [line] (clean-timeseries) -- (get-harmonics);
+      \path [line] (get-harmonics) -- (harmonics);
+  \end{tikzpicture}
+  \caption{Flowchart of the spectral and temporal parameter preprocessing chain.}
+  \label{fig-optical-flowchart}
+\end{figure}
+
+The first step in the preprocesing chain was to mask out pixels of bad quality according to the quality control layers provided by VITO. Pixels  that were marked as having clouds, cloud shadows, ice, as well as any pixels reported as bad due to sensor malfunctions, were masked out using the \textit{R} package \textit{probaV}. A total of 1040 raster layers were processed using data from 208 quality control layers. One NDVI layer took approximately 43 seconds to process, one set of radiometry (4 bands) took approximately 97 seconds to process. Processing was run using 3 threads, so as not to run out of memory, which results in around 50 minute run time for all NDVI layers and 112 minute run time for all radiometry layers.
+
+While Collection 1 improved the cloud detection algorithm, it still does not detect clouds over water well enough, and tends to confuse bare soil with clouds. In addition, cloud shadow detection has become worse, with one-pixel-wide shadows not being masked properly. Due to the problems with cloud masking in the provided data, extra cloud masking was performed by discarding temporal outliers.
+
+% TODO: Note what the 30 DN actually means
+Temporal outliers caused by undetected cloud cover were discarded by fitting a LOESS curve on a time series of remaining blue band observations for each pixel, and marking positive outliers that deviate more than 30 digital numbers from the LOESS curve as clouds. This was also done using the \textit{R} package \textit{probaV}. The output of this step is a new cloud mask layer. In order to make use of multicore processing, the input raster layers were first stacked into a time series, and then the stack was divided into 1680 blocks, with 30 of them being processed in parallel. Processing took 14 hours, and mosaicking the blocks back into one file using \textit{GDAL} took an extra 33 minutes.
+
+Then the resulting temporal cloud mask was applied to NDVI time series to filter the clouds from it by writing an \textit{R} script that makes use of the \textit{raster}, \textit{foreach} and \textit{doParallel} packages to perform the cloud masking in parallel on 20 threads. This step took 16 minutes.
+
+After applying both cloud masking methods, the resulting rasters had a large amount of no data values. This posed a problem, since several of the classification algorithms used cannot handle data with missing values. In order to solve this problem, a radiometry composite was created from the images of the whole summer of 2016 (2016-06-01 to 2016-08-31, 18 images in total). This period was selected to minimise the effects of snow and senescence \citep{bartalev2014probavboreal}. Compositing was done by selecting pixels using maximum NDVI, in cases where more than one raster layer had values at that location. The NDVI layers used for this were the one obtained by using temporal cloud masking as outlined above, whereas the radiometry layers used in this step were only masked using the quality control layers. Since maximum NDVI selection precludes no data values, the method selected only cloud-free radiometry. This saved some processing time and disk space that would have been required for applying the temporal cloud mask to each of the radiometry layers.
+
+Finally, the radiometry composite of summer 2016 was used to calculate the Land Surface Water Index (LSWI) by using the formula:
+
+$$ LSWI = \frac{NIR - SWIR}{NIR + SWIR} $$
+
+where $NIR$ is the near infrared band, and $SWIR$ is the shortwave infrared band of PROBA-V. In addition, the Optimised Soil-Adjusted Vegetation Index (OSAVI) was calculated by using the formula:
+
+$$ OSAVI = 1.16 \cdot{} \frac{NIR-RED}{NIR+RED+0.16} $$
+
+where $RED$ is the red band of PROBA-V.
+
+All in all, preprocessing spectral data resulted in 6 parameters to be used as covariates for algorithm training and prediction: reflectance is the red band, reflectance in the blue band, reflectance in the near infrared band, reflectance in the shortwave infrared band, Land Surface Water Index and Optimised Soil-Adjusted Vegetation Index.
 
 \subsection{Temporal data}
 
-PROBA-V imagery was also used for deriving temporal data: vegetation growth phase and amplitude of orders 1 and 2 (period of a year and half a year, respectively). NDVI provided by PROBA-V throughout the mission duration (2013-2016, 3 years) was used for deriving the temporal data. First, temporal outliers caused by undetected cloud cover were discarded by fitting a LOESS curve on the blue band and marking positive outliers that deviate more than 30 digital numbers from the LOESS curve as clouds. Then matching pixels in the NDVI time series were filtered out. Lastly, phase and amplitude metrics were extracted out of the time series by performing harmonic time series analysis \citep{rayner1971introduction,jakubauskas2001harmonic} on it.
+PROBA-V imagery was also used for deriving temporal data: vegetation growth phase and amplitude, \nth{1} and \nth{2} order (period of a year and half a year, respectively). NDVI provided by PROBA-V throughout the mission duration (2013-2016, 3 years), after cloud filtering as described in section \ref{sec-spectral-preprocessing}, was used for deriving the temporal data (see figure \ref{fig-optical-flowchart}).
 
-This was done using \textit{R} in two steps. First, a linear model was fitted to the data (for each pixel):
+Phase and amplitude metrics were extracted out of the time series by performing harmonic time series analysis \citep{rayner1971introduction,jakubauskas2001harmonic} on it. This was done using \textit{R} in two steps. First, a linear model was fitted to the data (for each pixel):
 
 $$ y(t) = a_1 \sin{(t\cdot{\tau{}})} + b_1 \cos{(t\cdot{\tau{}})} + a_2 \sin{(t\cdot{2\tau{}})} + b_2 \cos{(t\cdot{2\tau{}})} + \epsilon{} $$
 
@@ -276,6 +347,10 @@ where $n$ denotes the order of the harmonic. Phase $\phi{}$ was calculated using
 
 $$ \phi{}_n = \Arctan{(a_n, b_n)} \bmod{\tau{}} $$
 
+The amplitude parameters describe the intensity of change in NDVI over a period of a year and half a year, but they do not contain information about what NDVI value the change fluctuates around. Therefore in addition to the aforementioned parameters, the mean NDVI value for the whole time series was calculated.
+
+All on all, temporal preprocessing of NDVI data resulted in 5 temporal parameters: mean NDVI, \nth{1} order amplitude, \nth{1} order phase, \nth{2} order amplitude and \nth{2} order phase.
+
 \subsection{Elevation data}
 
 \subsection{Auxiliary data}
@@ -288,7 +363,7 @@ Therefore the Digital Elevation Model over Europe (EU-DEM) by the European Envir
 
 Slope was first calculated from the base DEM, using its native resolution and a 4-neighbour moving window, since the study area is mostly flat \citep{jones1998dem}. Afterwards, the values were resampled to PROBA-V pixels. This procedure results in more accurate representation of slopes compared to calculating them from resampled DEM data \citep{grohmann2015demresampling, wu2008demresampling}. Aspect was calculated from a resampled DEM instead, since it is angular data for which regular bilinear interpolation resampling technique does not apply. TPI, which is the difference between the height of a cell and the mean value of its 8 neighbours \citep{weiss2001topographic, wilson2007terrain}, was also calculated from resampled data due to stark differences in TPI between EU-DEM and GLSDEM datasets, which come from differences in spatial resolution (moving window size).
 
-In addition to DEM-derived auxiliary data, vegetation indices derived from spectral data were also used, since a variety of vegetation indices are known to improve the separability of the wetlands class \citep{zhao2009indices,davranche2010wetland}. However, since the PROBA-V sensor only captures four spectral bands, the choice of available vegetation indices is limited. Therefore two vegetation indices that can be calculated and are known to improve wetlands separability were used: Optimised Soil-Adjusted Vegetation Index (OSAVI, \citealt{rondeaux1996osavi}) and Land Surface Water Index (LSWI, \citealt{xiao2004lswi}). These indices were calculated from the 2016 summer composite image as detailed in section \ref{sec-spectral}. While it is possible to use data from other sensors for deriving vegetation indices, attempting to match their pixels to those of PROBA-V would be bound to introduce inaccuracies due to resampling, thus that was not attempted.
+In addition to DEM-derived auxiliary data, vegetation indices derived from spectral data were also used, since a variety of vegetation indices are known to improve the separability of the wetlands class \citep{zhao2009indices,davranche2010wetland}. However, since the PROBA-V sensor only captures four spectral bands, the choice of available vegetation indices is limited. Therefore two vegetation indices that can be calculated and are known to improve wetlands separability were used: Optimised Soil-Adjusted Vegetation Index (OSAVI, \citealt{rondeaux1996osavi}) and Land Surface Water Index (LSWI, \citealt{xiao2004lswi, dong2014lswi}). These indices were calculated from the 2016 summer composite image as detailed in section \ref{sec-spectral}. While it is possible to use data from other sensors for deriving vegetation indices, attempting to match their pixels to those of PROBA-V would be bound to introduce inaccuracies due to resampling, thus that was not attempted.
 
 \section{Classification algorithms}
 
