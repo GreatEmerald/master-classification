@@ -28,6 +28,8 @@
     text width=6em, fill=blue!30, double copy shadow, minimum height=3em]
 \tikzstyle{datasingle} = [trapezium, trapezium left angle=70, trapezium right angle=110, text centered, draw,
     text width=6em, fill=blue!30]
+\tikzstyle{bigdata} = [trapezium, trapezium left angle=80, trapezium right angle=100, text centered, draw,
+    text width=14em, fill=blue!30, double copy shadow, minimum height=3em]
 
 \begin{document}
 
@@ -260,7 +262,7 @@ All in all there are many sources of uncertainty when it comes to image interpre
 
 \subsubsection{Data availability}
 
-Spectral data for this study was obtained from the PROBA-V sensor, provided by VITO. The PROBA-V sensor captures 4 spectral bands: blue, red, near infrared and shortwave infrared. In addition, VITO also provides an NDVI product calculated from the aforementioned bands. The data is provided as rasters in the WGS84 coordinate reference system. In this thesis, the 100 m resolution level 3 top-of-canopy reflectance product was used. Despite the name of the product, the cartesian cell size varies depending on the latitude, since cell boundaries are defined by polar coordinates. On average, the cell size at the area of interest is approximately 109 $\times{}$ 221 m, stretched in the north-south direction. Each image of a 5-by-5-degree tile contains 10080 $\times{}$ 10080 pixels (101.6 megapixels) per band. Radiometry bands are stored as 16-bit signed integers, and NDVI is stored as 32-bit floating point units.
+Spectral data for this study was obtained from the PROBA-V sensor, provided by VITO. The PROBA-V sensor captures 4 spectral bands: blue, red, near infrared and shortwave infrared. In addition, VITO also provides an NDVI product calculated from the aforementioned bands. The data is provided as rasters in the WGS84 coordinate reference system. In this thesis, the 100 m resolution level 3 top-of-canopy reflectance product was used. Despite the name of the product, the cartesian cell size varies depending on the latitude, since cell boundaries are defined by polar coordinates. On average, the cell size at the area of interest is approximately 109 $\times{}$ 221 m, stretched in the north-south direction. Each image of a 10-by-10-degree tile contains 10080 $\times{}$ 10080 pixels (101.6 megapixels) per band. Radiometry bands are stored as 16-bit signed integers, and NDVI is stored as 32-bit floating point units.
 
 This product is available in composites of five days, made by compositing five one-day composites by using maximum NDVI, after filtering out pixels of poor quality, such as incomplete data, sensor problems and extreme sun or look angles. A quality control layer is also provided, with information on whether a pixel is clouded, shadowed, on land or over water, and whether the sensors for each band were working according to specifications at the time of data acquisition \citep{probavguide2}.
 
@@ -317,7 +319,7 @@ Then the resulting temporal cloud mask was applied to NDVI time series to filter
 
 After applying both cloud masking methods, the resulting rasters had a large amount of no data values. This posed a problem, since several of the classification algorithms used cannot handle data with missing values. In order to solve this problem, a radiometry composite was created from the images of the whole summer of 2016 (2016-06-01 to 2016-08-31, 18 images in total). This period was selected to minimise the effects of snow and senescence \citep{bartalev2014probavboreal}. Compositing was done by selecting pixels using maximum NDVI, in cases where more than one raster layer had values at that location. The NDVI layers used for this were the one obtained by using temporal cloud masking as outlined above, whereas the radiometry layers used in this step were only masked using the quality control layers. Since maximum NDVI selection precludes no data values, the method selected only cloud-free radiometry. This saved some processing time and disk space that would have been required for applying the temporal cloud mask to each of the radiometry layers.
 
-Finally, the radiometry composite of summer 2016 was used to calculate the Land Surface Water Index (LSWI) by using the formula:
+In addition to spectral data itself, vegetation indices derived from spectral data are known to improve the separability of the wetlands class \citep{zhao2009indices,davranche2010wetland}. However, since the PROBA-V sensor only captures four spectral bands, the choice of available vegetation indices is limited. Therefore two vegetation indices that can be calculated and are known to improve wetlands separability were used: Optimised Soil-Adjusted Vegetation Index (OSAVI, \citealt{rondeaux1996osavi}) and Land Surface Water Index (LSWI, \citealt{xiao2004lswi, dong2014lswi}). These indices were calculated from the 2016 summer composite image. LSWI was calulated by using the formula:
 
 $$ LSWI = \frac{NIR - SWIR}{NIR + SWIR} $$
 
@@ -353,21 +355,46 @@ All on all, temporal preprocessing of NDVI data resulted in 5 temporal parameter
 
 \subsection{Elevation data}
 
+A digital elevation model (DEM) was used to derive elevation, slope, aspect and Topographic Position Index (TPI) terrain parameters. Such terrain parameters are known to increase the separability of vegetation classes \citep{burrough2001fuzzy}.
+
+While the DEM from the NASA Global Land Survey (GLSDEM) was initially considered, since it has fine enough spatial resolution (3 arcseconds, approximately 90 m) and is already used by VITO for PROBA-V image ortho-rectification \citep{probavguide}. It is available from the NASA Global Land Survey in 1-by-1 degree tiles. However, this DEM is actually a mosaic of several DEMs, and in the study area above 60\textdegree{} latitude the DEM is based on GTOPO30 data that has 10 times coarser resolution (30 arcseconds, approximately a kilometre), resampled by using cubic convolution to match SRTM data used in the lower latitudes. \citep{glsdemtechguide}. The coarser resolution combined with resampling makes GTOPO30 data unsuitable for deriving slopes, since cubic convolution results in smoothed surfaces, whereas the original GTOPO30 data is of too coarse resolution compared to PROBA-V data.
+
+Therefore the Digital Elevation Model over Europe (EU-DEM) by the European Environment Agency was used as a baseline DEM instead. It has 1-5 arcsecond (approx. 30-150 m) spatial resolution, achieved by fusing data from ASTER and SRTM missions, and covers all of the European Union countries \citep{bashfield2011eudem}. The data is freely available from the European Environment Agency website and is distributed in tiles of 5-by-5 degrees. Since the study area also includes a parts of Belarus and a small part of Russia, GLSDEM was used to fill in the gaps there. See figure \ref{fig-elevation-preprocessing} for the preprocessing chain applied to the elevation data.
+
+\begin{figure}
+  \centering
+  \begin{tikzpicture}[node distance = 0.5cm, auto]
+      % DEM
+      \node [data] (glsdem) {GLSDEM, 12 tiles};
+      \node [data, left= of glsdem] (eudem) {EU-DEM, 4 tiles};
+      \node [block, below= of eudem] (mosaic) {Tile mosaicking};
+      \node [block, below= of mosaic] (process-eudem) {Terrain index calculation};
+      \node [block, below=of process-eudem] (dem-merge) {DEM merging};
+      \node [data, below=of dem-merge] (dem-indices) {4 DEM parameters};
+      % Draw edges
+      \path [line] (glsdem) -- (mosaic);
+      \path [line] (eudem) -- (mosaic);
+      \path [line] (mosaic) -- (process-eudem);
+      \path [line] (process-eudem) -- (dem-merge);
+      \path [line] (dem-merge) -- (dem-indices);
+  \end{tikzpicture}
+  \caption{Elevation parameter preprocessing chain.}
+  \label{fig-elevation-preprocessing}
+\end{figure}
+
+Slope was first calculated from the base DEM, using its native resolution and a 4-neighbour moving window (rook's case), since the study area is mostly flat \citep{jones1998dem}. Afterwards, the values were resampled to match PROBA-V pixels. This procedure results in more accurate representation of slopes compared to calculating them from resampled DEM data \citep{grohmann2015demresampling, wu2008demresampling}. Aspect was calculated from a resampled DEM instead, since it is angular data for which regular bilinear interpolation resampling technique does not apply. TPI, which is the difference between the height of a cell and the mean value of its 8 neighbours \citep{weiss2001topographic, wilson2007terrain}, was also calculated from resampled data due to stark differences in TPI between EU-DEM and GLSDEM datasets, which come from differences in spatial resolution (moving window size).
+
+Next, the two DEMs were merged into one, preferring pixels provided by EU-DEM. For the slope, aspect and TPI statistics, since a moving window was used that created a two-pixel-wide gap of no data around the borders, another moving window filter was applied to interpolate the values from neareast neighbours where data was missing. The moving window matrix was weighted so that the nearest neighbours (in cartesian coordinates) had the most weight, and none of the interpolated values were in locations where ground truth data was collected.
+
+The output of the data preprocessing step is four parameters: height, slope, slope aspect and terrain position index (TPI).
+
 \subsection{Auxiliary data}
 
-Additional auxiliary data was also used in order to improve the classification accuracy. In particular, a digital elevation model (DEM) was used to derive elevation, slope, aspect and Topographic Position Index (TPI) terrain parameters. Such terrain parameters are known to increase the separability of vegetation classes \citep{burrough2001fuzzy}.
-
-While the DEM from the NASA Global Land Survey (GLSDEM) was initially considered, since it has fine enough spatial resolution (3 arcseconds, approximately 90 m) and is already used by PROBA-V product suppliers for image ortho-rectification \citep{probavguide}. However, this DEM is in fact a combination of several DEMs, and in the study area above 60\textdegree{} latitude the DEM is based on GTOPO30 data that has 10 times coarser resolution (30 arcseconds, approximately a kilometre), resampled by using cubic convolution \citep{glsdemtechguide}. This makes it unsuitable for deriving slopes, since cubic convolution results in smoothed surfaces, whereas the original GTOPO30 data is of too coarse resolution compared to PROBA-V data.
-
-Therefore the Digital Elevation Model over Europe (EU-DEM) by the European Environment Agency was used as a baseline DEM instead. It has 1-5 arcsecond (approx. 30-150 m) spatial resolution, achieved by fusing ASTER and SRTM satellite data, and covers all of the European Union countries \citep{bashfield2011eudem}. Since the study area also includes a parts of Belarus and a small part of Russia, GLSDEM was used to fill in the gaps there.
-
-Slope was first calculated from the base DEM, using its native resolution and a 4-neighbour moving window, since the study area is mostly flat \citep{jones1998dem}. Afterwards, the values were resampled to PROBA-V pixels. This procedure results in more accurate representation of slopes compared to calculating them from resampled DEM data \citep{grohmann2015demresampling, wu2008demresampling}. Aspect was calculated from a resampled DEM instead, since it is angular data for which regular bilinear interpolation resampling technique does not apply. TPI, which is the difference between the height of a cell and the mean value of its 8 neighbours \citep{weiss2001topographic, wilson2007terrain}, was also calculated from resampled data due to stark differences in TPI between EU-DEM and GLSDEM datasets, which come from differences in spatial resolution (moving window size).
-
-In addition to DEM-derived auxiliary data, vegetation indices derived from spectral data were also used, since a variety of vegetation indices are known to improve the separability of the wetlands class \citep{zhao2009indices,davranche2010wetland}. However, since the PROBA-V sensor only captures four spectral bands, the choice of available vegetation indices is limited. Therefore two vegetation indices that can be calculated and are known to improve wetlands separability were used: Optimised Soil-Adjusted Vegetation Index (OSAVI, \citealt{rondeaux1996osavi}) and Land Surface Water Index (LSWI, \citealt{xiao2004lswi, dong2014lswi}). These indices were calculated from the 2016 summer composite image as detailed in section \ref{sec-spectral}. While it is possible to use data from other sensors for deriving vegetation indices, attempting to match their pixels to those of PROBA-V would be bound to introduce inaccuracies due to resampling, thus that was not attempted.
+In addition to the paramemters mentioned above, a water mask was extracted from the PROBA-V quality control layers (see figure \ref{fig-optical-flowchart}). This mask holds logical information on whether a particular pixel is covered by water or not, however, it is not completely accurate since it is conservative (shores are marked as land, small islands are marked as water) and does not include inland water bodies.
 
 \section{Classification algorithms}
 
-There will be four classification algorithms tested in total: fuzzy c-means, fuzzy neural network, random forest regression and multiclass gradient boosting. All of these algorithms are available as packages for the \texttt{R} programming language. See table \ref{tbl-comparison} for a short comparison of the properties of the chosen algorithms.
+Four classification algorithms have been tested in total: fuzzy c-means, fuzzy neural network, random forest regression and multiclass gradient boosting. All of these algorithms are available as packages for the \textit{R} programming language. See table \ref{tbl-comparison} for a short comparison of the properties of the chosen algorithms.
 
 \begin{table}
   \begin{center}
@@ -388,11 +415,48 @@ There will be four classification algorithms tested in total: fuzzy c-means, fuz
   \label{tbl-comparison}
 \end{table}
 
-\subsection{Fuzzy c-means}
+The tested algorithms were trained on a subset of ground truth data and the 14 spatial parameters at the pixel location. Then a prediction was made for the whole PROBA-V tile of the area of interest by giving the algorithms only the 16 spatial parameters. Next, the model was validated by using the remaining ground truth points. The process was repeated four times (4-fold cross-validation). See figure \ref{fig-classification-flowchart} for a flowchart representation of the methodology. Lastly, visual validation of the resulting land cover class fraction rasters was performed by training each of the algorithms on all of the ground truth data, and having the algorithms predict the land cover of the whole PROBA-V tile.
 
-Fuzzy $c$-means, also called fuzzy $k$-means and supervised fuzzy $k$-means, is an algorithm based on the $k$-means clustering algorithm that attempts to classify pixels by identifying clusters by proximity in feature space. $k$-means is an unsupervised algorithm, and takes one parameter, $k$, for the number of clusters to create. These cluster centroids are usually selected randomly from all pixels, and clusters are formed by assigning each pixel to the class whose centre is the closest. Then the cluster centroids are recalculated, and the process is repeated until it converges. The supervised variety of this algorithm presets the cluster centroids to their known values from the training pixels, and the $c$-means or fuzzy $k$-means variety assigns each pixel a distance value from each class centroid to determine class membership. This makes the algorithm similar to maximum likelihood classification (it would be identical if the centroids were completely fixed). It also takes an extra parameter, called a fuzzification parameter, to determine the inverse of the distance from class centroids within which all pixels are said to belong exclusively to that class. A fuzzification parameter of 0 would result in hard classification, while a high value would make every pixel partially belong to all classes. \citep{hengl2004fuzzycmeans}
+\begin{figure}
+  \resizebox{\textwidth}{!}{
+    \begin{tikzpicture}[node distance = 0.5cm, auto]
+      % Model
+      \node [bigdata] (params) {\textbf{16 parameters}: blue, red, NIR, SWIR, OSAVI, LSWI, water mask, height, slope, aspect, TPI, mean NDVI, 1st order phase, 1st order amplitude, 2nd order phase, 2nd order amplitude};
+      \node [block, right=of params, yshift=-1cm] (training) {Model training};
+      \node [block, below=of training] (prediction) {Model prediction};
+      \node [block, below=of prediction] (validation-process) {Model validation};
+      \node [datasingle, left=of prediction] (training-set) {Training set, 360 points};
+      \node [datasingle, left=of validation-process] (validation-set) {Validation set, 120 points};
+      \node [datasingle, left=of validation-set] (validation) {480 ground truth points of 9 classes};
+      \node [bigdata, right=of prediction, yshift=-1cm] (output) {\textbf{9 land cover fraction rasters}: crops, deciduous trees, evergreen trees, shrubs, grassland, bare soil, wetland, urban, water};
+      % Draw edges
+      \path [line] (params) -- (training);
+      \path [line] (validation) -- (training-set);
+      \path [line] (params) -- (prediction);
+      \path [line] (training) -- (prediction);
+      \path [line] (prediction) -- (output);
+      \path [line] (validation) -- (validation-set);
+      \path [line] (prediction) -- (validation-process);
+      \path [line] (output) -- (validation-process);
+      \path [line] (training-set) -- (training);
+      \path [line] (validation-set) -- (validation-process);
+    \end{tikzpicture}
+  }
+  \caption{Classification and validation process.}
+  \label{fig-classification-flowchart}
+\end{figure}
 
-The advantage of this algorithm is its simplicity: increasing the number of pixels should not result in high increase in processing time, as only the points' centroid and the distance from each class centroid to each pixel has to be calculated. The disadvantage is that it is only partially supervised, very little data from the training pixels are used (only the class centroid position from a weighted average).
+\subsection{Fuzzy \textit{c}-means}
+
+Fuzzy $c$-means, also called fuzzy $k$-means and supervised fuzzy $k$-means, is a statistical algorithm based on the $k$-means clustering algorithm that attempts to classify pixels by identifying clusters by proximity in feature space. $k$-means is an unsupervised algorithm, and takes one parameter, $k$, for the number of clusters to create. These cluster centroids are usually selected randomly from all pixels, and clusters are formed by assigning each pixel to the class whose centre is the closest. Then the cluster centroids are recalculated, and the process is repeated until it converges. The supervised variety of this algorithm presets the cluster centroids to their known values from the training pixels, and the $c$-means or fuzzy $k$-means variety uses the Mahalonobis distance between a given pixel and each class centroid as a measure of class membership. It also takes an extra parameter, called a fuzzification parameter or fuzzy exponent, to determine how strongly the distance from the class centroid influences the class membership value. A fuzzification parameter of 0 would result in hard classification, whereas an infinitely high value would result in every pixel belonging to all classes equally regardless of the distance to class centroids. \citep{hengl2004fuzzycmeans}
+
+The advantage of this algorithm is its simplicity: increasing the number of pixels does not result in high increase in processing time, as only the points' centroid and the distance from each class centroid to each pixel has to be calculated. The disadvantage is that it is only partially supervised, very little data from the training pixels are used (only the class centroid position from a weighted average).
+
+This algorithm is implemented as the function \texttt{spfkm} in the \textit{R} package \textit{GSIF}, created by \textit{ISRIC - World Soil Information}. One peculiarity of the \texttt{spfkm} function is that unlike most classification algorithm implementations, it does not have split training and predicting steps, but rather combines both into one. Another peculiarity of this implementation is that it currently requires a \texttt{SpatialPixelsDataFrame} object for the prediction, rather than the more common and memory-safe \texttt{Raster} object.
+
+The \texttt{spfkm} function by default performs a multinomial logistic regression on the training data in order to determine the class centroids. However, multinomial logistic regression can only handle endmember pixels. In order to make use of all pixels, in addition to the default method, the ability to specify a custom table of class centroids was used. The class centroids and their standard deviation were predetermined by performing a weighted mean on all pixels for each of the covariates.
+
+In addition, terms and the fuzzification factor were optimised by repeating the process and selecting the outcomes with the lowest RMSE scores.  First, the optimal fuzzification factor was determined by calculating RMSE values for the fuzzification factor range of 1.0-20.0. Then, using the optimal fuzzification factor, terms were dropped one by one until RMSE no longer decreased by dropping more terms.
 
 \subsection{Fuzzy neural network}
 
