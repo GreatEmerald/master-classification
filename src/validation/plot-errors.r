@@ -83,12 +83,16 @@ ggplot(DUMLong, aes(X, Error)) +
 # Plot gradient boosting on its own plot with its own control
 GBErrors = rbind(gbu, gbo, dup)
 OverallGBErrors = subset(GBErrors, X=="Overall")
-GBErrorsLong = reshape(OverallGBErrors, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
-GBErrorsLong = subset(GBErrorsLong, GBErrorsLong$Statistic != "ME")
+GBErrorsLong = reshape(OverallGBErrors, varying=2:4, v.names="Error", direction = "long", timevar = "Statistic", times=c("Root mean squared error", "Mean absolute error", "Mean error"))#times=c("RMSE", "MAE", "ME"))
+GBErrorsLong = subset(GBErrorsLong, GBErrorsLong$Statistic != "Mean error")#"ME")
 
-ggplot(GBErrorsLong, aes(Algorithm, Error, color=Optimisation, fill=Optimisation)) +
+pdf("../plot/total-errors-gb.pdf", width=4, height=4)
+ggplot(GBErrorsLong, aes(Algorithm, Error, fill=Optimisation, label=round(Error, 1))) +
     geom_bar(stat = "identity", position="dodge") +
-    facet_wrap( ~ Statistic)
+    facet_wrap( ~ Statistic) +
+    theme(legend.position="none") +
+    geom_text(size=2.5, position = position_dodge(1))
+dev.off()
 
 # Also plot timings
 RawTimings = read.csv("../data/timing.csv")
