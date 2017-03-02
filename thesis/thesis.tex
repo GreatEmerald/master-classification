@@ -460,43 +460,73 @@ In addition, terms and the fuzzification factor were optimised by repeating the 
 
 \subsection{Fuzzy neural network}
 
-Neural networks are a machine learning algorithm that works by making use of a layered architecture of an input layer, output layer, and a number of hidden layers in between. When training, the algorithm tries to assign weights to each node in the hidden layers so that given the input layer, the result would be the output layer. Initially values are assigned at random, and by using a back-propagation algorithm they are adjusted to better fit the output. Such a trained neural network can then predict the output layer values when given unclassified pixels as the input layer. \citep{foody1997fuzzynnet}
+Neural networks are a machine learning algorithm that works by making use of a layered architecture of an input layer, output layer, and a number of hidden layers in between. When training, the algorithm tries to assign weights to each node in the hidden layers so that given the input layer, the resulting values would match those in the output layer. Initially values are assigned at random, and by using a back-propagation algorithm they are adjusted to better fit the output. Such a trained neural network can then predict the output layer values when given unclassified pixels as the input layer \citep{foody1997fuzzynnet}. Neural networks are implemented in \textit{R} in the package \textit{neuralnet}.
 
-Neural networks work with continuous values, therefore they can take mixed pixels as training input, and output continuous membership values for every class, which makes them well-suited for fuzzy classification tasks. However, the downside of neural network is that they require three parameters: the number of hidden layers, the number of neurons (nodes) per each hidden layer, and the number of back-propagation iterations. Each of these affect the ability of the neural network to generalise data instead of overfitting the training output, and there is no rule of thumb about what combination should work the best, requiring a lot of trial and error or Monte Carlo analysis to get satisfactory results.
+Neural networks work with continuous values, therefore they can take mixed pixels as training input, and output continuous membership values for every class, which makes them well-suited for fuzzy classification tasks. However, there are some downsides of neural networks. One is that they require three parameters: the number of hidden layers, the number of neurons (nodes) per each hidden layer, and the number of back-propagation iterations. Each of these affect the ability of the neural network to generalise data instead of overfitting the training output. Another limitation of neural networks is that they are difficult to train, especially when the training data is not normally distributed and has different ranges for the different covariates. Lastly, the output of a neural network is not necessarily bound to the range of training data. Thus the predictions required postprocessing so that negative fractions or fractions over 100\% would be eliminated.
+
+This postprocessing can also be done in two ways. The first method is to truncate the output, so that negative values are set to 0 and values over 100\% are set to 100\%, leaving the values in between as-is. The second method is to scale the output range to the 0-100\% range.
+
+Like in the case of fuzzy $c$-means, term selection was performed by dropping terms one by one until RMSE no longer decreases. The number of hidden layers was kept as 1, as a larger number of hidden layers increases the difficulty of training such a model, and the number of nodes in the hidden layer was kept as the mean of the input and output nodes, round down.
 
 \subsection{Random forest}
 
-Random forest is another machine learning algorithm, based on building decision trees that could be used to determine the class of a pixel. The algorithm generates a (configurably) large number of decision trees, each based on a random (with replacement) training subsample, so that every tree in the model is unique. Then in order to determine which class a pixel belongs to, each tree casts a vote. With hard classification, the pixel is assigned the class with the majority vote. \citep{walton2008subpixelrf}
+Random forest is another machine learning algorithm, based on building decision trees that could be used to determine the class of a pixel. The algorithm generates a (configurably) large number of decision trees, each based on a random (with replacement) training subsample, so that every tree in the model is unique. Then in order to determine which class a pixel belongs to, each decision tree is run and its output counts as a vote. With hard classification, the pixel is assigned the class with the majority vote \citep{walton2008subpixelrf}.
 
 With fuzzy classification, instead of using the majority vote, the fraction of votes can be used as an indication of class membership instead. However, the algorithm will have to be trained on endmember pixels only in that case. Alternatively, random forest is also capable of performing regressions, but only for single output variables. Thus by performing one regression for each class (binary relevance method), mixed pixels could be used for training, but the algorithm will not take other classes into account.
 
+In this study, the latter method was chosen, so as not to overlap with gradient boosting, which is a similar algorithm that can only be trained on mendmember pixels. The output layers of random forest regression were postprocessed using scaling so that all fractions in each pixel would add up to 100\%.
+
+Random forest is implemented in \textit{R} by several packages. The one used in this study was the \textit{ranger} package, as it has faster processing speed and built-in multithreading compared to other packages. It also automates determining variable importance. Just like with the aforementioned algorithms, term selection was used to optimise the results of random forest regression.
+
 \subsection{Gradient boosting}
 
-Gradient boosting is a machine learning algorithm highly related to random forest. The difference is that instead of building random trees and having them vote, the algorithm iteratively optimises a tree (or a small set of trees) to better fit the training data, while making sure not to add unnecessary complexity to the model by performing internal cross-validation at each step. Much like the two aforementioned machine learning methods, it internally uses continuous values, and the result can be expressed as a sum of all tree branch weights. \citep{friedman2001gradientboost}
+Gradient boosting is a machine learning algorithm highly related to random forest. The difference is that instead of building random trees and having them cast votes, the algorithm iteratively optimises a tree (or a small set of trees) to better fit the training data, while making sure not to add unnecessary complexity to the model by performing internal cross-validation at each step. Much like the two aforementioned machine learning methods, it internally uses continuous values, and the result can be expressed as a sum of all tree branch weights \citep{friedman2001gradientboost}. The gradient boosting algorithm is implemented in \textit{R} by the package \textit{xgboost}.
 
-Just like with random forest, there are two ways to use this algorithm for fuzzy classification: the binary relevance method, or a multiclass method that gives the probability of a pixel to belong to each class, akin to the random forest vote fraction method. The same advantages and disadvantages apply.
+Just like with random forest, there are two ways to use this algorithm for fuzzy classification: the binary relevance method, or a multiclass method that gives the probability of a pixel to belong to each class, akin to the random forest vote fraction method. The same advantages and disadvantages apply. In this study, the multiclass probability method was used.
+
+Since this method can only be trained on endmember pixels, it was trained on all pixels whose dominant class occupied 95\% of the area or more (242 pixels) and validated by using all mixed pixels (238). However, this makes the error values obtained from this method not directly comparable with ones obtained from the other algorithms that used 4-fold cross-validation instead.
 
 \section{Validation and visualisation}
 
-In order to perform validation on the classification results, validation metrics that work on fuzzy classification are needed. While there are several approaches, the metrics that are easiest to interpret and that are most often used for this purpose are based on the well-known statistical concept of error (also referred to as distance in some literature) \citep{foody1996fuzzyevaluation}. In particular, the mean absolute error (MAE) and root mean square error (RMSE) for every class will be used to assess classification accuracy in this thesis. The validation will be performed by splitting the ground truth samples into a training and a validation set. For algorithms that can handle mixed pixel training data, 4-fold cross-validation will be used to split the data. For algorithms that cannot, all endmember pixels will be used as the training set and all mixed pixels will be used as the validation set. The training set will be used to train the classification algorithms, and the validation set will be used to determine the accuracy of the algorithm predictions by:
+In order to perform validation on the classification results, validation metrics that work on fuzzy classification are needed. While there are several approaches, the metrics that are easiest to interpret and that are most often used for this purpose are based on the well-known statistical concept of error (also referred to as distance in some literature) \citep{foody1996fuzzyevaluation}. In particular, the mean absolute error (MAE) and root mean square error (RMSE) for every class have been used to assess classification accuracy in this thesis. The validation was performed by splitting the ground truth samples into a training and a validation set. For algorithms that can handle mixed pixel training data, 4-fold cross-validation was used to split the data. For algorithms that cannot (gradient boosting), all endmember pixels were used as the training set and all mixed pixels were used as the validation set. The training set was used to train the classification algorithms, and the validation set was used to determine the accuracy of the algorithm predictions by:
 
-$$ RMSE_c = \sqrt{ \displaystyle\sum_{i=1}^{n}{ (p_{i} - v_{i})^2 } \over{n} } $$
+$$ RMSE_c = \sqrt{ \frac{\displaystyle\sum_{i=1}^{n}{ (p_{i} - v_{i})^2 }}{n} } $$
 
 where $ RMSE_c $ is the root mean squared error of class $ c $, $ v_{i} $ is the true degree of $ i $th pixel's membership to class $ c $ (in percent), $ p_i $ is the predicted degree of $ i $th pixel's membership to class $ c $, and $ n $ is the total number of pixels in an image, and
 
-$$ MAE_c = {\displaystyle\sum_{i=1}^{n}{ |p_{i} - v_{i}| } \over{n}} $$
+$$ MAE_c = \frac{\displaystyle\sum_{i=1}^{n}{ |p_{i} - v_{i}| }}{n} $$
 
 where $ MAE_c $ is the mean absolute error of class $ c $.
 
 These two statistics show how many percent did the algorithm either overrepresent or underrepresent class $ c $ membership of all pixels in the image on average. The difference between the two is that RMSE gives a larger penalty for large errors compared to MAE.
 
-These statistics allow comparing how the algorithm is capable of separating each class, much like a confusion matrix does in hard classification. A difference is that this approach does not give information about which classes the algorithm has trouble separating (as it is also a matter of degree in fuzzy classification). A total classification accuracy statistic can be obtained by taking a mean of all class RMSE and MAE statistics.
+These statistics allow comparing how the algorithm is capable of separating each class, much like a confusion matrix does in hard classification. A difference is that this approach does not give information about which classes the algorithm has trouble separating (as it is also a matter of degree in fuzzy classification). A total classification accuracy statistic can be obtained by applying the aforementioned formulas to all pixels in an image regardless of class.
 
-In addition to accuracy statistics, a bias statistic mean error (ME) will also be calculated for each class:
+In addition to accuracy statistics, a bias statistic mean error (ME) was calculated for each class as well:
 
-$$ ME_c = {\displaystyle\sum_{i=1}^{n}{ (p_{i} - v_{i}) } \over{n}} $$
+$$ ME_c = \frac{\displaystyle\sum_{i=1}^{n}{ (p_{i} - v_{i}) }}{n} $$
 
 Positive ME values mean that the algorithm tends to overrepresent class $c$ membership, negative ME values mean that it tends to underrepresent class $c$ membership on average in all pixels. An ME of 0 would mean that the algorithm is unbiased.
+
+\chapter{Results}
+
+\section{Algorithm accuracy}
+
+\subsection{Statistical comparison}
+
+\subsubsection{Total errors}
+
+The total mean error (ME) for all algorithms is very close to 0. This is an indication that all the resulting predicted class fractions sum up to 100\% for each pixel in all of the algorithms, as the positive errors cancel out the negative errors. Any deviation from 0 is caused by rounding errors. ME is more useful for indicating bias per class, however (see the next section).
+
+\subsubsection{Errors per class}
+
+\subsection{Visual comparison}
+
+\section{Variable importance}
+
+\section{Training and prediction time}
+
+\chapter{Discussion}
 
 \bibliography{bibliography}
 
