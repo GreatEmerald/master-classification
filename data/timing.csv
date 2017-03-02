@@ -14,5 +14,5 @@ RF phase1 total,72540,1209.00,20.15
 RF phase2,1128,18.80,0.31
 RF total,73668,1227.80,20.46
 cmeans,1942,32.37,0.54
-Gradient boosting,1440,24.00,0.40
+Gradient boosting,1058,17.63,0.29
 Neural networks,1559,25.98,0.43
