@@ -9,13 +9,13 @@ OutputDir = "../../userdata/predictions/"
 
 AllData = LoadClassificationData()
 TrainData = LoadTrainingData()
-PureData = TrainData@data[AllData@data$pure,]
+Exclude=c("is.water", "osavi", "aspect", "lswi", "swir", "height")
+PureData = TrainData@data[AllData@data$pure,GetTrainingNames(exclude=Exclude)]
 PureLabels = AllData@data[AllData@data$pure,]$dominant
 TrainingRasters = LoadTrainingRasters()
 
 TrainMatrix = xgb.DMatrix(as.matrix(PureData), label=as.numeric(PureLabels)-1)
-Model = xgboost(TrainMatrix, nrounds=14, objective="multi:softprob", num_class = 9,
-    params=list(eta=0.05, max_depth=7))
+Model = xgboost(TrainMatrix, nrounds=5, objective="multi:softprob", num_class = 9)
 
 GBP = function(Model, blockvals, ...)
 {
