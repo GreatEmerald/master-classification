@@ -514,7 +514,19 @@ Positive ME values mean that the algorithm tends to overrepresent class $c$ memb
 
 \subsection{Statistical comparison}
 
+%TODO: mention what terms were dropped for each algorithm
 \subsubsection{Total errors}
+
+\begin{figure}
+  \centering
+  \includegraphics{../plot/total-errors}
+  \caption{Total errors per algorithm, unoptimised algorithms (all terms used) in blue, optimised in red. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RF: random forest.}
+  \label{fig-total-errors}
+\end{figure}
+
+Total errors (all classes combined) of each algorithm except gradient boosting are shown in figure \ref{fig-total-errors}. The largest difference in RMSE between optimised algorithms is only 1.3, thus after optimisations all of them seem to perform similarly. Likewise, the largest difference in MAE is only 1. Thus while random forest regression technically performs the best, the difference between the algorithms is very small.
+
+Optimising the algorithm by dropping terms affects fuzzy \textit{c}-means the most (decrease in RMSE of 3.9), and random forest regression the least (decrease in RMSE of 0.2). In case of fuzzy \textit{c}-means, RMSE decreased when increasing the fuzzy exponent from the default 1.2 to 1.5, but MAE increased. That is expected, since increasing the fuzziness of the result (fewer predictions of 100\% and 0\%, more predictions in the middle), there are fewer large misses for which RMSE penalises, and more smaller misses for which MAE penalises.
 
 The total mean error (ME) for all algorithms is very close to 0. This is an indication that all the resulting predicted class fractions sum up to 100\% for each pixel in all of the algorithms, as the positive errors cancel out the negative errors. Any deviation from 0 is caused by rounding errors. ME is more useful for indicating bias per class, however (see the next section).
 
