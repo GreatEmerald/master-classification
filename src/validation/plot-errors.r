@@ -1,6 +1,17 @@
 # Plots the error bar chart for all variables
 library(ggplot2)
 
+# Prettify class names: take a character vector, give a sorted pretty factor
+PrettifyClasses = function(classnames)
+{
+    classnames = factor(classnames)
+    levels(classnames) = list(
+        "Total" = "Overall", "Crops" = "cropland", "Dec. trees" = "dec.trees", "Evgr. trees" = "evgr.trees",
+        "Shrubs" = "shrubland", "Grassland" = "grassland", "Wetland" = "wetland", "Bare soil" = "bare.soil",
+        "Urban" = "urban", "Water" = "water")
+    return(classnames)
+}
+
 cmu = read.csv("../data/stat-cmeans-unoptimised.csv")
 cmu$Algorithm = "FCM"#"Fuzzy c-means"
 cmu$Optimisation = "Unoptimised"
@@ -58,19 +69,27 @@ dev.off()
 
 # Random forest optimised per class
 RFOLong = reshape(rfo, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
-ggplot(RFOLong, aes(X, Error)) +
+RFOLong$Statistic = factor(RFOLong$Statistic, levels=c("RMSE", "MAE", "ME"))
+RFOLong$X = PrettifyClasses(RFOLong$X)
+pdf("../plot/perclass-errors-rf.pdf", width=5, height=3)
+ggplot(RFOLong, aes(X, Error, label=round(Error, 1))) +
     geom_bar(stat = "identity", position="dodge") +
     facet_wrap( ~ Statistic) +
-    theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5), plot.title = element_text(hjust = 0.5)) +
+    theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), plot.title = element_text(hjust = 0.5)) +
     xlab("Class") + ggtitle("Random Forest, optimised")
+dev.off()
 
 # C-means optimised per class
 CMOLong = reshape(cmo, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
+CMOLong$Statistic = factor(CMOLong$Statistic, levels=c("RMSE", "MAE", "ME"))
+CMOLong$X = PrettifyClasses(CMOLong$X)
+pdf("../plot/perclass-errors-cm.pdf", width=5, height=3)
 ggplot(CMOLong, aes(X, Error)) +
     geom_bar(stat = "identity", position="dodge") +
     facet_wrap( ~ Statistic) +
-    theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5), plot.title = element_text(hjust = 0.5)) +
+    theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), plot.title = element_text(hjust = 0.5)) +
     xlab("Class") + ggtitle("Fuzzy c-means, optimised")
+dev.off()
 
 # Control per class
 DUMLong = reshape(dum, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
