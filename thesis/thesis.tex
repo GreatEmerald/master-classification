@@ -540,13 +540,31 @@ Multiclass gradient boosting errors are not directly comparable with the other a
 The total mean error (ME) for all algorithms is very close to 0. This is an indication that all the resulting predicted class fractions sum up to 100\% for each pixel in all of the algorithms, as the positive errors cancel out the negative errors. Any deviation from 0 is caused by rounding errors. ME is more useful for indicating bias per class, however (see the next section).
 
 \subsubsection{Errors per class}
-%TODO: Do I put in the wetlands curve?
 
+When looking at the errors per class for random forest classification (see figure \ref{fig-perclass-errors-rf}), the lowest errors are for the water class. That means it is the easiest to predict the proportion of water in a pixel given the input parameters. Water has several unique properties that makes it easier to discern it from other classes, and many of the water pixels are endmembers due to large bodies of water (sea and lakes) in the area of interest. The classes that were the hardest to predict for random forest regression were shrubs, grassland and wetland. Random forest tended to slightly overestimate grassland and underestimate water proportions in pixels.
 
+Errors per class for fuzzy \textit{c}-means (see figure \ref{fig-perclass-errors-cm}) are similar to ones in the random forest classification. Fuzzy \textit{c}-means made more large mistakes when discerning the fraction of water compared to random forest regression. The most difficult to discern classes for fuzzy \textit{c}-means were shrubs and grassland. Fuzzy \textit{c}-means turned out to be much more biased compared to random forest, underestimating the fraction of crops, deciduous trees and wetlands while overestimating bare soil, shrubs and grassland.
+
+Neural networks were in between the two algorithms mentioned, with higher mean errors than random forest but lower than fuzzy \textit{c}-means. Neural networks tended to particularly underestimate the proportion of water. Just like with the other algorithms, it was easiest to discern water and hardest to discern grasslands and shrubs.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../plot/perclass-errors-rf}
+  \caption{Errors per class using random forest regression. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
+  \label{fig-perclass-errors-rf}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../plot/perclass-errors-cm}
+  \caption{Errors per class using fuzzy \textit{c}-means. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
+  \label{fig-perclass-errors-cm}
+\end{figure}
 
 \subsection{Visual comparison}
 
 \section{Variable importance}
+%TODO: Do I put in the wetlands curve?
 
 \section{Training and prediction time}
 
