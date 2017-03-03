@@ -565,6 +565,17 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
 
 \section{Variable importance}
 %TODO: Do I put in the wetlands curve?
+%TODO: Describe random forest permutation importance specifics
+
+Covariates that were important for classification varied depending on the class (see figure \ref{fig-variable-importance}). The covariate that had the most importance for all classes was mean NDVI, and both the red band and near infrared bands were important for predicting most classes. The water mask, aspect and \nth{1} order phase were the least important. Some of the covariates had high importance for just one class, such as \nth{2} order amplitude for crops, \nth{2} order phase for wetlands, terrain position index for shrubs. Three variables were confusing: \nth{2} order amplitude hindered shrub prediction, aspect hindered evergreen tree prediction and the water mask hindered wetland prediction.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../plot/variable-importance}
+  %TODO: Specify correlation coefficients
+  \caption{Variable importance for random forest regression. OSAVI has been excluded due to high correlation with NDVI.}
+  \label{fig-variable-importance}
+\end{figure}
 
 \section{Training and prediction time}
 
