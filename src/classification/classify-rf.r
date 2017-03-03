@@ -35,11 +35,34 @@ for (Class in GetValidationNames())
 
 sort(colSums(Importances))
 
+PrettifyClasses = function(classnames)
+{
+    classnames = factor(classnames)
+    levels(classnames) = list(
+        "Total" = "Overall", "Crops" = "cropland", "Dec. trees" = "dec.trees", "Evgr. trees" = "evgr.trees",
+        "Shrubs" = "shrubland", "Grassland" = "grassland", "Wetland" = "wetland", "Bare soil" = "bare.soil",
+        "Urban" = "urban", "Water" = "water")
+    return(classnames)
+}
+
+PrettifyCovariates = function(covarnames)
+{
+    covarnames = factor(covarnames)
+    levels(covarnames) = list(
+        "Red" = "red", "NIR" = "nir", "Blue" = "blue", "SWIR" = "swir", "LSWI" = "lswi",
+        "Water mask" = "is.water", "Elevation" = "height", "Slope" = "slope", "Aspect" = "aspect",
+        "TPI" = "tpi", "Mean NDVI" = "mean.ndvi", "Phase (1)" = "phase1", "Amplitude (1)" = "amplitude1",
+        "Phase (2)" = "phase2", "Amplitude (2)" = "amplitude2")
+    return(covarnames)
+}
+
+pdf("../plot/variable-importance.pdf", width=6, height=5)
 image.plot(1:length(GetValidationNames()), 1:length(TN), as.matrix(Importances),
-    axes=FALSE, xlab = "Class", ylab = "Covariate")
+    axes=FALSE, xlab = "", ylab = "", #xlab = "Class", ylab = "Covariate")
+    bigplot=c(0.25, 0.85, 0.25, 0.95), smallplot=c(0.88, 0.9, 0.25, 0.95))
 points(0,0)
-axis(side=1, at=1:length(GetValidationNames()), labels=row.names(Importances), las=2)
-axis(side=2, at=1:length(TN), labels=names(Importances), las=1)
+axis(side=1, at=1:length(GetValidationNames()), labels=PrettifyClasses(row.names(Importances)), las=2)
+axis(side=2, at=1:length(TN), labels=PrettifyCovariates(names(Importances)), las=1)
 
 
 min.z <- min(Importances)
@@ -55,6 +78,7 @@ for(i in 1:length(GetValidationNames())){
     }
   }
 }
+dev.off()
 
 # Do 4-fold cross-validation
 RFCV = function(exclude=c(), filename=paste0(OutputDir, "stat-randomforest.csv"), ...)

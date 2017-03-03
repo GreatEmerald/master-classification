@@ -91,6 +91,28 @@ ggplot(CMOLong, aes(X, Error)) +
     xlab("Class") + ggtitle("Fuzzy c-means, optimised")
 dev.off()
 
+# Neural networks per class
+NNOLong = reshape(nno, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
+NNOLong$Statistic = factor(NNOLong$Statistic, levels=c("RMSE", "MAE", "ME"))
+NNOLong$X = PrettifyClasses(NNOLong$X)
+#pdf("../plot/perclass-errors-cm.pdf", width=5, height=3)
+ggplot(NNOLong, aes(X, Error)) +
+    geom_bar(stat = "identity", position="dodge") +
+    facet_wrap( ~ Statistic) +
+    theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), plot.title = element_text(hjust = 0.5)) +
+    xlab("Class") + ggtitle("Neural networks, optimised")
+
+# Gradient boosting per class
+GBOLong = reshape(gbo, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
+GBOLong$Statistic = factor(GBOLong$Statistic, levels=c("RMSE", "MAE", "ME"))
+GBOLong$X = PrettifyClasses(GBOLong$X)
+#pdf("../plot/perclass-errors-cm.pdf", width=5, height=3)
+ggplot(GBOLong, aes(X, Error)) +
+    geom_bar(stat = "identity", position="dodge") +
+    facet_wrap( ~ Statistic) +
+    theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), plot.title = element_text(hjust = 0.5)) +
+    xlab("Class") + ggtitle("Gradient boosting, optimised")
+
 # Control per class
 DUMLong = reshape(dum, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
 ggplot(DUMLong, aes(X, Error)) +
