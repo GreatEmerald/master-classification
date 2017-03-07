@@ -11,7 +11,7 @@ TempDir = "../../userdata/temp/"
 OutputDir = "../../userdata/predictions/"
 
 TrainingRasters = LoadTrainingRasters()
-TrainingNames = GetTrainingNames()
+TrainingNames = GetTrainingNames(exclude=c("osavi", "aspect", "is.water", "height"))
 alldata = LoadClassificationData()
 
 RP = function(...)
@@ -33,10 +33,10 @@ for (Class in GetValidationNames())
 {
     print(Class)
     Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
-    rfmodel = ranger(Formula, alldata@data, splitrule="maxstat", alpha=0.9, minprop=0.11)
+    rfmodel = ranger(Formula, alldata@data, splitrule="maxstat", alpha=0.9, minprop=0.11, seed=0xbadcafe)
 
     print(system.time(predicted <- predict(TrainingRasters, rfmodel, fun=RP, num.threads=Cores,
-        filename=paste0(TempDir, Class, ".grd"), progress="text", overwrite=TRUE)))
+        filename=paste0(TempDir, Class, ".grd"), progress="text", overwrite=TRUE, seed=0xbadcafe)))
     
     AllPredictions = stack(AllPredictions, predicted)
 }
@@ -49,6 +49,6 @@ RasterScaling = function(x)
 system.time(ScaledPredictions <- calc(AllPredictions, RasterScaling, progress="text"))
 names(ScaledPredictions) = GetValidationNames()
 print("Writing...")
-ScaledPredictions = writeRaster(ScaledPredictions, filename = paste0(OutputDir, "randomforest.tif"),
+ScaledPredictions = writeRaster(ScaledPredictions, filename = paste0(OutputDir, "randomforest2.tif"),
     datatype="INT1U", options=c("COMPRESS=DEFLATE", "ZLEVEL=9", "NUMTHREADS=4"), overwrite=TRUE)
 hdr(ScaledPredictions, "VRT")

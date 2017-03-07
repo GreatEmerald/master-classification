@@ -53,7 +53,7 @@ outputs = foreach(i=0:24, .combine = rbind, .inorder = FALSE, .packages = c("ras
 {
     psnice(value = min(Threads - 1, 19))
     
-    # Crop rasters to one tenth: 15 layers use 2.3 GB which means max 7 threads
+    # Crop rasters to one fifth, 2 by 2 degree tiles, 25 total, 2 threads max
     
     RasterExtent = extent(Rasters)
     x = i %% 5 * 2
