@@ -227,12 +227,16 @@ AccuracyStatTable(cmeans.wm@mu@data*100, alldata@data[names(cmeans.wm@mu@data)])
 qplot(aspect, tpi, data=alldata@data[alldata@data$pure,], colour=dominant)
 
 # Repeat with 4-fold cross-validation
-CMCV = function(StepFormula, filename=paste0(OutputDir, "stat-cmeans.csv"), ...)
+CMCV = function(StepFormula, filename=paste0(OutputDir, "stat-cmeans.csv"), weighted=FALSE, ...)
 {
     RoundPrediction = data.frame()
     for (i in 1:length(folds))
     {
-        cmeans = spfkm(StepFormula, alldata[-folds[[i]],], pixels, ...)
+        if (weighted)
+            cmeans = spfkm(StepFormula, alldata[-folds[[i]],], pixels,
+                class.c = GetClassMeans(-folds[[i]]), class.sd = GetClassSDs(-folds[[i]]), ...)
+        else
+            cmeans = spfkm(StepFormula, alldata[-folds[[i]],], pixels, ...)
         if (nrow(RoundPrediction) == 0)
             RoundPrediction = cmeans@mu@data[folds[[i]],]*100
         else
@@ -250,4 +254,4 @@ CMCV(FullFormula, filename = paste0(OutputDir, "stat-cmeans-unoptimised.csv"))#,
 # Optimised
 OptimalFormula1 = formula("dominant ~ red + nir + swir + osavi + lswi + height + slope + tpi + mean.ndvi + phase1 + amplitude1 + phase2 + amplitude2")
 OptimalFormula2 = formula("dominant ~ nir + osavi + height + slope + mean.ndvi + phase1 + phase2")
-CMCV(OptimalFormula2, fuzzy.e=1.5, class.c = GetClassMeans(), class.sd = GetClassSDs())
+CMCV(OptimalFormula2, fuzzy.e=1.5, weighted=TRUE)
