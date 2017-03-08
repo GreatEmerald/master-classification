@@ -139,5 +139,8 @@ dev.off()
 RawTimings = read.csv("../data/timing.csv")
 RelevantTimings = subset(RawTimings, X %in% c("Dummy brick", "RF total", "cmeans", "Gradient boosting", "Neural networks"))
 RelevantTimings$Algorithm = c("Control", "Random forest", "Fuzzy c-means", "Gradient boosting", "Neural networks")
-ggplot(RelevantTimings, aes(Algorithm, Mins, fill = Algorithm)) + geom_bar(stat = "identity") +# scale_y_log10() +
-    ylab("Time (minutes)") + theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank())
+pdf("../plot/timing.pdf", width=4, height=4)
+ggplot(RelevantTimings, aes(Algorithm, Mins, fill = Algorithm, label=round(Mins))) + geom_bar(stat = "identity") +# scale_y_log10() +
+    ylab("Time (minutes)") + theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
+    geom_text(size=2.5)
+dev.off()
