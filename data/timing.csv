@@ -1,33 +1,33 @@
-,Optimised,Time,Mins,Hrs
-Dummy layer,FALSE,309,5.15,0.09
-Dummy brick,FALSE,537,8.95,0.15
-RF cropland,TRUE,7210,120.17,2.00
-RF dec.trees,TRUE,8360,139.33,2.32
-RF evgr.trees,TRUE,8193,136.55,2.28
-RF shrubland,TRUE,7930,132.17,2.20
-RF grassland,TRUE,8525,142.08,2.37
-RF bare soil,TRUE,7585,126.42,2.11
-RF wetland,TRUE,6426,107.10,1.79
-RF urban,TRUE,6451,107.52,1.79
-RF water,TRUE,5839,97.32,1.62
-RF phase1 total,TRUE,66519,1108.65,18.48
-RF phase2,TRUE,1172,19.53,0.33
-RF total,TRUE,67691,1128.18,18.80
-cmeans,TRUE,1942,32.37,0.54
-Gradient boosting,TRUE,1058,17.63,0.29
-Neural networks,TRUE,1559,25.98,0.43
-RF cropland,FALSE,8320,138.67,2.31
-RF dec.trees,FALSE,8867,147.78,2.46
-RF evgr.trees,FALSE,8802,146.70,2.45
-RF shrubland,FALSE,8536,142.27,2.37
-RF grassland,FALSE,8486,141.43,2.36
-RF bare soil,FALSE,8328,138.80,2.31
-RF wetland,FALSE,6463,107.72,1.80
-RF urban,FALSE,7318,121.97,2.03
-RF water,FALSE,7420,123.67,2.06
-RF phase1 total,FALSE,72540,1209.00,20.15
-RF phase2,FALSE,1128,18.80,0.31
-RF total,FALSE,73668,1227.80,20.46
-cmeans,FALSE,2515,41.92,0.70
-Gradient boosting,FALSE,1136,18.93,0.32
-Neural networks,FALSE,1480,24.67,0.41
+,Class,Optimised,Time,Mins,Hrs
+Dummy layer,All,FALSE,309,5.15,0.09
+Dummy brick,All,FALSE,537,8.95,0.15
+RF cropland,Crops,TRUE,7210,120.17,2.00
+RF dec.trees,Dec. trees,TRUE,8360,139.33,2.32
+RF evgr.trees,Evgr. Trees,TRUE,8193,136.55,2.28
+RF shrubland,Shrubs,TRUE,7930,132.17,2.20
+RF grassland,Grass,TRUE,8525,142.08,2.37
+RF bare soil,Bare soil,TRUE,7585,126.42,2.11
+RF wetland,Wetland,TRUE,6426,107.10,1.79
+RF urban,Urban,TRUE,6451,107.52,1.79
+RF water,Water,TRUE,5839,97.32,1.62
+RF phase1 total,All,TRUE,66519,1108.65,18.48
+RF phase2,All,TRUE,1172,19.53,0.33
+RF total,All,TRUE,67691,1128.18,18.80
+cmeans,All,TRUE,1942,32.37,0.54
+Gradient boosting,All,TRUE,1058,17.63,0.29
+Neural networks,All,TRUE,1559,25.98,0.43
+RF cropland,Crops,FALSE,8320,138.67,2.31
+RF dec.trees,Dec. trees,FALSE,8867,147.78,2.46
+RF evgr.trees,Evgr. Trees,FALSE,8802,146.70,2.45
+RF shrubland,Shrubs,FALSE,8536,142.27,2.37
+RF grassland,Grass,FALSE,8486,141.43,2.36
+RF bare soil,Bare soil,FALSE,8328,138.80,2.31
+RF wetland,Wetland,FALSE,6463,107.72,1.80
+RF urban,Urban,FALSE,7318,121.97,2.03
+RF water,Water,FALSE,7420,123.67,2.06
+RF phase1 total,All,FALSE,72540,1209.00,20.15
+RF phase2,All,FALSE,1128,18.80,0.31
+RF total,All,FALSE,73668,1227.80,20.46
+cmeans,All,FALSE,2515,41.92,0.70
+Gradient boosting,All,FALSE,1136,18.93,0.32
+Neural networks,All,FALSE,1480,24.67,0.41
