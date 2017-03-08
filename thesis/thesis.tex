@@ -579,6 +579,24 @@ Covariates that were important for classification varied depending on the class 
 
 \section{Training and prediction time}
 
+\subsection{Training time}
+
+The four algorithms tested, in terms of time required for model training, are quite different due to their unique approach. The easiest algorithm to train was fuzy c-means, since training for it comes down to calculating a weighted mean of all training samples in order to get the class centroids, as well as the standard deviation of them. This takes only 0.03 seconds on the VITO virtual machine.
+
+The second easiest to train is random forest. The training time for it is dependent on the number of decision trees the model needs to generate, with the default being 500. For training on all 480 samples, this takes 0.25 seconds on average.
+
+Both gradient boosting and neural networks do not have a predetermined training stop point, and can potentially train the model forever. The \texttt{neuralnet} function requires specifying both the maximum number of iterations for training as well as the error threshold at which to stop training the model. If the error threshold is not reached within the maximum number of iterations, model training is aborted. In addition, several repetitions of training are needed, since the initial neural network node weights are random and can effect whether the optimisation gets stuck in a local minimum or not. It takes some trial and error to determine a reasonable number of iterations and a threshold, depending on how long one is willing to wait for training. In this study, neural network training was run for around 20 seconds per repetition, for 10 repetitions, although depending on the random starting weights one repetition could reach the threshold in as short as 17 seconds or as long as 33 seconds.
+
+For gradient boosting, the \texttt{xgboost} package employs a method where a model can be trained iteratively: after an initial run, the model parameters are saved on disk, so that a second run with identical parameters skips the initial training part and continues where it left off. However, in the case of this study, gradient boosting was only able to make use of endmember pixels, so it was very prone to overtraining. Increasing the amount of training iterations even past 5 would increase the RMSE of the resulting model. A lower number of steps results in a more fuzzy result (fewer extreme predictions of 100\% and 0\%), which is favourable for RMSE that penalises large errors. Training of gradient boosting for 5 iterations for the first time (before the model caching mechanism is activated) takes 149 seconds (user time), but since it employs multithreading for training, the wall clock time on the 32-thread virtual machine for this task is 7 seconds.
+
+Overall for 480 samples, the training time was not high for any of the tested algorithms, since the amount of input data is small. In contrast, prediction times are a much bigger concern, since each pixel in a PROBA-V tile had to be predicted for each class.
+
+\subsection{Prediction time}
+
+In order to compare the prediction time between algorithms, user time for the prediction step (using the \texttt{raster::predict} function) was measured, not counting the extra time needed for preprocessing of some data for the prediction. A control was also run, where the prediction function would always return \texttt{100/9}, in order to measure the overhead of the \texttt{raster::predict} function itself (see figure).
+
+Most of the algorithms took around half an hour to predict all 9 classes for each pixel of an entire PROBA-V tile (101606400 pixels), with the overhead of \texttt{raster::predict} itself being 15 minutes. The random forest algorithm, however, took much longer: even 20 and a half hours. This is due to two main reasons: first, the approach for random forest was binary relevance, so each of the classes had to be predicted individually, and then adjusted so that all classes sum up to 100\%; and two, random forest prediction needs to run all input data through all of the decision trees generated in the training part (500 by default) and summarise the result by taking its mean. Decreasing the number of decision trees would speed up the process, but also decrease the accuracy of the result.
+
 \chapter{Discussion}
 
 \bibliography{bibliography}
