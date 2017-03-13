@@ -8,13 +8,13 @@
 \usepackage{multirow} % Tables
 \usepackage{appendix}
 \usepackage{natbib}
-\usepackage[caption=false]{subfig}
 \usepackage[super]{nth}
 \usepackage{amsmath} % For declaring own arctan2
 \DeclareMathOperator{\Arctan}{Arctan}
 \usepackage{tikz} % Flowcharts
 \usetikzlibrary{shapes,arrows, shadows, positioning}
-\usepackage{subfig} % Grid of figures
+\usepackage{caption}
+\usepackage{subcaption} % Grid of figures
 \usepackage{rotating} % Landscape page for grid of figures
 \bibliographystyle{apalike}
 
@@ -237,18 +237,17 @@ The distinction between evergreen and deciduous trees was also challenging. With
 Two main approaches were used to deal with this source of uncertainty. The first approach was making use of imagery taken in seasons other than summer. In autumn, leaf senescence allows identifying deciduous trees directly by colour. In winter and spring, deciduous trees are difficult to discern from the forest floor, but by comparison with summer images, they show which areas consist of deciduous trees. In addition, such images reveal all evergreen trees within mixed forests. One pitfall of this approach could be that the changes in apparent tree cover between the images is not due to seasonality, but rather due to deforestation; however in practice, tree trunks are still visible in winter and spring imagery. With this approach, Estonian national imagery was most useful, since it was taken in late autumn and has a fine enough resolution to identify individual trees.
 
 \begin{figure}
- \centering
- \subfloat[A sampled area in the town of Jyv\"askyl\"a, Finland.]
- {
-  \includegraphics[width=\textwidth]{./thesis-figures/sample-example.png}
- }
- 
- \subfloat[The same area in Google Maps, using 3D view.]
- {
-  \includegraphics[width=0.8\textwidth]{./thesis-figures/sample-3d.png}
- }
- \caption{A close-up example of a sampled area for which 3D view was available for improved distinction between classes. The resulting land cover fractions were 87\% urban, 8\% grass, 3\% shrubs, 1\% evergreen trees, 1\% deciduous trees, 0\% others.}
- \label{fig-sampling-detailed}
+  \centering
+  \begin{subfigure}[b]{\textwidth}
+   \includegraphics[width=\textwidth]{./thesis-figures/sample-example.png}
+   \caption{A sampled area in the town of Jyv\"askyl\"a, Finland.}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.8\textwidth}
+   \includegraphics[width=\textwidth]{./thesis-figures/sample-3d.png}
+   \caption{The same area in Google Maps, using 3D view.}
+  \end{subfigure}
+  \caption{A close-up example of a sampled area for which 3D view was available for improved distinction between classes. The resulting land cover fractions were 87\% urban, 8\% grass, 3\% shrubs, 1\% evergreen trees, 1\% deciduous trees, 0\% others.}
+  \label{fig-sampling-detailed}
 \end{figure}
 
 The second approach was to make use of auxiliary data. Most helpful were panoramic images, from which tree species could be identified directly. The limitation of this approach is that panoramic images are relatively scarce, limited to areas near roads. Also, typically only the first row of trees is visible in these images. But that is often enough to determine the proportion of deciduous and evergreen trees within a forest, and is useful when combined with remote sensing imagery, since by identifying the first tree row, further trees can be discerned by comparison. Another useful source of information were 3D models provided by Google Maps in certain areas. They are detailed enough to discern individual trees and their canopy shape, which allows identifying their type (see figure \ref{fig-sampling-detailed}). Other auxiliary data used were topographical maps, which sometimes marked forest types, and the LC-CCI classification map. Though this data was often not precise enough for the needs of this study. Lastly, in some images where the sun zenith angle was low, shadows could be used to determine the canopy shape of the first row of trees as well. But it was rather rare for this information to be useful, given the similarity in upper canopy between birch and pine trees.
@@ -569,72 +568,92 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
 
 \begin{sidewaysfigure}
   \centering
-  \subfloat[Full tile, Google true colour]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/fulltile-google}
-  } \hfill
-  \subfloat[Full tile, random forest regression]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/fulltile-rf}
-  }\hfill
-  \subfloat[Full tile, neural networks]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/fulltile-nn}
-  }\hfill
-  \subfloat[Full tile, fuzzy \textit{c}-means]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/fulltile-cm}
-  }\
-  \subfloat[Riga, Google true colour]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/riga-google}
-  }\hfill
-  \subfloat[Riga, random forest regression]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/riga-rf}
-  }\hfill
-  \subfloat[Riga, neural networks]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/riga-nn}
-  }\hfill
-  \subfloat[Riga, fuzy \textit{c}-means]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/riga-cm}
-  }\
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-google}
+    \caption{Full tile, Google true colour}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-rf}
+    \caption{Full tile, random forest regression}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-nn}
+    \caption{Full tile, neural networks}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-cm}
+    \caption{Full tile, fuzzy \textit{c}-means}
+  \end{subfigure} \
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-google}
+    \caption{Riga, Google true colour}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-rf}
+    \caption{Riga, random forest regression}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-nn}
+    \caption{Riga, neural networks}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-cm}
+    \caption{Riga, fuzy \textit{c}-means}
+  \end{subfigure} \
 \end{sidewaysfigure}
 
 \begin{sidewaysfigure}
   \ContinuedFloat
   \centering
-  \subfloat[Kar\v{s}uva, Google true colour]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/karsuva-google}
-  } \hfill
-  \subfloat[Kar\v{s}uva, random forest regression]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/karsuva-rf}
-  }\hfill
-  \subfloat[Kar\v{s}uva, neural networks]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/karsuva-nn}
-  }\hfill
-  \subfloat[Kar\v{s}uva, fuzzy \textit{c}-means]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/karsuva-cm}
-  }\
-  \subfloat[Curonian spit, Google true colour]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/kursiunerija-google}
-  }\hfill
-  \subfloat[Curonian spit, random forest regression]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/kursiunerija-rf}
-  }\hfill
-  \subfloat[Curonian spit, neural networks]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/kursiunerija-nn}
-  }\hfill
-  \subfloat[Curonian spit, fuzzy \textit{c}-means]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/kursiunerija-cm}
-  }\
-  \subfloat[Med\v{z}iokalnis, Google true colour]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/medziokalnis-google}
-  } \hfill
-  \subfloat[Med\v{z}iokalnis, random forest regression]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/medziokalnis-rf}
-  }\hfill
-  \subfloat[Med\v{z}iokalnis, neural networks]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/medziokalnis-nn}
-  }\hfill
-  \subfloat[Med\v{z}iokalnis, fuzzy \textit{c}-means]{
-    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/medziokalnis-cm}
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-google}
+    \caption{Kar\v{s}uva, Google true colour}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-rf}
+    \caption{Kar\v{s}uva, random forest regression}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-nn}
+    \caption{Kar\v{s}uva, neural networks}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-cm}
+    \caption{Kar\v{s}uva, fuzzy \textit{c}-means}
+  \end{subfigure} \
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-google}
+    \caption{Curonian spit, Google true colour}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-rf}
+    \caption{Curonian spit, random forest regression}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-nn}
+    \caption{Curonian spit, neural networks}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-cm}
+    \caption{Curonian spit, fuzzy \textit{c}-means}
+  \end{subfigure} \
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-google}
+    \caption{Med\v{z}iokalnis, Google true colour}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-rf}
+    \caption{Med\v{z}iokalnis, random forest regression}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-nn}
+    \caption{Med\v{z}iokalnis, neural networks}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{.23\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-cm}
+    \caption{Med\v{z}iokalnis, fuzzy \textit{c}-means}
     \label{subfig-medziokalnis-cm}
-  }\
+  \end{subfigure} \
   \caption{Visual comparison of fuzzy classification prediction output. Red, green and blue colour channels represent: b-d and q-t: crops, deciduous trees, evergreen trees; f-h: urban, wetlands, water; j-l: urban, deciduous trees, evergreen trees; n-p: bare soil, grass, evergreen trees, respectively.}
   \label{fig-visualcomparison}
 \end{sidewaysfigure}
