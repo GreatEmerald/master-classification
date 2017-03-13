@@ -575,6 +575,7 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-rf}
     \caption{Full tile, random forest regression}
+    \label{subfig-fulltile-rf}
   \end{subfigure} \hfill
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-nn}
@@ -583,6 +584,7 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-cm}
     \caption{Full tile, fuzzy \textit{c}-means}
+    \label{subfig-fulltile-cm}
   \end{subfigure} \
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-google}
@@ -591,6 +593,7 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-rf}
     \caption{Riga, random forest regression}
+    \label{subfig-riga-rf}
   \end{subfigure} \hfill
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-nn}
@@ -599,6 +602,7 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-cm}
     \caption{Riga, fuzy \textit{c}-means}
+    \label{subfig-riga-cm}
   \end{subfigure} \
 \end{sidewaysfigure}
 
@@ -612,6 +616,7 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-rf}
     \caption{Kar\v{s}uva, random forest regression}
+    \label{subfig-karsuva-rf}
   \end{subfigure} \hfill
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-nn}
@@ -620,6 +625,7 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-cm}
     \caption{Kar\v{s}uva, fuzzy \textit{c}-means}
+    \label{subfig-karsuva-cm}
   \end{subfigure} \
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-google}
@@ -628,6 +634,7 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-rf}
     \caption{Curonian spit, random forest regression}
+    \label{subfig-kursiunerija-rf}
   \end{subfigure} \hfill
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-nn}
@@ -636,6 +643,7 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-cm}
     \caption{Curonian spit, fuzzy \textit{c}-means}
+    \label{subfig-kursiunerija-cm}
   \end{subfigure} \
   \begin{subfigure}[b]{.23\textwidth}
     \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-google}
@@ -658,7 +666,15 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
   \label{fig-visualcomparison}
 \end{sidewaysfigure}
 
-To better visualise the differences between the fuzzy classification methods, predictions were made using each method for the whole study area. See figure \ref{fig-visualcomparison} for some examples. Overall visual comparison confirms that the differences between the different methods are rather minor. However, there are some small differences. %\protect\subref{subfig-medziokalnis-cm} shows that fuzzy \texit{c}-means tends to overestimate urban.
+To better visualise the differences between the fuzzy classification methods, predictions were made using each method for the whole study area. See figure \ref{fig-visualcomparison} for some examples. Overall visual comparison confirms that the differences between the different methods are minor. However, the differences are easier to spot with a side-by-side comparison.
+
+As seen in figures \ref{subfig-fulltile-rf}-\ref{subfig-fulltile-cm}, all three fuzzy classification methods predict a similar gradient for crops (red), which are more abundant in the south with large accumulation in more fertile areas in Latvia and Lithuania, and less abundant in the north, situated around rivers in Finland. However, fuzzy \textit{c}-means predicts fewer croplands in Finland compared to the other two methods, and random forest regression tends to predict a larger crop fraction in a pixel compared to the other two methods. The distribution pattern of deciduous trees (green) is also similar, they are predicted to be more abundant in the south (Estonia, Latvia and Lithuania) and rare in the north (Finland). Fuzzy \textit{c}-means tends to predict fewer deciduous trees. Evergreen trees (blue) are predicted to follow the opposite pattern, as they are less common in the south and more abundant in the north. Note that latitude was not used as a covariate; such gradient patterns have emerged without it.
+
+Figures \ref{subfig-riga-rf}-\ref{subfig-riga-cm} show the surroundings of the city of Riga, Latvia. It includes lake Babites, a shallow lagoon-type lake whose edges are covered by reeds and bullrushes. It also shows a number of marshes, largest of which is Cenas tirelis, a protected \textit{Natura 2000} territory with peat extraction operations being performed in the southern part of the marsh. At this scale the differences between the fuzzy classification methods are also not large, but noticeable. Neural networks tend to predict fewer built-up areas (red) compared to the other two methods, and instead tends to predict too many wetlands (green), which is not as accurate. Neural networks also predict built-up areas on the edges of lake Babites, unlike the more appropriate classification as wetlands done by random forest regression. Fuzzy \textit{c}-means also predicts built-up areas there, but at a smaller fraction compared to neural networks. Fuzzy \textit{c}-means also tends to overestimate the fraction of built-up areas in peat extraction sites and water in built-up areas.
+
+Figures \ref{subfig-karsuva-rf}-\ref{subfig-karsuva-cm} show Kar\v{s}uvos wood, fourth largest continuous forest in Lithuania, which consists of 60\% pine forest, 18\% spruce forest, 12\% birch forest and 9\% alder (\textit{Alnus glutinosa} (L.) Gaertn.) forest. The fuzzy classification predictions show the expected pattern of the majority of the forest being classified as evergreen trees (blue), although fuzzy \textit{c}-means predicts more and neural networks predict less area covered by them. Likewise fuzzy \textit{c}-means predicts less and neural networks predict more deciduous tree (green) coverage. At the north-west corner of the figures all of the fuzzy classification methods correctly identify the town of Taurag\.{e} as a built-up area (red). However, all of the classification methods also show various amounts of built-up areas in the eastern part of the figures, which in reality is a peat extraction operation instead.
+
+Figures \ref{subfig-kursiunerija-rf}-\ref{subfig-kursiunerija-cm} show grey dunes in the Curonian spit, Lithuania. This area is a sandy spit surrounded by water from both sides: the Curonian lagoon to the east and the Baltic sea to the west. It features a number of sand dunes that are not covered by vegetation, whereas the grey dunes are in the process of being covered by short herbaceous vegetation such as heath. The rest of the spit is covered largely by pine forests. The fuzzy classification methods mostly predict the grey dunes as bare soil (red), including parts that are now covered by grasses, with the exception of neural networks that tend to predict a mix of all classes in the parts covered by grass. The different methods all tend to correctly predict grass (green) around the edges of the dunes as well as the beach. Pine forests are predicted by all classification methods correctly. A noticeable difference between the method results is the water, which appears as somewha red in both the random forest and neural network case, especially the more shallow Curonian lagoon, indicating that those two methods predict a fraction of bare soil in the water. Fuzzy \textit{c}-means tends to do beter in that regard overall, with fewer artifacts like that appearing in areas completely covered by water.
 
 \section{Variable importance}
 %TODO: Do I put in the wetlands curve?
