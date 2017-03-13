@@ -14,6 +14,8 @@
 \DeclareMathOperator{\Arctan}{Arctan}
 \usepackage{tikz} % Flowcharts
 \usetikzlibrary{shapes,arrows, shadows, positioning}
+\usepackage{subfig} % Grid of figures
+\usepackage{rotating} % Landscape page for grid of figures
 \bibliographystyle{apalike}
 
 %opening
@@ -109,6 +111,8 @@ Throughout this thesis, a number of terms are used that can be ambiguous due to 
 \textbf{Wetland class}: waterlogged natural herbaceous vegetation and peat.
 
 \textbf{Water class}: ground covered by water, both inland and seawater, including water within wetland areas.
+
+\textbf{User time}: total time that a process takes to run on a single thread, not counting time spent by the kernel (file input/output, process forking).
 
 \section{Study area and classes}
 
@@ -563,6 +567,80 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
 
 \subsection{Visual comparison}
 
+\begin{sidewaysfigure}
+  \centering
+  \subfloat[Full tile, Google true colour]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/fulltile-google}
+  } \hfill
+  \subfloat[Full tile, random forest regression]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/fulltile-rf}
+  }\hfill
+  \subfloat[Full tile, neural networks]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/fulltile-nn}
+  }\hfill
+  \subfloat[Full tile, fuzzy \textit{c}-means]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/fulltile-cm}
+  }\
+  \subfloat[Riga, Google true colour]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/riga-google}
+  }\hfill
+  \subfloat[Riga, random forest regression]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/riga-rf}
+  }\hfill
+  \subfloat[Riga, neural networks]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/riga-nn}
+  }\hfill
+  \subfloat[Riga, fuzy \textit{c}-means]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/riga-cm}
+  }\
+\end{sidewaysfigure}
+
+\begin{sidewaysfigure}
+  \ContinuedFloat
+  \centering
+  \subfloat[Kar\v{s}uva, Google true colour]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/karsuva-google}
+  } \hfill
+  \subfloat[Kar\v{s}uva, random forest regression]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/karsuva-rf}
+  }\hfill
+  \subfloat[Kar\v{s}uva, neural networks]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/karsuva-nn}
+  }\hfill
+  \subfloat[Kar\v{s}uva, fuzzy \textit{c}-means]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/karsuva-cm}
+  }\
+  \subfloat[Curonian spit, Google true colour]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/kursiunerija-google}
+  }\hfill
+  \subfloat[Curonian spit, random forest regression]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/kursiunerija-rf}
+  }\hfill
+  \subfloat[Curonian spit, neural networks]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/kursiunerija-nn}
+  }\hfill
+  \subfloat[Curonian spit, fuzzy \textit{c}-means]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/kursiunerija-cm}
+  }\
+  \subfloat[Med\v{z}iokalnis, Google true colour]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/medziokalnis-google}
+  } \hfill
+  \subfloat[Med\v{z}iokalnis, random forest regression]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/medziokalnis-rf}
+  }\hfill
+  \subfloat[Med\v{z}iokalnis, neural networks]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/medziokalnis-nn}
+  }\hfill
+  \subfloat[Med\v{z}iokalnis, fuzzy \textit{c}-means]{
+    \includegraphics[width=.23\textwidth]{../plot/figures-qgis/medziokalnis-cm}
+    \label{subfig-medziokalnis-cm}
+  }\
+  \caption{Visual comparison of fuzzy classification prediction output. Red, green and blue colour channels represent: b-d and q-t: crops, deciduous trees, evergreen trees; f-h: urban, wetlands, water; j-l: urban, deciduous trees, evergreen trees; n-p: bare soil, grass, evergreen trees, respectively.}
+  \label{fig-visualcomparison}
+\end{sidewaysfigure}
+
+To better visualise the differences between the fuzzy classification methods, predictions were made using each method for the whole study area. See figure \ref{fig-visualcomparison} for some examples. Overall visual comparison confirms that the differences between the different methods are rather minor. However, there are some small differences. %\protect\subref{subfig-medziokalnis-cm} shows that fuzzy \texit{c}-means tends to overestimate urban.
+
 \section{Variable importance}
 %TODO: Do I put in the wetlands curve?
 %TODO: Describe random forest permutation importance specifics
@@ -593,11 +671,52 @@ Overall for 480 samples, the training time was not high for any of the tested al
 
 \subsection{Prediction time}
 
-In order to compare the prediction time between algorithms, user time for the prediction step (using the \texttt{raster::predict} function) was measured, not counting the extra time needed for preprocessing of some data for the prediction. A control was also run, where the prediction function would always return \texttt{100/9}, in order to measure the overhead of the \texttt{raster::predict} function itself (see figure).
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../plot/timing}
+  \caption{Prediction user time for the different algorithms (Ctrl: control prediction of a fully fuzzy set 100\%/9; RF: random forest regression; GB: multiclass gradient boosting; FCM: fuzzy c-means; NN: neural networks). The different colours in random forest regression case show time needed to process each separate class layer, whereas all other methods process all layers at once.}
+  \label{fig-timing}
+\end{figure}
 
-Most of the algorithms took 19-42 minutes to predict all 9 classes for each pixel of an entire PROBA-V tile (101606400 pixels), with the overhead of \texttt{raster::predict} itself being 9 minutes. The random forest algorithm, however, took much longer: even 20 and a half hours. This is due to two main reasons: first, the approach for random forest was binary relevance, so each of the classes had to be predicted individually, and then adjusted so that all classes sum up to 100\%; and two, random forest prediction needs to run all input data through all of the decision trees generated in the training part (500 by default) and summarise the result by taking its mean. Decreasing the number of decision trees would speed up the process, but also decrease the accuracy of the result.
+In order to compare the prediction time between algorithms, user time for the prediction step (using the \texttt{raster::predict} function) was measured, not counting the extra time needed for preprocessing of some data for the prediction. A control was also run, where the prediction function would always return \texttt{100/9}, in order to measure the overhead of the \texttt{raster::predict} function itself (see figure \ref{fig-timing}).
+
+Most of the algorithms took 19-42 minutes to predict all 9 classes for each pixel of an entire PROBA-V tile (101,606,400 pixels), with the overhead of \texttt{raster::predict} itself being 9 minutes. The random forest algorithm, however, took much longer: even 20.5 hours. This is due to two main reasons: first, the approach for random forest was binary relevance, so each of the classes had to be predicted individually, and then adjusted so that all classes sum up to 100\%; and second, random forest prediction needs to run all input data through all of the decision trees generated in the training part (500 by default) and summarise the result by taking its mean. Decreasing the number of decision trees would speed up the process, but also decrease the accuracy of the result. Using defaults, it took longer to predict a single class for random forest than it did to predict all classes for all other algorithms.
+
+The extra preprocessing steps needed before the prediction are not reflected in figure \ref{fig-timing}. These steps varied per algorithm. For fuzzy c-means, it involved separating the covariate rasters into 25 chunks and converting them into a \texttt{SpatialPixelsDataFrame}. For neural networks, it involved scaling all covariate rasters to the 0-1 range. For random forest, extra processing time was needed to store the individual layers on disk and then compress them all to one file. And nothing extra was required for gradient boosting.
 
 \chapter{Discussion}
+
+%Conclusions:
+%- Differences between methods are minor, once optimised; differences in variables are more important, and dropping variables can lead to increase in accuracy for some algorithms
+%- Binary relevance method performs the best, which also allows for extra optimisation per-class, but takes more time; all can be parallelised, so the additional time cost may not necessarily be a problem, but nonetheless a factor to consider
+%- If performance is a factor, c-means and neural networks give about the same speed and quality. Neural networks are slightly faster, whereas c-means needs fewer covariates for the same task.
+%- Training on only pure pixels works, but validation and thus optimisation is difficult. Fuzzy ground truth data is quite important.
+%- Fuzzy classification using the covariates works well for detecting mixed forests and wetlands, but more ground truth is needed for both training and validation to make sure
+%- Some more covariates needed to discern water from urban and bare soil from peat; also covariates that help predict grass, shrubs and crops
+%- More ground truth needed, better cloud masking, snow really helps in interpretation
+
+\section{Algorithm comparison}
+
+The differences between the four tested algorithms were small except for the multiclass gradient boosting case. While using error statistics it was not possible to directly compare other algorithms to gradient boosting, visual comparison shows that multiclass gradient boosting performs much worse than the other algorithms. Gradient boosting works using the same general principles of building decision trees as random forest, and is not known to perform worse. The main reason for the poor accuracy of multiclass gradient boosting is most likely the method used for training models. This method can only make use of endmember pixels for training, and only mixed pixels are used for validation. Therefore it is very easy for the algorithm to overfit the data. Minimisation of RMSE for that case results in selecting a case with fewer large mistakes, which is close to the fully fuzzy set (equal proportions of each class in each pixel, 100\%/9) and thus has little predictive power. However, its prediction speed was the best, with merely 10 minutes for classifying an entire PROBA-V tile.
+
+In comparison, random forest regression performed very well. Both error statistics and visual inspection shows that it is the most accurate from the tested algorithms. The binary relevance method used for it did not seem to hinder its predictive power much, even though it meant that the algorithm could not make use of information about the proportions of other classes while training and predicting. In addition, the per-class mean errors (bias) were very low compared to other algorithms, indicating that it did not tend to overestimate or underestimate any particular classes. In addition, dropping variables did not influence the accuracy prediction much, which indicates that random forset is capable of dealing with poorly predictive covariates, which makes the time-consuming step of testing all covariate combinations by dropping them not necessary. However, these advantages were offset by a much slower prediction process compared to the other algorithms.
+
+Neural networks were expected to perform the best, since they are capable of handling multiple input and multiple output data, but it turned out to perform slightly worse than expected. This is likely due to how difficult it is to train neural networks. All input data needs to be rescaled to the 0-1 range and covarites with little explanatory value have to be dropped for it to perform well, but this preprocessing by itself has the downside of making the algorithm easily affected by outliers in the data and not making use of all available data. Neural networks also have a large number of parameters, so extensive sensitivity analysis would be necessary to investigate the potential of neural networks in depth. Overall the accuracy of neural networks was rather close, albeit slightly worse, than random forest and fuzzy \textit{c}-means.
+
+Fuzzy \textit{c}-means, being the only statistical algorithm based on the simple concept of pixel distances from class centroids in feature space, performed very well and almost on par with random forest. Visual inspection shows that the biggest problem with fuzzy \textit{c}-means is that it tends to confuse water with urban classes and tends to overestimate the proportion of the urban class. The simplicity of this algorithm is also an advantage in that it is easy to inspect it (plot class centroids, etc.), compared to the rather opaque machine learning algorithms, and the training is the fastest of all the algorithms, which may be important if lots of training data was to be available. One complication of using fuzzy \textit{c}-means in \textit{R} at the moment is the lack of packages that would work with \texttt{Raster} data directly. In addition, the \texttt{spfkm} function is implemented purely in \textit{R} at the moment, without any built-in multithreading, whereas its simplicity would make it relatively easy to port to a compiled language like \textit{C} for additional performance gains in the prediction step. In contrast, many of the other algorithms are already implemented in \textit{C} or \textit{C++} and have multithreaded prediction available by default.
+%Another consideration for fuzzy \textit{c}-means is that its training is reduced to class means and their standard deviations, which limits its application to covariates that have a normal distribution.
+
+All in all, random forest with binary relevance method was the most accurate, but prediction took significantly more time than using other classification methods. So if prediction speed is important, which it might be if trying to apply the method for global data, neural networks or fuzzy \textit{c}-means would be preferable instead. From the two, neural networks have slightly lower accuracy and are much harder to train compared to fuzzy \textit{c}-means, but the prediction speed is higher at the moment.
+
+\section{Variable importance}
+
+The covariates that were useful for all the algorithms (dropping them would always result in an increase in total RMSE) were NIR, slope, mean NDVI and phase of both orders. This shows that it is beneficial for class separation to have all types of data: spectral, indices derived from spectral, indices derived from height and time series parameters. Red and blue, NIR and SWIR, OSAVI and mean NDVI were correlated with each other, so it was advantageous to drop one of the pair for algorithms such as neural networks.
+
+From the covariates, most important was mean NDVI. It is a good indicator of vegetation properties and especially helps to separate vegetation classes from water, urban and bare soil. Slope and NIR were useful for classification of each class as well. Slope particularly helped to determine the class fraction of wetlands, which require flat terrain for water to stay, and water itself, since the surface of open water is always perfectly flat. NIR at summer particularly helped to determine crop and water fractions, as crops have very high reflectance in NIR during the peak of their growth, whereas water has low NIR throughout the year. LSWI, red and \nth{1} order amplitude helped to distinguish between all classes, with none standing out in particular. SWIR also heloped overall, but it was particularly useful for water.
+
+Some covariates were useful for particular classes. \nth{2} order amplitude was useful for discerning crops, as they are harvested rather than allowed to grow naturally throughout the year. \nth{2} order phase was useful for discerning wetlands, as their NDVI curve tends to peak earlier in the year compared to other classes. TPI was most useful for shrubs, since their defining characteristic is height and they tend to grow in clumps further away from other types of vegetation.
+
+\chapter{Conclusion}
 
 \bibliography{bibliography}
 
