@@ -18,6 +18,12 @@ cmu$Optimisation = "Unoptimised"
 cmo = read.csv("../data/stat-cmeans.csv")
 cmo$Algorithm = "FCM"#"Fuzzy c-means"
 cmo$Optimisation = "Optimised"
+cmpu = read.csv("../data/stat-cmeans-pure-unoptimised.csv")
+cmpu$Algorithm = "FCM"#"Fuzzy c-means"
+cmpu$Optimisation = "Unoptimised"
+cmpo = read.csv("../data/stat-cmeans-pure.csv")
+cmpo$Algorithm = "FCM"#"Fuzzy c-means"
+cmpo$Optimisation = "Optimised"
 
 rfu = read.csv("../data/stat-randomforest-unoptimised.csv")
 rfu$Algorithm = "RF"#"Random forest"
@@ -25,6 +31,12 @@ rfu$Optimisation = "Unoptimised"
 rfo = read.csv("../data/stat-randomforest.csv")
 rfo$Algorithm = "RF"#"Random forest"
 rfo$Optimisation = "Optimised"
+rfpu = read.csv("../data/stat-randomforest-pure-unoptimised.csv")
+rfpu$Algorithm = "RF"#"Random forest"
+rfpu$Optimisation = "Unoptimised"
+rfpo = read.csv("../data/stat-randomforest-pure.csv")
+rfpo$Algorithm = "RF"#"Random forest"
+rfpo$Optimisation = "Optimised"
 
 gbu = read.csv("../data/stat-gradientboost-unoptimised.csv")
 gbu$Algorithm = "GB"#"Gradient boosting"
@@ -39,6 +51,12 @@ nnu$Optimisation = "Unoptimised"
 nno = read.csv("../data/stat-neuralnetworks.csv")
 nno$Algorithm = "NN"#"Neural networks"
 nno$Optimisation = "Optimised"
+nnpu = read.csv("../data/stat-neuralnetworks-pure-unoptimised.csv")
+nnpu$Algorithm = "NN"#"Neural networks"
+nnpu$Optimisation = "Unoptimised"
+nnpo = read.csv("../data/stat-neuralnetworks-pure.csv")
+nnpo$Algorithm = "NN"#"Neural networks"
+nnpo$Optimisation = "Optimised"
 
 dum = read.csv("../data/stat-dummy.csv")
 dum$Algorithm = "Ctrl"#"Control"
@@ -122,7 +140,7 @@ ggplot(DUMLong, aes(X, Error)) +
     xlab("Class") + ggtitle("Control")
 
 # Plot gradient boosting on its own plot with its own control
-GBErrors = rbind(gbu, gbo, dup)
+GBErrors = rbind(gbu, gbo, dup, nnpu, nnpo, rfpu, rfpo, cmpu, cmpo)
 OverallGBErrors = subset(GBErrors, X=="Overall")
 GBErrorsLong = reshape(OverallGBErrors, varying=2:4, v.names="Error", direction = "long", timevar = "Statistic", times=c("Root mean squared error", "Mean absolute error", "Mean error"))#times=c("RMSE", "MAE", "ME"))
 GBErrorsLong = subset(GBErrorsLong, GBErrorsLong$Statistic != "Mean error")#"ME")

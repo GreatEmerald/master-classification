@@ -114,3 +114,12 @@ NNCV(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2"
 #AccuracyStatTable(ScaleNNPrediction(PredictionUntransf$net.result), AllData@data[-fold,GetValidationNames()])
 # Truncating: 21.8, slightly better than scaling
 #AccuracyStatTable(TruncateNNPrediction(PredictionUntransf$net.result), AllData@data[-fold,GetValidationNames()])
+
+# Train on pure, predict fuzzy
+folds=list(which(!ScaleDataUntransf$pure))
+
+# Unoptimised
+NNCV(paste0(OutputDir, "stat-neuralnetworks-pure-unoptimised.csv"), hidden=11, threshold=0.15)
+# Optimised
+NNCV(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2", "tpi"), hidden=9, threshold=0.05,
+    filename=paste0(OutputDir, "stat-neuralnetworks-pure.csv"))
