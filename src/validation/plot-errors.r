@@ -142,6 +142,7 @@ ggplot(DUMLong, aes(X, Error)) +
 # Plot gradient boosting on its own plot with its own control
 GBErrors = rbind(gbu, gbo, dup, nnpu, nnpo, rfpu, rfpo, cmpu, cmpo)
 OverallGBErrors = subset(GBErrors, X=="Overall")
+OverallGBErrors$Algorithm = factor(OverallGBErrors$Algorithm, levels = c("Ctrl", "NN", "FCM", "RF", "GB"))
 GBErrorsLong = reshape(OverallGBErrors, varying=2:4, v.names="Error", direction = "long", timevar = "Statistic", times=c("Root mean squared error", "Mean absolute error", "Mean error"))#times=c("RMSE", "MAE", "ME"))
 GBErrorsLong = subset(GBErrorsLong, GBErrorsLong$Statistic != "Mean error")#"ME")
 
@@ -159,7 +160,7 @@ RelevantTimings = subset(RawTimings, X %in% c("Dummy brick", "RF cropland", "RF 
 RelevantTimings = subset(RelevantTimings, !Optimised)
 RelevantTimings$Algorithm = c("Ctrl", rep("RF", 10), "FCM", "GB", "NN")
 pdf("../plot/timing.pdf", width=4, height=4)
-ggplot(RelevantTimings, aes(Algorithm, Mins, fill = Class, label=round(Mins))) + geom_bar(stat = "identity") +# scale_y_log10() +
+ggplot(RelevantTimings, aes(Algorithm, Time/60, fill = Class, label=round(Time/60))) + geom_bar(stat = "identity") +# scale_y_log10() +
     ylab("Time (minutes)") + theme(legend.position="none") +
     geom_text(size=2.5, position = position_stack(vjust = 0.5))
 dev.off()
