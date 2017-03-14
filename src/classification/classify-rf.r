@@ -17,7 +17,7 @@ bsna = c(352, 364, 476)
 set.seed(0xbadcafe)
 folds = createFolds(alldata$cropland, 4)
 
-TN = GetTrainingNames(exclude=c("osavi"))#, "aspect", "is.water", "height"))
+TN = GetTrainingNames(exclude=c("osavi", "aspect", "is.water", "height"))
 
 # Get and plot variable importance
 FullFormula = paste0("~", paste(TN, collapse = "+"))
@@ -125,3 +125,11 @@ RFCV(exclude=c("osavi", "aspect", "is.water", "height"), splitrule="maxstat", al
 # Without OSAVI: 21.10414
 # Without OSAVI and aspect: 21.02937
 # Without 4 variables: 20.99727
+
+# Train on pure, predict fuzzy
+folds=list(which(!alldata@data$pure))
+# Unoptimised
+RFCV(filename = paste0(OutputDir, "stat-randomforest-pure-unoptimised.csv"))
+# Optimised
+RFCV(exclude=c("osavi", "aspect", "is.water", "height"), splitrule="maxstat", alpha=0.9, minprop=0.11,
+    filename = paste0(OutputDir, "stat-randomforest-pure.csv"))

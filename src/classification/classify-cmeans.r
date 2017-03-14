@@ -255,3 +255,8 @@ CMCV(FullFormula, filename = paste0(OutputDir, "stat-cmeans-unoptimised.csv"))#,
 OptimalFormula1 = formula("dominant ~ red + nir + swir + osavi + lswi + height + slope + tpi + mean.ndvi + phase1 + amplitude1 + phase2 + amplitude2")
 OptimalFormula2 = formula("dominant ~ nir + osavi + height + slope + mean.ndvi + phase1 + phase2")
 CMCV(OptimalFormula2, fuzzy.e=1.5, weighted=TRUE)
+
+# Train on pure, predict fuzzy
+folds=list(which(!alldata@data$pure))
+CMCV(FullFormula, filename = paste0(OutputDir, "stat-cmeans-pure-unoptimised.csv"))
+CMCV(OptimalFormula2, fuzzy.e=1.5, weighted=TRUE,  filename = paste0(OutputDir, "stat-cmeans-pure.csv"))
