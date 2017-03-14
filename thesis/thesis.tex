@@ -78,9 +78,9 @@ In addition to algorithms, one aspect that is important for classification accur
 Thus the goal of this thesis is to improve large-scale land cover maps by performing fuzzy land cover classification in the boreal forest-temperate broadleaf forest gradient zone using PROBA-V satellite imagery. The research questions that the thesis answers are:
 
 \begin{itemize}
- \item Which fuzzy classification algorithm (fuzzy c-means, neural networks, random forest regression, multiclass gradient boosting) gives the highest per-class and total classification accuracies?
- \item How much does the classification accuracy change when more variables are added to classification models? Which variables are most important for classification?
- \item What is the difference in processing speed between the different algorithms, when subjected to increasing amounts of data to process?
+ \item Which fuzzy classification method (fuzzy c-means, neural networks, random forest regression, multiclass gradient boosting) gives the highest per-class and total classification accuracies?
+ \item Which variables are most important for classification?
+ \item What is the difference in processing speed between the different algorithms?
 \end{itemize}
 
 \chapter{Data and methods}
@@ -94,7 +94,7 @@ Throughout this thesis, a number of terms are used that can be ambiguous due to 
 
 \textbf{Hard classification}: a synonym of \textbf{crisp classification}. A classification method based on assiging each pixel to one particular class.
 
-\textbf{Urban class}: artificial land cover, including buildings and paved roads.
+\textbf{Built-up class}: artificial land cover, including buildings and paved roads.
 
 \textbf{Bare soil class}: soils not covered by vegetation or artificial cover, including sand dunes, beaches, gravel and sand pits (for mining, construction, or natural), gravel and dirt roads, as well as rocky cover such as boulders and rocky cliffsides.
 
@@ -106,13 +106,17 @@ Throughout this thesis, a number of terms are used that can be ambiguous due to 
 
 \textbf{Grass class}: well-drained natural herbaceous vegetation.
 
-\textbf{Crop class}: human-managed herbaceous vegetation, including pastures and agricultural crops.
+\textbf{Cultivated class}: human-managed herbaceous vegetation, including pastures and agricultural crops.
 
 \textbf{Wetland class}: waterlogged natural herbaceous vegetation and peat.
 
 \textbf{Water class}: ground covered by water, both inland and seawater, including water within wetland areas.
 
 \textbf{User time}: total time that a process takes to run on a single thread, not counting time spent by the kernel (file input/output, process forking).
+
+\textbf{Endmember pixel}: a synonym of \textbf{pure pixel}, a cell which is dominated by a single land cover class.
+
+\textbf{Mixed pixel}: a cell in which there are multiple land cover classes.
 
 \section{Study area and classes}
 
@@ -523,20 +527,20 @@ Positive ME values mean that the algorithm tends to overrepresent class $c$ memb
 \begin{figure}
   \centering
   \includegraphics{../plot/total-errors}
-  \caption{Total errors per algorithm, unoptimised algorithms (all terms used) in blue, optimised in red. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RF: random forest.}
+  \caption{Total errors per classification method using 4-fold cross-validation, unoptimised algorithms (all terms used) in blue, optimised in red. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RF: random forest regression.}
   \label{fig-total-errors}
 \end{figure}
 
-Total errors (all classes combined) of each algorithm except gradient boosting are shown in figure \ref{fig-total-errors}. The largest difference in RMSE between optimised algorithms is only 1.3, thus after optimisations all of them seem to perform similarly. Likewise, the largest difference in MAE is only 1. Thus while random forest regression technically performs the best, the difference between the algorithms is very small.
+Total errors (errors of all classes combined) of each method except multiclass gradient boosting are shown in figure \ref{fig-total-errors}. The largest difference in RMSE between optimised methods is only 1.3 (6\% difference), thus after optimisations all of them seem to perform similarly. Likewise, the largest difference in MAE is only 1 (8\% difference). Thus while random forest regression technically performs the best, the difference between the algorithms is very small.
 
-Optimising the algorithm by dropping terms affects fuzzy \textit{c}-means the most (decrease in RMSE of 3.9), and random forest regression the least (decrease in RMSE of 0.2). In case of fuzzy \textit{c}-means, when increasing the fuzzy exponent from the default 1.2 to 1.5, RMSE decreased but MAE increased. That is expected, since with an increased fuzziness of the result (fewer predictions of 100\% and 0\%, more predictions in the middle), there are fewer large misses for which RMSE penalises, and more smaller misses for which MAE penalises.
+Optimising the algorithm by dropping terms and adjusting the fuzziness of the resulting prediction affects fuzzy \textit{c}-means the most (decrease in RMSE of 3.9), and random forest regression the least (decrease in RMSE of 0.2). In case of fuzzy \textit{c}-means, when increasing the fuzzy exponent from the default 1.2 to 1.5, RMSE decreased but MAE increased. That is expected, since with an increased fuzziness of the result (fewer predictions of 100\% and 0\%, more predictions in the middle), there are fewer large misses for which RMSE penalises, and more smaller misses for which MAE penalises.
 
-Multiclass gradient boosting errors are not directly comparable with the other algorithms, as the validation sample size is different, and all validation samples are mixed pixels. In this case, the control algorithm of assigning each pixel the 100\%/9 fraction value for each class has lower errors than in the 4-fold cross-validation scenario above (see figure \ref{fig-total-errors-gb}), since a completely fuzzy set is closer to mixed pixels compared to all pixels. Much like in the case of fuzzy \textit{c}-means, optimising gradient boosting for lower RMSE increases the fuzziness of the result by decreasing the number of optimisation rounds to just 5. As the number of optimisation rounds increases, the decision trees generated by gradient boosting are fitted more closely to predict the endmember pixels the algorithm is trained on, and that results in poorer performance when trying to predict mixed pixels instead. The difference between the control algorithm and gradient boosting is smaller than in the case of the other algorithms tested, which indicates that multiclass gradient boosting performs relatively poorly.
+Multiclass gradient boosting errors are not directly comparable with the other algorithms, as the validation sample size is different, and all validation samples are mixed pixels. So in order to compare multiclass gradient boosting, all methods were also tested by training them on endmember pixels and validating on mixed pixels (see figure \ref{fig-total-errors-gb}). In this case, the control algorithm of assigning each pixel the 100\%/9 fraction value for each class has lower errors than in the 4-fold cross-validation scenario above, since a completely fuzzy set is closer to mixed pixels compared to both mixed and endmember pixels. Thus optimising gradient boosting for lower RMSE in this test increases the fuzziness of the result by decreasing the number of optimisation rounds to just 5. As the number of optimisation rounds increases, the decision trees generated by gradient boosting are fitted more closely to predict the endmember pixels the algorithm is trained on, and that results in poorer accuracy when trying to predict mixed pixels instead.
 
 \begin{figure}
   \centering
   \includegraphics{../plot/total-errors-gb}
-  \caption{Total errors of gradient boosting, unoptimised (all terms used) in blue, optimised in red. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), GB: gradient boosting.}
+  \caption{Total errors per classification method using holdout validation (training on endmember pixels and validating on mixed pixels), unoptimised methods (all terms used in the model) in blue, optimised in red. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RF: random forest regression, GB: multiclass gradient boosting.}
   \label{fig-total-errors-gb}
 \end{figure}
 
@@ -551,6 +555,7 @@ Errors per class for fuzzy \textit{c}-means (see figure \ref{fig-perclass-errors
 Neural networks were in between the two algorithms mentioned, with higher mean errors than random forest but lower than fuzzy \textit{c}-means. Neural networks tended to particularly underestimate the proportion of water. Just like with the other algorithms, it was easiest to discern water and hardest to discern grasslands and shrubs.
 
 %TODO: Add all other graphs to appendix
+%TODO: Not sure what to do with gradient boosting
 \begin{figure}
   \centering
   \includegraphics[width=\textwidth]{../plot/perclass-errors-rf}
@@ -670,7 +675,7 @@ Neural networks were in between the two algorithms mentioned, with higher mean e
 
 To better visualise the differences between the fuzzy classification methods, predictions were made using each method for the whole study area. See figure \ref{fig-visualcomparison} for some examples. Overall visual comparison confirms that the differences between the different methods are minor. However, the differences are easier to spot with a side-by-side comparison.
 
-As seen in figures \ref{subfig-fulltile-rf}-\ref{subfig-fulltile-cm}, all three fuzzy classification methods predict a similar gradient for crops (red), which are more abundant in the south with large accumulation in more fertile areas in Latvia and Lithuania, and less abundant in the north, situated around rivers in Finland. However, fuzzy \textit{c}-means predicts fewer croplands in Finland compared to the other two methods, and random forest regression tends to predict a larger crop fraction in a pixel compared to the other two methods. The distribution pattern of deciduous trees (green) is also similar, they are predicted to be more abundant in the south (Estonia, Latvia and Lithuania) and rare in the north (Finland). Fuzzy \textit{c}-means tends to predict fewer deciduous trees. Evergreen trees (blue) are predicted to follow the opposite pattern, as they are less common in the south and more abundant in the north. Note that latitude was not used as a covariate; such gradient patterns have emerged without it.
+As seen in figures \ref{subfig-fulltile-rf}-\ref{subfig-fulltile-cm}, all three fuzzy classification methods that could be trained on all pixels predict a similar gradient for crops (red), which are more abundant in the south with large accumulation in more fertile areas in Latvia and Lithuania, and less abundant in the north, situated around rivers in Finland. However, fuzzy \textit{c}-means predicts fewer croplands in Finland compared to the other two methods, and random forest regression tends to predict a larger crop fraction in a pixel compared to the other two methods. The distribution pattern of deciduous trees (green) is also similar, they are predicted to be more abundant in the south (Estonia, Latvia and Lithuania) and rare in the north (Finland). Fuzzy \textit{c}-means tends to predict fewer deciduous trees. Evergreen trees (blue) are predicted to follow the opposite pattern, as they are less common in the south and more abundant in the north. Note that latitude was not used as a covariate; such gradient patterns have emerged without it.
 
 Figures \ref{subfig-riga-rf}-\ref{subfig-riga-cm} show the surroundings of the city of Riga, Latvia. It includes lake Babites, a shallow lagoon-type lake whose edges are covered by reeds and bullrushes. It also shows a number of marshes, largest of which is Cenas tirelis, a protected \textit{Natura 2000} territory with peat extraction operations being performed in the southern part of the marsh. At this scale the differences between the fuzzy classification methods are also not large, but noticeable. Neural networks tend to predict fewer built-up areas (red) compared to the other two methods, and instead tends to predict too many wetlands (green), which is not as accurate. Neural networks also predict built-up areas on the edges of lake Babites, unlike the more appropriate classification as wetlands done by random forest regression. Fuzzy \textit{c}-means also predicts built-up areas there, but at a smaller fraction compared to neural networks. Fuzzy \textit{c}-means also tends to overestimate the fraction of built-up areas in peat extraction sites and water in built-up areas.
 
@@ -682,11 +687,11 @@ Figures \ref{subfig-medziokalnis-rf}-\ref{subfig-medziokalnis-cm} show the area 
 
 \begin{figure}
   \centering
-  \begin{subfigure}[b]{0.45\textwidth}
+  \begin{subfigure}[b]{0.48\textwidth}
     \includegraphics[width=\textwidth]{../plot/karsuva-atlas}
     \caption{Kar\v{s}uvos wood, also known as Vie\v{s}vil\.{e}s-Smalinink\k{u} wood}
-  \end{subfigure}
-  \begin{subfigure}[b]{0.45\textwidth}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{0.48\textwidth}
     \includegraphics[width=\textwidth]{../plot/medziokalnis-atlas}
     \caption{Med\v{z}iokalnis forest}
   \end{subfigure}
@@ -695,6 +700,30 @@ Figures \ref{subfig-medziokalnis-rf}-\ref{subfig-medziokalnis-cm} show the area 
 \end{figure}
 
 Tree type prediction accuracy can be validated with national atlas data (see figure \ref{fig-atlas-forest}). In the case of both forests, fuzzy \textit{c}-means prediction appears to be the most accurate, since it does not overestimate the proportion of deciduous trees. However, in the case of Med\v{z}iokalnis forest, random forest regression is the most accurate in predicting deciduous trees in the south-west part (botanical reserve). Note that the atlas data is from 2011, whereas this study was performed on 2014-2016 data, so the patterns should not be expected to match perfectly.
+
+\begin{figure}
+  \centering
+  \begin{subfigure}[b]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-gbu}
+    \caption{Riga, unoptimised multiclass gradient boosting}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-gbo}
+    \caption{Riga, optimised multiclass gradient boosting}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-gbu}
+    \caption{Med\v{z}iokalnis, unoptimised multiclass gradient boosting}
+  \end{subfigure} \hfill
+  \begin{subfigure}[b]{0.48\textwidth}
+    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-gbo}
+    \caption{Med\v{z}iokalnis, optimised multiclass gradient boosting}
+  \end{subfigure}
+  \caption{Visual comparison of optimised and unoptimised multiclass gradient boosting prediction.}
+  \label{fig-gradientboost-comparison}
+\end{figure}
+
+In the case of multiclass gradient boosting, it could not be trained on all ground truth data, but only on the endmember pixels, which decreases the training dataset by half. Therefore its predition is not directly comparable to the ones of other fuzzy classification methods. However, an interesting observation can be made about the differences between optimised and unoptimised multiclass gradient boosting prediction results (see figure \ref{fig-gradientboost-comparison}). Since the optimal model was taken as the one with the lowest RMSE, and the unoptimised model is 7\% worse than the control (completely fuzzy set), optimisation strongly favoured increasing the fuzziness of the result. Thus in reality, the unoptimised model performs better than the optimised one, due to the latter being too fuzzy compared to the reality. However, the unoptimised model is also visibly too crisp.
 
 \section{Variable importance}
 %TODO: Do I put in the wetlands curve?
@@ -729,7 +758,7 @@ Overall for 480 samples, the training time was not high for any of the tested al
 \begin{figure}
   \centering
   \includegraphics[width=\textwidth]{../plot/timing}
-  \caption{Prediction user time for the different algorithms (Ctrl: control prediction of a fully fuzzy set 100\%/9; RF: random forest regression; GB: multiclass gradient boosting; FCM: fuzzy c-means; NN: neural networks). The different colours in random forest regression case show time needed to process each separate class layer, whereas all other methods process all layers at once.}
+  \caption{Prediction user time for the different classification methods (Ctrl: control prediction of a fully fuzzy set 100\%/9; RF: random forest regression; GB: multiclass gradient boosting; FCM: fuzzy c-means; NN: neural networks), using unoptimised variants (predictions done using all covariates). The different colours in random forest regression case show time needed to process each separate class layer, whereas all other methods process all layers at once.}
   \label{fig-timing}
 \end{figure}
 
@@ -750,24 +779,33 @@ The extra preprocessing steps needed before the prediction are not reflected in 
 %- Some more covariates needed to discern water from urban and bare soil from peat; also covariates that help predict grass, shrubs and crops
 %- More ground truth needed, better cloud masking, snow really helps in interpretation
 
-\section{Algorithm comparison}
+\section{Method accuracy comparison}
 
-The differences between the four tested algorithms were small except for the multiclass gradient boosting case. While using error statistics it was not possible to directly compare other algorithms to gradient boosting, visual comparison shows that multiclass gradient boosting performs much worse than the other algorithms. Gradient boosting works using the same general principles of building decision trees as random forest, and is not known to perform worse. The main reason for the poor accuracy of multiclass gradient boosting is most likely the method used for training models. This method can only make use of endmember pixels for training, and only mixed pixels are used for validation. Therefore it is very easy for the algorithm to overfit the data. Minimisation of RMSE for that case results in selecting a case with fewer large mistakes, which is close to the fully fuzzy set (equal proportions of each class in each pixel, 100\%/9) and thus has little predictive power. However, its prediction speed was the best, with merely 10 minutes for classifying an entire PROBA-V tile.
+The differences between the four tested methods in terms of prediction accuracy were small, once the algorithms were optimised, both from the error statistics and the visual comparison of a full-tile prediction. This indicates that the method itself is not so much important as the data that the models can train on, which is in line with the conclusions of \citet{yu2014metadiscoveries}. However, this is true only after performing the optimisation step, which included changing the fuzzification factor and dropping least important variables, to get the most out of each method. This improved the prediction accuracy up to 13\%, which indicates that it is worth adjusting the model parameters, which by default may not be optimal.
 
-In comparison, random forest regression performed very well. Both error statistics and visual inspection shows that it is the most accurate from the tested algorithms. The binary relevance method used for it did not seem to hinder its predictive power much, even though it meant that the algorithm could not make use of information about the proportions of other classes while training and predicting. In addition, the per-class mean errors (bias) were very low compared to other algorithms, indicating that it did not tend to overestimate or underestimate any particular classes. In addition, dropping variables did not influence the accuracy prediction much, which indicates that random forset is capable of dealing with poorly predictive covariates, which makes the time-consuming step of testing all covariate combinations by dropping them not necessary. However, these advantages were offset by a much slower prediction process compared to the other algorithms.
+Even though the differences between the methods were small, but overall random forest regression gave the best results, both in terms of error statistics and visual comparison. The binary relevance method used for it did not seem to hinder its predictive power much, even though it meant that the algorithm could not make use of information about the proportions of other classes while training and predicting. Since the binary relevance method makes use of separate models per class, this also brings the opportunity to further optimise these models for their respective classes, for instance by performing per-class variable selection. In addition, the per-class mean errors (bias) of random forest were very low compared to other algorithms, indicating that it did not tend to overestimate or underestimate any particular classes. In addition, model optimisation did not influence the prediction accuracy much, which indicates that random forest is capable of dealing with poorly predictive covariates. This may make the optimisation step unnecessary, which in turn speeds up the training process, as variable selection may be skipped. However, these advantages were offset by a much slower prediction process compared to the other algorithms.
 
-Neural networks were expected to perform the best, since they are capable of handling multiple input and multiple output data, but it turned out to perform slightly worse than expected. This is likely due to how difficult it is to train neural networks. All input data needs to be rescaled to the 0-1 range and covarites with little explanatory value have to be dropped for it to perform well, but this preprocessing by itself has the downside of making the algorithm easily affected by outliers in the data and not making use of all available data. Neural networks also have a large number of parameters, so extensive sensitivity analysis would be necessary to investigate the potential of neural networks in depth. Overall the accuracy of neural networks was rather close, albeit slightly worse, than random forest and fuzzy \textit{c}-means.
+Neural networks were expected to perform the best, since they are capable of handling multiple input and multiple output data, but it turned out to perform slightly worse than expected. In particular, visual comparison of the prediction results shows that neural networks tend to overestimate the fraction of wetlands and tend to mistake water for built-up areas, therefore it is less accurate than fuzzy \texiti{c}-means. This is possibly due to how difficult it is to train neural networks. All input data needs to be rescaled to the 0-1 range and covariates with little explanatory value have to be dropped for it to perform well, but this preprocessing by itself has the downside of making the algorithm easily affected by outliers in the data and not making use of all available data. Neural networks also have a large number of parameters, so extensive sensitivity analysis would be necessary to investigate the potential of neural networks in depth. Overall the accuracy of neural networks was rather close, albeit slightly worse, than random forest and fuzzy \textit{c}-means.
 
-Fuzzy \textit{c}-means, being the only statistical algorithm based on the simple concept of pixel distances from class centroids in feature space, performed very well and almost on par with random forest. Visual inspection shows that the biggest problem with fuzzy \textit{c}-means is that it tends to confuse water with urban classes and tends to overestimate the proportion of the urban class. The simplicity of this algorithm is also an advantage in that it is easy to inspect it (plot class centroids, etc.), compared to the rather opaque machine learning algorithms, and the training is the fastest of all the algorithms, which may be important if lots of training data was to be available. One complication of using fuzzy \textit{c}-means in \textit{R} at the moment is the lack of packages that would work with \texttt{Raster} data directly. In addition, the \texttt{spfkm} function is implemented purely in \textit{R} at the moment, without any built-in multithreading, whereas its simplicity would make it relatively easy to port to a compiled language like \textit{C} for additional performance gains in the prediction step. In contrast, many of the other algorithms are already implemented in \textit{C} or \textit{C++} and have multithreaded prediction available by default.
-%Another consideration for fuzzy \textit{c}-means is that its training is reduced to class means and their standard deviations, which limits its application to covariates that have a normal distribution.
+Fuzzy \textit{c}-means, being the only statistical algorithm based on the simple concept of pixel distances from class centroids in feature space, performed very well and almost on par with random forest regression. Visual inspection shows that the biggest problem with fuzzy \textit{c}-means is that it tends to confuse water with urban classes and tends to overestimate the proportion of the urban class. However, fuzzy \textit{c}-means was also the algorithm that used the least number of covariates after optimisation (7 out of 17), which means that less information is needed to train it, but also that not all information can be used by this algorithm, since it relies on centroids and so prefers normal distribution of the data. The simplicity of this algorithm is also an advantage in that it is easy to inspect it (plot class centroids, etc.), compared to the rather opaque machine learning algorithms, and the training is the fastest of all the algorithms, which may be important if lots of training data was to be available. One complication of using fuzzy \textit{c}-means in \textit{R} at the moment is the lack of packages that would work with \texttt{Raster} data directly. In addition, the \texttt{spfkm} function is implemented purely in \textit{R} at the moment, and without any built-in multithreading, which makes it harder to use but also provides opportunities for improvement in the future.
 
-All in all, random forest with binary relevance method was the most accurate, but prediction took significantly more time than using other classification methods. So if prediction speed is important, which it might be if trying to apply the method for global data, neural networks or fuzzy \textit{c}-means would be preferable instead. From the two, neural networks have slightly lower accuracy and are much harder to train compared to fuzzy \textit{c}-means, but the prediction speed is higher at the moment.
+Multiclass gradient boosting was difficult to compare with the other algorithms due to it not being capable of learning from mixed pixels. Training the model on endmember pixels and performing validation on mixed pixels resulted in the model being incapable of accurately determining the desired fuzziness of prediction. Without optimisation it would predict classes similar to hard classification, and any optimisation would lead to a large increase of the fuzziness of prediction. This indicates that it is important that the models are trained on both mixed and endmember pixels. When trained only on endmember pixels, multiclass gradient boosting prediction was slightly less accurate than that of random forest regression, which was expected since random forest and gradient boosting are related algorithms. Gradient boosing can also be run in regression mode using binary relevance and would likely achieve similar results as random forest.
+
+\section{Processing speed}
+
+Training speed for 480 sample points was not an issue for any of the classification methods. The big difference in processing speed was rather in the full-tile prediction step, where random forest regression was much slower than all the other methods. This is most likely due to two factors: random forest needs to generate and run 500 decision trees to predict the proportion of a single class in a pixel, and binary relevance method requires training and predicting one model per class. That means it needs to run 4500 trees per pixel in total, and also spend extra time postprocessing the results into a single multi-layer raster where all class fractions add up to 100\%. However, while random forest regression takes 25-50 times more processing time, it is multithreaded by default, therefore the wall clock time is reduced by 20 times when using a machine with 32 threads, and thus it takes around an hour (wall clock) to predict a whole PROBA-V tile. Depending on the availibility of multiple threads and the amount of data that needs to be processed, the relatively slow processing speed of random forest regresion may or may not be a problem for a given real-world application.
+
+All other classification methods were much faster, but also had lower prediction accuracy. Gradient boosting is also multithreaded by default, while the other two methods are not, but multithreading can be implemented by splitting the covariates into chunks manually. From the three methods, neural networks were 70-98\% faster.
+
+Multiclass gradient boosting taking half the time to predict all classes compared to a single class by random forest regression could be explained by gradient boosting optimising a set of decision trees rather than generating a large number of trees. This suggests that it might be a viable strategy to use gradient boosting in regression mode using binary relevance to achieve better prediction speed without sacrificing much accuracy.
+
+All in all there appears to be a tradeoff between processing speed and prediction accuracy, with random forest regression being relatively slow but relatively accurate, neural networks being fast but less accurate, and fuzzy \texit{c}-means being a balanced choice in between.
 
 \section{Variable importance}
 
-The covariates that were useful for all the algorithms (dropping them would always result in an increase in total RMSE) were NIR, slope, mean NDVI and phase of both orders. This shows that it is beneficial for class separation to have all types of data: spectral, indices derived from spectral, indices derived from height and time series parameters. Red and blue, NIR and SWIR, OSAVI and mean NDVI were correlated with each other, so it was advantageous to drop one of the pair for algorithms such as neural networks.
+The covariates that were useful for all the algorithms (dropping them would always result in an increase in total RMSE) were NIR, slope, mean NDVI and phase of both orders. This shows that it is beneficial for class separation to have all types of data: spectral, indices derived from spectral, parameters derived from elevation and time series parameters. Red and blue, NIR and SWIR, OSAVI and mean NDVI were correlated with each other, so it was advantageous to drop one of the pair for algorithms such as neural networks.
 
-From the covariates, most important was mean NDVI. It is a good indicator of vegetation properties and especially helps to separate vegetation classes from water, urban and bare soil. Slope and NIR were useful for classification of each class as well. Slope particularly helped to determine the class fraction of wetlands, which require flat terrain for water to stay, and water itself, since the surface of open water is always perfectly flat. NIR at summer particularly helped to determine crop and water fractions, as crops have very high reflectance in NIR during the peak of their growth, whereas water has low NIR throughout the year. LSWI, red and \nth{1} order amplitude helped to distinguish between all classes, with none standing out in particular. SWIR also heloped overall, but it was particularly useful for water.
+From the covariates, most important was mean NDVI. It is a good indicator of vegetation properties and especially helps to separate vegetation classes from water, urban and bare soil. Slope and NIR were useful for classification of every class as well. Slope particularly helped to determine the class fraction of wetlands, which require flat terrain for water to stay, and water itself, since the surface of open water is relatively flat. NIR at summer particularly helped to determine crop and water fractions, as crops have very high reflectance in NIR during the peak of their growth, whereas water has low NIR throughout the year. LSWI, red and \nth{1} order amplitude helped to distinguish between all classes, with none standing out in particular. SWIR also helped overall, but it was particularly useful for water.
 
 Some covariates were useful for particular classes. \nth{2} order amplitude was useful for discerning crops, as they are harvested rather than allowed to grow naturally throughout the year. \nth{2} order phase was useful for discerning wetlands, as their NDVI curve tends to peak earlier in the year compared to other classes. TPI was most useful for shrubs, since their defining characteristic is height and they tend to grow in clumps further away from other types of vegetation.
 
