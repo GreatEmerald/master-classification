@@ -49,6 +49,6 @@ RasterScaling = function(x)
 system.time(ScaledPredictions <- calc(AllPredictions, RasterScaling, progress="text"))
 names(ScaledPredictions) = GetValidationNames()
 print("Writing...")
-ScaledPredictions = writeRaster(ScaledPredictions, filename = paste0(OutputDir, "randomforest2.tif"),
+ScaledPredictions = writeRaster(ScaledPredictions, filename = paste0(OutputDir, "randomforest.tif"),
     datatype="INT1U", options=c("COMPRESS=DEFLATE", "ZLEVEL=9", "NUMTHREADS=4"), overwrite=TRUE)
 hdr(ScaledPredictions, "VRT")
