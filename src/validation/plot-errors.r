@@ -6,9 +6,9 @@ PrettifyClasses = function(classnames)
 {
     classnames = factor(classnames)
     levels(classnames) = list(
-        "Total" = "Overall", "Crops" = "cropland", "Dec. trees" = "dec.trees", "Evgr. trees" = "evgr.trees",
-        "Shrubs" = "shrubland", "Grassland" = "grassland", "Wetland" = "wetland", "Bare soil" = "bare.soil",
-        "Urban" = "urban", "Water" = "water")
+        "Total" = "Overall", "Cultivated" = "cropland", "Dec. trees" = "dec.trees", "Evgr. trees" = "evgr.trees",
+        "Shrubs" = "shrubland", "Grass" = "grassland", "Wetland" = "wetland", "Bare soil" = "bare.soil",
+        "Built-up" = "urban", "Water" = "water")
     return(classnames)
 }
 
@@ -26,23 +26,23 @@ cmpo$Algorithm = "FCM"#"Fuzzy c-means"
 cmpo$Optimisation = "Optimised"
 
 rfu = read.csv("../data/stat-randomforest-unoptimised.csv")
-rfu$Algorithm = "RF"#"Random forest"
+rfu$Algorithm = "RFR"#"Random forest"
 rfu$Optimisation = "Unoptimised"
 rfo = read.csv("../data/stat-randomforest.csv")
-rfo$Algorithm = "RF"#"Random forest"
+rfo$Algorithm = "RFR"#"Random forest"
 rfo$Optimisation = "Optimised"
 rfpu = read.csv("../data/stat-randomforest-pure-unoptimised.csv")
-rfpu$Algorithm = "RF"#"Random forest"
+rfpu$Algorithm = "RFR"#"Random forest"
 rfpu$Optimisation = "Unoptimised"
 rfpo = read.csv("../data/stat-randomforest-pure.csv")
-rfpo$Algorithm = "RF"#"Random forest"
+rfpo$Algorithm = "RFR"#"Random forest"
 rfpo$Optimisation = "Optimised"
 
 gbu = read.csv("../data/stat-gradientboost-unoptimised.csv")
-gbu$Algorithm = "GB"#"Gradient boosting"
+gbu$Algorithm = "MGB"#"Gradient boosting"
 gbu$Optimisation = "Unoptimised"
 gbo = read.csv("../data/stat-gradientboost.csv")
-gbo$Algorithm = "GB"#"Gradient boosting"
+gbo$Algorithm = "MGB"#"Gradient boosting"
 gbo$Optimisation = "Optimised"
 
 nnu = read.csv("../data/stat-neuralnetworks-unoptimised.csv")
@@ -68,7 +68,7 @@ dup$Optimisation = "Unoptimised"
 
 AllErrors = rbind(cmu, cmo, rfu, rfo, nnu, nno, dum)
 OverallErrors = subset(AllErrors, X=="Overall")
-OverallErrors$Algorithm = factor(OverallErrors$Algorithm, levels = c("Ctrl", "NN", "FCM", "RF"))#c("Control", "Neural networks", "Fuzzy c-means", "Random forest"))
+OverallErrors$Algorithm = factor(OverallErrors$Algorithm, levels = c("Ctrl", "NN", "FCM", "RFR"))#c("Control", "Neural networks", "Fuzzy c-means", "Random forest"))
 ErrorsLong = reshape(OverallErrors, varying=2:4, v.names="Error", direction = "long", timevar = "Statistic", times=c("Root mean squared error", "Mean absolute error", "Mean error"))#c("RMSE", "MAE", "ME"))
 ErrorsLong = subset(ErrorsLong, ErrorsLong$Statistic != "Mean error")#"ME")
 
@@ -113,36 +113,42 @@ dev.off()
 NNOLong = reshape(nno, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
 NNOLong$Statistic = factor(NNOLong$Statistic, levels=c("RMSE", "MAE", "ME"))
 NNOLong$X = PrettifyClasses(NNOLong$X)
-#pdf("../plot/perclass-errors-cm.pdf", width=5, height=3)
+pdf("../plot/perclass-errors-nn.pdf", width=5, height=3)
 ggplot(NNOLong, aes(X, Error)) +
     geom_bar(stat = "identity", position="dodge") +
     facet_wrap( ~ Statistic) +
     theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), plot.title = element_text(hjust = 0.5)) +
     xlab("Class") + ggtitle("Neural networks, optimised")
+dev.off()
 
 # Gradient boosting per class
 GBOLong = reshape(gbo, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
 GBOLong$Statistic = factor(GBOLong$Statistic, levels=c("RMSE", "MAE", "ME"))
 GBOLong$X = PrettifyClasses(GBOLong$X)
-#pdf("../plot/perclass-errors-cm.pdf", width=5, height=3)
+pdf("../plot/perclass-errors-gb.pdf", width=5, height=3)
 ggplot(GBOLong, aes(X, Error)) +
     geom_bar(stat = "identity", position="dodge") +
     facet_wrap( ~ Statistic) +
     theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1), plot.title = element_text(hjust = 0.5)) +
     xlab("Class") + ggtitle("Gradient boosting, optimised")
+dev.off()
 
 # Control per class
 DUMLong = reshape(dum, varying=2:4, v.names="Error", direction = "long", times=c("RMSE", "MAE", "ME"), timevar = "Statistic")
+DUMLong$Statistic = factor(DUMLong$Statistic, levels=c("RMSE", "MAE", "ME"))
+DUMLong$X = PrettifyClasses(DUMLong$X)
+pdf("../plot/perclass-errors-ctrl.pdf", width=5, height=3)
 ggplot(DUMLong, aes(X, Error)) +
     geom_bar(stat = "identity", position="dodge") +
     facet_wrap( ~ Statistic) +
-    theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5), plot.title = element_text(hjust = 0.5)) +
+    theme(axis.text.x=element_text(angle=45,hjust=1,vjust=0.5), plot.title = element_text(hjust = 0.5)) +
     xlab("Class") + ggtitle("Control")
+dev.off()
 
 # Plot gradient boosting on its own plot with its own control
 GBErrors = rbind(gbu, gbo, dup, nnpu, nnpo, rfpu, rfpo, cmpu, cmpo)
 OverallGBErrors = subset(GBErrors, X=="Overall")
-OverallGBErrors$Algorithm = factor(OverallGBErrors$Algorithm, levels = c("Ctrl", "NN", "FCM", "RF", "GB"))
+OverallGBErrors$Algorithm = factor(OverallGBErrors$Algorithm, levels = c("Ctrl", "NN", "FCM", "RFR", "MGB"))
 GBErrorsLong = reshape(OverallGBErrors, varying=2:4, v.names="Error", direction = "long", timevar = "Statistic", times=c("Root mean squared error", "Mean absolute error", "Mean error"))#times=c("RMSE", "MAE", "ME"))
 GBErrorsLong = subset(GBErrorsLong, GBErrorsLong$Statistic != "Mean error")#"ME")
 
@@ -158,7 +164,7 @@ dev.off()
 RawTimings = read.csv("../data/timing.csv")
 RelevantTimings = subset(RawTimings, X %in% c("Dummy brick", "RF cropland", "RF dec.trees", "RF evgr.trees", "RF shrubland", "RF grassland", "RF bare soil", "RF wetland", "RF urban", "RF water", "RF phase2", "cmeans", "Gradient boosting", "Neural networks"))
 RelevantTimings = subset(RelevantTimings, !Optimised)
-RelevantTimings$Algorithm = c("Ctrl", rep("RF", 10), "FCM", "GB", "NN")
+RelevantTimings$Algorithm = c("Ctrl", rep("RFR", 10), "FCM", "MGB", "NN")
 pdf("../plot/timing.pdf", width=4, height=4)
 ggplot(RelevantTimings, aes(Algorithm, Time/60, fill = Class, label=round(Time/60))) + geom_bar(stat = "identity") +# scale_y_log10() +
     ylab("Time (minutes)") + theme(legend.position="none") +
