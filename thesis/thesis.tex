@@ -851,6 +851,7 @@ Visual inspection of the prediction results show that all of the fuzzy classific
 \bibliography{bibliography}
 
 \begin{appendices}
+
  \chapter{Visual interpretation layers}
  \label{app-layerlist}
  \begin{table}
@@ -881,7 +882,30 @@ Visual inspection of the prediction results show that all of the fuzzy classific
   \end{center}
   \caption{List of layers used to aid visual interpretation when gathering ground truth data. Most of the layers were accessed as WMS or TMS services (exceptions: Google Street View and Yandex accessed through a web interface; Google and Bing satellite data accessed using JavaScript API).}
   \label{tbl-layers}
-\end{table}
+ \end{table}
+ 
+ \chapter{Per-class errors}
+ \section{Cross-validation}
+ \begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../plot/perclass-errors-nn}
+  \caption{Errors per class using neural networks, 4-fold cross-validation. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
+  \label{fig-perclass-errors-nn}
+ \end{figure}
+ \begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../plot/perclass-errors-ctrl}
+  \caption{Errors per class if assigning equal proportions for each class (100\%/9). RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
+  \label{fig-perclass-errors-ctrl}
+ \end{figure}
+ 
+ \section{Mixed pixel validation}
+ \begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{../plot/perclass-errors-gb}
+  \caption{Errors per class using multiclass gradient boosting, trained on endmember pixels and validated on mixed pixels. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
+  \label{fig-perclass-errors-gb}
+ \end{figure}
 \end{appendices}
 
 \end{document}
