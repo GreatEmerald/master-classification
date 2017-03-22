@@ -1,4 +1,4 @@
-\documentclass[a4paper,10pt]{book}
+\documentclass[a4paper,12pt]{book}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{textcomp} % Degree symbol
@@ -13,14 +13,20 @@
 \DeclareMathOperator{\Arctan}{Arctan}
 \usepackage{tikz} % Flowcharts
 \usetikzlibrary{shapes,arrows, shadows, positioning}
-\usepackage{caption}
+%\usepackage{caption}
 \usepackage{subcaption} % Grid of figures
 \usepackage{rotating} % Landscape page for grid of figures
+% Formatting as per the template given
+\usepackage[top=1.25cm,bottom=1.25cm,inner=0.66cm,outer=0.53cm,foot=1.19cm,includeheadfoot]{geometry}
+\usepackage{titling}
+\usepackage{wrapfig}
+\renewcommand{\familydefault}{\sfdefault}
 \bibliographystyle{apalike}
 
 %opening
 \title{Fuzzy land cover classification method assessment using PROBA-V satellite data}
 \author{Dainius Masili\=unas}
+\date{\today}
 
 % Flowchart blocks
 \tikzstyle{block} = [rectangle, draw, fill=blue!20, 
@@ -35,7 +41,71 @@
 
 \begin{document}
 
-\maketitle
+% Title page with its weird format
+
+\begin{titlepage}
+  \pagenumbering{roman}
+  {\Large Centre for Geo-Information}\vspace{0.9cm}
+  
+  {\Large Thesis Report GIRS-2017-xx}\vspace{0.9cm}
+  
+  \hrule\vspace{1.1cm}
+  
+  {\bfseries \Large \MakeUppercase{\thetitle}}\vspace{2.0cm}
+  
+  \begin{wrapfigure}[1]{r}{0.3\textwidth}
+    \centering
+    \includegraphics[height=9.5cm]{../plot/figures-qgis/fulltile-rf}
+    \vspace{-110pt}
+  \end{wrapfigure}
+  
+  {\Large \theauthor} \vspace{5.9cm}
+  
+  \rotatebox{90}{\Large \thedate} \vspace{0.5cm}
+  
+  \includegraphics[width=13cm]{wur-template/WUR_RGB_standard}
+  
+  \noindent\makebox[\textwidth]{\hspace*{\dimexpr\evensidemargin-\oddsidemargin}\includegraphics[width=\paperwidth]{wur-template/image2}}
+  
+  \newpage % Second page
+  \thispagestyle{empty}
+  
+  \centering
+
+  {\bfseries \Large \thetitle}
+  
+  {\Large \theauthor}
+  
+  {Registration number 93 04 07 546 120}
+  
+  {\large \underline{Supervisors}:}
+  
+  {Dr Jan Verbesselt}
+  
+  {Dr Nandin-Erdene Tsendbazar}
+  
+  {A thesis submitted in partial fulfilment of the degree of Master of Science at Wageningen University and Research Centre, The Netherlands.}
+  
+  \begin{flushright}
+    {\thedate}
+  
+    {Wageningen, The Netherlands}
+  \end{flushright}
+
+  \begin{flushleft}
+    Thesis code number: GRS-804xx
+  
+    Thesis Report: GIRS-2015-xx
+  
+    Wageningen University and Research Centre
+  
+    Laboratory of Geo-Information Science and Remote Sensing 
+  \end{flushleft}
+\end{titlepage}
+
+%\maketitle
+\pagenumbering{arabic}
+\setcounter{page}{1}
 
 \chapter{Introduction}
 
@@ -43,7 +113,8 @@ Global land cover mapping is very important from an ecological and earth systems
 
 The creation of a global land cover map from remote sensing data has been a goal of many different studies \citep{hansen2000hardtree}. Their results are nowadays freely available as satellite imagery products, such as Global Land Cover 2000 \citep{bartholome2005glc2000}, MODIS land cover \citep{friedl2010modis} and GlobCover \citep{arino2007globcover}. There are also maps based on the fusion of multiple other maps, like Geo-Wiki hybrid \citep{see2015hybrid}, and multiple sensors, like Land Cover CCI \citep{lccciguide} and GlobeLand30 \citep{chen2015globeland30}. However, these land cover maps all have certain drawbacks.
 
-The first common drawback of current global land cover classification products is that their spatial resolution is low to medium. The majority of aforementioned land cover products are derived from MODIS and MERIS sensor data. The sensors are only capable of capturing images with the finest pixels representing 300 by 300 metre areas (at the equator). Recent advances in satellite sensors and computing power would allow for land cover classification at a higher spatial and temporal resolution. For example, at the moment the PROBA-V mission by the European Space Agency produces imagery that is a good fit for use in land cover classification. It has spatial resolution as fine as 100 by 100 metre pixels (with additional products also providing 300 by 300 metre and 1 by 1 kilometre pixel size for comparison with previous sensors) \citep{probavguide}. It is well-suited for time series analysis, because it has an archive that goes back to 2013, as well as a fast revisit time of 2 days for full global coverage (1 day for locations above 35\textdegree{} latitude) \citep{dierckx2014probav}.
+% DM: MODIS is 500 by 500 m
+The first common drawback of current global land cover classification products is that their spatial resolution is low to medium. The majority of aforementioned land cover products are derived from MODIS and MERIS sensor data. The sensors are only capable of capturing images with the finest pixels representing 300 by 300 metre areas (at the equator). Recent advances in satellite sensors and computing power would allow for land cover classification at a higher spatial and temporal resolution. For example, at the moment the PROBA-V mission by the European Space Agency produces imagery with as fine as 100 by 100 metre pixels (with additional products also providing 300 by 300 metre and 1 by 1 kilometre pixel size for comparison with previous sensors) \citep{probavguide}. It is well-suited for time series analysis, because it has an archive that goes back to 2013, as well as a fast revisit time of 2 days for full global coverage (1 day for locations above 35\textdegree{} latitude) \citep{dierckx2014probav}.
 
 The second drawback of current global land cover products is that their classification accuracy tends to be low, averaging at around 65\% \citep{tsendbazar2016integrating}. The third drawback is that all of these products use what is known as ``hard'' or ``crisp'' classification: each pixel on the map is made to represent only one land cover type.
 
