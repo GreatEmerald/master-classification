@@ -18,6 +18,7 @@ DummyData[] = 100.0/9.0
 
 AST = AccuracyStatTable(DummyData, ValData@data)
 write.csv(AST, "../data/stat-dummy.csv")
+write.csv(CalcErrors(DummyData, ValData@data), "../data/errors-stat-dummy.csv")
 
 # For the pure-nonpure case
 DummyData = ValData@data[!AllData@data$pure,]
