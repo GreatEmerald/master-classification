@@ -227,7 +227,7 @@ AccuracyStatTable(cmeans.wm@mu@data*100, alldata@data[names(cmeans.wm@mu@data)])
 qplot(aspect, tpi, data=alldata@data[alldata@data$pure,], colour=dominant)
 
 # Repeat with 4-fold cross-validation
-CMCV = function(StepFormula, filename=paste0(OutputDir, "stat-cmeans.csv"), weighted=FALSE, ...)
+CMCV = function(StepFormula, filename="stat-cmeans.csv", outdir=OutputDir, weighted=FALSE, ...)
 {
     RoundPrediction = data.frame()
     for (i in 1:length(folds))
@@ -246,11 +246,12 @@ CMCV = function(StepFormula, filename=paste0(OutputDir, "stat-cmeans.csv"), weig
     AST = AccuracyStatTable(RoundPrediction, Validator)
     print(AST)
     plot(unlist(RoundPrediction), unlist(Validator))
-    write.csv(AST, filename)
+    write.csv(AST, paste0(outdir, filename))
+    write.csv(CalcErrors(RoundPrediction, Validator), paste0(outdir, "errors-", filename))
 }
 
 # Unoptimised
-CMCV(FullFormula, filename = paste0(OutputDir, "stat-cmeans-unoptimised.csv"))#, class.c = GetClassMeans(), class.sd = GetClassSDs())
+CMCV(FullFormula, filename = "stat-cmeans-unoptimised.csv")#, class.c = GetClassMeans(), class.sd = GetClassSDs())
 # Optimised
 OptimalFormula1 = formula("dominant ~ red + nir + swir + osavi + lswi + height + slope + tpi + mean.ndvi + phase1 + amplitude1 + phase2 + amplitude2")
 OptimalFormula2 = formula("dominant ~ nir + osavi + height + slope + mean.ndvi + phase1 + phase2")

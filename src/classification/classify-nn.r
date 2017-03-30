@@ -81,7 +81,7 @@ maxs = apply(ScaleDataUntransf, 2, max)
 mins = apply(ScaleDataUntransf, 2, min)
 ScaleDataUntransf = as.data.frame(scale(ScaleDataUntransf, center = mins, scale = maxs - mins))
 
-NNCV = function(filename=paste0(OutputDir, "stat-neuralnetworks.csv"), exclude=c(), ...)
+NNCV = function(filename="stat-neuralnetworks.csv", exclude=c(), outdir=OutputDir, ...)
 {
     TrainingNames = GetTrainingNames(exclude=exclude)
     Formula = paste0(paste0(GetValidationNames(), collapse="+"),"~",paste0(TrainingNames, collapse="+"))
@@ -101,10 +101,11 @@ NNCV = function(filename=paste0(OutputDir, "stat-neuralnetworks.csv"), exclude=c
     AST = AccuracyStatTable(PredictionsPerFold, Validator)
     print(AST)
     plot(unlist(PredictionsPerFold), unlist(Validator))
-    write.csv(AST, paste0(OutputDir, filename))
+    write.csv(AST, paste0(outdir, filename))
+    write.csv(CalcErrors(PredictionsPerFold, Validator), paste0(outdir, "errors-", filename))
 }
 # Unoptimised
-NNCV(paste0(OutputDir, "stat-neuralnetworks-unoptimised.csv"), hidden=11, threshold=0.15)
+NNCV("stat-neuralnetworks-unoptimised.csv", hidden=11, threshold=0.15)
 # Optimised: 22.13
 NNCV(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2", "tpi"), hidden=9, threshold=0.05)
 
@@ -119,7 +120,7 @@ NNCV(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2"
 folds=list(which(!ScaleDataUntransf$pure))
 
 # Unoptimised
-NNCV(paste0(OutputDir, "stat-neuralnetworks-pure-unoptimised.csv"), hidden=11, threshold=0.15)
+NNCV("stat-neuralnetworks-pure-unoptimised.csv", hidden=11, threshold=0.15)
 # Optimised
 NNCV(exclude=c("osavi", "amplitude1", "aspect", "blue", "is.water", "amplitude2", "tpi"), hidden=9, threshold=0.05,
-    filename=paste0(OutputDir, "stat-neuralnetworks-pure.csv"))
+    filename="stat-neuralnetworks-pure.csv")
