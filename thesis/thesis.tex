@@ -56,7 +56,7 @@
   
   \begin{wrapfigure}[1]{r}{0.3\textwidth}
     \centering
-    \includegraphics[height=9.5cm]{../plot/figures-qgis/fulltile-rf}
+    \includegraphics[height=9.5cm]{thesis-figures/figures-qgis/fulltile-rf}
     \vspace{-110pt}
   \end{wrapfigure}
   
@@ -564,7 +564,7 @@ Positive ME values mean that the classification method tends to overrepresent cl
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{../plot/total-errors}
+  \includegraphics[width=0.5\textwidth]{thesis-figures/total-errors}
   \caption{Total errors per classification method using 4-fold cross-validation, unoptimised methods (all terms used) in blue, optimised in red. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RFR: random forest regression.}
   \label{fig-total-errors}
 \end{figure}
@@ -575,7 +575,7 @@ Multiclass gradient boosting errors are not directly comparable with the errors 
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{../plot/total-errors-gb}
+  \includegraphics[width=0.5\textwidth]{thesis-figures/total-errors-gb}
   \caption{Total errors per classification method using holdout validation (training on endmember pixels and validating on mixed pixels), unoptimised methods (all terms used in the model) in blue, optimised in red. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RFR: random forest regression, MGB: multiclass gradient boosting.}
   \label{fig-total-errors-gb}
 \end{figure}
@@ -586,14 +586,14 @@ The total mean error (ME) for all classification methods is 0, if rounding error
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.6\textwidth]{../plot/perclass-errors-rf}
+  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-rf}
   \caption{Errors per class using random forest regression. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-rf}
 \end{figure}
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.6\textwidth]{../plot/perclass-errors-cm}
+  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-cm}
   \caption{Errors per class using fuzzy \textit{c}-means. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-cm}
 \end{figure}
@@ -609,20 +609,20 @@ Neural network prediction accuracy per class was in between the two classificati
 \begin{sidewaysfigure}
   \centering
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-google}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/fulltile-google}
     \caption{Full tile, Google true colour}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-rf}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/fulltile-rf}
     \caption{Full tile, random forest regression}
     \label{subfig-fulltile-rf}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-nn}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/fulltile-nn}
     \caption{Full tile, neural networks}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/fulltile-cm}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/fulltile-cm}
     \caption{Full tile, fuzzy \textit{c}-means}
     \label{subfig-fulltile-cm}
   \end{subfigure} \
@@ -633,38 +633,38 @@ Neural network prediction accuracy per class was in between the two classificati
   \ContinuedFloat
   \centering
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-google}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-google}
     \caption{Riga, Google true colour}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-rf}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-rf}
     \caption{Riga, random forest regression}
     \label{subfig-riga-rf}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-nn}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-nn}
     \caption{Riga, neural networks}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-cm}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-cm}
     \caption{Riga, fuzzy \textit{c}-means}
     \label{subfig-riga-cm}
   \end{subfigure} \
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-google}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/karsuva-google}
     \caption{Kar\v{s}uva, Google true colour}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-rf}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/karsuva-rf}
     \caption{Kar\v{s}uva, random forest regression}
     \label{subfig-karsuva-rf}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-nn}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/karsuva-nn}
     \caption{Kar\v{s}uva, neural networks}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/karsuva-cm}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/karsuva-cm}
     \caption{Kar\v{s}uva, fuzzy \textit{c}-means}
     \label{subfig-karsuva-cm}
   \end{subfigure} \
@@ -675,38 +675,38 @@ Neural network prediction accuracy per class was in between the two classificati
   \ContinuedFloat
   \centering
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-google}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/kursiunerija-google}
     \caption{Curonian spit, Google true colour}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-rf}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/kursiunerija-rf}
     \caption{Curonian spit, random forest regression}
     \label{subfig-kursiunerija-rf}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-nn}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/kursiunerija-nn}
     \caption{Curonian spit, neural networks}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/kursiunerija-cm}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/kursiunerija-cm}
     \caption{Curonian spit, fuzzy \textit{c}-means}
     \label{subfig-kursiunerija-cm}
   \end{subfigure} \
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-google}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/medziokalnis-google}
     \caption{Med\v{z}iokalnis, Google true colour}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-rf}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/medziokalnis-rf}
     \caption{Med\v{z}iokalnis, random forest regression}
     \label{subfig-medziokalnis-rf}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-nn}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/medziokalnis-nn}
     \caption{Med\v{z}iokalnis, neural networks}
   \end{subfigure} \hfill
   \begin{subfigure}[t]{.23\textwidth}
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/medziokalnis-cm}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/medziokalnis-cm}
     \caption{Med\v{z}iokalnis, fuzzy \textit{c}-means}
     \label{subfig-medziokalnis-cm}
   \end{subfigure} \
@@ -731,11 +731,11 @@ Figures \ref{subfig-medziokalnis-rf}-\ref{subfig-medziokalnis-cm} show the area 
 \begin{figure}
   \centering
   \begin{subfigure}[b]{0.48\textwidth}
-    \includegraphics[width=\textwidth]{../plot/karsuva-atlas}
+    \includegraphics[width=\textwidth]{thesis-figures/karsuva-atlas}
     \caption{Kar\v{s}uvos wood, also known as Vie\v{s}vil\.{e}s-Smalinink\k{u} wood}
   \end{subfigure} \hfill
   \begin{subfigure}[b]{0.48\textwidth}
-    \includegraphics[width=\textwidth]{../plot/medziokalnis-atlas}
+    \includegraphics[width=\textwidth]{thesis-figures/medziokalnis-atlas}
     \caption{Med\v{z}iokalnis forest}
   \end{subfigure}
   \caption{Forest dominant species distribution as per the National Atlas of Lithuania \citep{treeatlas2011}. Pink: Norway spruce, orange: scots pine, light blue: birch, yellow: grey alder \textit{Alnus incana} (L.) Moench, brown: black alder, green: ash \textit{Fraxinus excelsior} L., dark blue: river (including labels, such as \textit{Kra\v{z}ant\.{e}}), cyan: lake.}
@@ -748,22 +748,22 @@ Tree type prediction accuracy can be validated with national atlas data (see fig
   \centering
   \begin{subfigure}[b]{0.48\textwidth}
     \centering
-    \includegraphics[width=0.7\textwidth]{../plot/figures-qgis/riga-gbu}
+    \includegraphics[width=0.7\textwidth]{thesis-figures/figures-qgis/riga-gbu}
     \caption{Riga, unoptimised multiclass gradient boosting}
   \end{subfigure} \hfill
   \begin{subfigure}[b]{0.48\textwidth}
     \centering
-    \includegraphics[width=0.7\textwidth]{../plot/figures-qgis/riga-gbo}
+    \includegraphics[width=0.7\textwidth]{thesis-figures/figures-qgis/riga-gbo}
     \caption{Riga, optimised multiclass gradient boosting}
   \end{subfigure}
   \begin{subfigure}[b]{0.48\textwidth}
     \centering
-    \includegraphics[width=0.7\textwidth]{../plot/figures-qgis/medziokalnis-gbu}
+    \includegraphics[width=0.7\textwidth]{thesis-figures/figures-qgis/medziokalnis-gbu}
     \caption{Med\v{z}iokalnis, unoptimised multiclass gradient boosting}
   \end{subfigure} \hfill
   \begin{subfigure}[b]{0.48\textwidth}
     \centering
-    \includegraphics[width=0.7\textwidth]{../plot/figures-qgis/medziokalnis-gbo}
+    \includegraphics[width=0.7\textwidth]{thesis-figures/figures-qgis/medziokalnis-gbo}
     \caption{Med\v{z}iokalnis, optimised multiclass gradient boosting}
   \end{subfigure}
   \caption{Visual comparison of optimised and unoptimised multiclass gradient boosting prediction. Red, green and blue colour channels represent: a and b: built-up, wetlands, water; c and d: cultivated, deciduous tree and evergreen tree cover proportion, respectively.}
@@ -784,7 +784,7 @@ Covariates that were important for classification varied depending on the class 
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.6\textwidth]{../plot/variable-importance}
+  \includegraphics[width=0.6\textwidth]{thesis-figures/variable-importance}
   \caption{Covariate permutation importance for holdout random forest regression. Values indicate the increase in prediction RMSE when a given covariate is shuffled, thus higher values mean higher importance of the covariate.}
   \label{fig-variable-importance}
 \end{figure}
@@ -805,7 +805,7 @@ For gradient boosting, the \texttt{xgboost} package employs a method where a mod
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{../plot/timing}
+  \includegraphics[width=0.5\textwidth]{thesis-figures/timing}
   \caption{Prediction user time for the different classification methods (Ctrl: control prediction of a fully fuzzy set 100\%/9; RFR: random forest regression; MGB: multiclass gradient boosting; FCM: fuzzy \textit{c}-means; NN: neural networks), using unoptimised variants (predictions done using all covariates). The different colours in random forest regression case show time needed to process each separate class layer, whereas all other methods process all layers at once.}
   \label{fig-timing}
 \end{figure}
@@ -868,12 +868,12 @@ Fuzzy land cover classification has the advantage that it can be suited to parti
 \begin{figure}
   \begin{subfigure}{0.48\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-hard-rf}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-hard-rf}
     \caption{Hardened random forest regression prediction}
   \end{subfigure} \hfill
   \begin{subfigure}{0.48\textwidth}
     \centering
-    \includegraphics[width=\textwidth]{../plot/figures-qgis/riga-hard-cci}
+    \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-hard-cci}
     \caption{LC-CCI classification}
   \end{subfigure}
   \caption{Hard land cover classification of Riga and its surroundings. Yellow: cultivated land; dark green: evergreen trees; green: deciduous trees; magenta: shrubs; light green: grass; brown: barren; teal: wetland; red: built-up area; blue: water; black: mixed pixels with no dominant class.}
@@ -1013,13 +1013,13 @@ Given the recent advances in remote sensing technology (such as the Sentinel-2 a
  \section{Cross-validation}
  \begin{figure}[!h]
   \centering
-  \includegraphics[width=0.6\textwidth]{../plot/perclass-errors-nn}
+  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-nn}
   \caption{Errors per class using neural networks, 4-fold cross-validation. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-nn}
  \end{figure}
  \begin{figure}[!h]
   \centering
-  \includegraphics[width=0.6\textwidth]{../plot/perclass-errors-ctrl}
+  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-ctrl}
   \caption{Errors per class if assigning equal proportions for each class (100\%/9). RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-ctrl}
  \end{figure}
@@ -1027,7 +1027,7 @@ Given the recent advances in remote sensing technology (such as the Sentinel-2 a
  \section{Mixed pixel validation}
  \begin{figure}[!h]
   \centering
-  \includegraphics[width=0.6\textwidth]{../plot/perclass-errors-gb}
+  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-gb}
   \caption{Errors per class using multiclass gradient boosting, trained on endmember pixels and validated on mixed pixels. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-gb}
  \end{figure}
