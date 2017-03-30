@@ -120,7 +120,7 @@ The first common drawback of current global land cover classification products i
 % TODO: Is this clear enough?
 The second drawback of current global land cover products is that their classification accuracy tends to be low, averaging at around 65\% \citep{tsendbazar2016integrating}. The third drawback is that all of these products use what is known as ``hard'' or ``crisp'' classification: each pixel is assigned to one particular land cover class only. The result of a hard classification is a thematic map. This classification type treats each pixel as homogeneous with regards to land cover, which is rarely the case in reality. In contrast, a ``fuzzy'' or ``soft'' classification, sometimes also called ``subpixel'' classification or ``linear mixture modelling'' \citep{Okeke2006fuzzyexponent} identifies the proportion of each land cover class within each pixel. The result of a fuzzy classification is one map per land cover class, showing the proportion of the pixel area covered by the land cover class.
 
-Hard classification is not well-suited for coarse resolution imagery, due to a large proportion of mixed pixels in it, compared to endmember (pure) pixels. When hard classification is attempted on such imagery, the accuracy of the result can be no higher than the area fraction that the dominant land cover type of the pixel occupies \citep{latifovic2004accuracy}. There have been attempts at increasing accuracy by defining mosaic classes, such as mixed forests (50\% needleleaf and 50\% broadleaf trees), but it leads to a proliferation of classes that increases map complexity and still does not deal with the core problem, thus not improving the classification accuracy by much \citep{tsendbazar2016comparative}. In contrast, ``fuzzy'' or ``soft'' classification results in each pixel containing information about the proportion of each class within that pixel, therefore operating on sub-pixel scales. This has the advantage of representing land cover more accurately, and gives the ability to represent mosaic classes as a combination of pure classes instead. Since the output of fuzzy classification is essentially one raster per class, with smooth edges, it is suitable for more in-depth analysis and user-specific visualisation criteria \citep{tsendbazar2016integrating}. Despite that, hard classification is still the most often used classification type due to the number of algorithms developed for it, ease of storing the result (it is thematic and thus takes little storage space), displaying it in a single map (albeit in a less accurate fashion) and performing accuracy assessment.
+Hard classification is not well-suited for coarse resolution imagery, due to a large proportion of mixed pixels in it (representing areas of mixed land cover), compared to endmember pixels (or pure pixels, which are dominated by a single land cover class). When hard classification is attempted on such imagery, the accuracy of the result can be no higher than the area fraction that the dominant land cover type of the pixel occupies \citep{latifovic2004accuracy}. There have been attempts at increasing accuracy by defining mosaic classes, such as mixed forests (50\% needleleaf and 50\% broadleaf trees), but it leads to a proliferation of classes that increases map complexity and still does not deal with the core problem, thus not improving the classification accuracy by much \citep{tsendbazar2016comparative}. In contrast, ``fuzzy'' or ``soft'' classification results in each pixel containing information about the proportion of each class within that pixel, therefore operating on sub-pixel scales. This has the advantage of representing land cover more accurately, and gives the ability to represent mosaic classes as a combination of pure classes instead. Since the output of fuzzy classification is essentially one raster per class, with smooth edges, it is suitable for more in-depth analysis and user-specific visualisation criteria \citep{tsendbazar2016integrating}. Despite that, hard classification is still the most often used classification type due to the number of algorithms developed for it, ease of storing the result (it is thematic and thus takes little storage space), displaying it in a single map (albeit in a less accurate fashion) and performing accuracy assessment.
 
 There is a number of different classification algorithms, but only several of them are suitable to be used for fuzzy classification \citep{nath2014methods}. The two methods most commonly used in scientific literature are fuzzy \textit{c}-means and neural networks \citep{zhang2001fullyfuzzy}. Neural networks in particular are well-suited for fuzzy classification, since they allow multiple continuous output as well as input variables in a single model \citep{foody1997fuzzynnet}. Fuzzy \textit{c}-means, also known as fuzzy k-means or soft k-means, is a statistical method that relies on the proximity of pixels in feature space to class centroids, and thus is also suitable for fully fuzzy classification. However, since k-means is an unsupervised classification algorithm, the ability to make use of training data in fuzzy \textit{c}-means is limited to determining class centroids with more precision \citep{hengl2004fuzzycmeans}, and as such it is effectively similar to maximum likelihood classification.
 
@@ -157,13 +157,6 @@ All in all the goal of this thesis is to improve large-scale land cover maps by 
 \end{itemize}
 
 \chapter{Data and methods}
-
-%TODO: Put these where relevant
-\textbf{User time}: total time that a process takes to run on a single thread, not counting time spent by the kernel (file input/output, process forking).
-
-\textbf{Endmember pixel}: a synonym of \textbf{pure pixel}, a cell which is dominated by a single land cover class.
-
-\textbf{Mixed pixel}: a cell in which there are multiple land cover classes.
 
 \section{Study area and classes}
 
@@ -230,7 +223,6 @@ In case none of the pixels within the 10 pixel radius fulfilled the selection cr
 
 Image interpretation, second stage sample selection and dataset creation were performed using QGIS 2.14.8 ``Essen'' software. To aid in visual interpretation in order to ensure that the gathered ground truth would have as little uncertainty as possible, open national data (orthophotos and topographical maps) from Finland, Estonia, Latvia and Lithuania was used in addition to open global data. In addition to GIS layers, panoramic photos were used (Google Street View, Yandex panoramas). For a full list of layers used for image interpretation, see Appendix \ref{app-layerlist}.
 
-%TODO: Add to discussion: This takes extra time and effort, but results in more precise proportion measurements.
 In order to determine the class proportions within a PROBA-V pixel, instead of relying on subjective estimations or subdivision, land cover within a pixel was outlined by drawing multipart polygons for each class (except the dominant) on top of the pixel area. Then by using a QGIS virtual attribute, the area of each polygon was dynamically calculated and divided by the total area of a pixel (which is constant among all pixels in the WGS84 coordinate reference system), giving a percentage fraction of each class. The fraction of the dominant class was then calculated by subtracting each of the other fractions from 100\%. Therefore the precision of the ground truth data is 1\%, and the range is from 0\% to 100\%.
 
 Gathered ground truth data was stored as a point layer, with each point representing the PROBA-V pixel footprint under it. In order to make certain that there are no issues with points falling on pixel borders, as well as to accurately know the boundaries of each pixel when drawing polygons on it, a line grid was generated in QGIS by using an imported PROBA-V image as a reference for the origin and size of each grid cell. Ground truth points were placed in the centre of the pixel they describe, and snapping (with topology checking) was used when drawing polygons in order to avoid geometry errors and imprecisions.
@@ -298,7 +290,6 @@ Wetlands were somewhat challenging to distinguish from grass and shrubs. This is
 
 \subsubsection{Data availability}
 
-% TODO: 100m is actually 10/10080 degrees, aka 1/1008 degrees, aka 0.000992... degrees, aka 0.0595... arcminutes aka 3.571... arcseconds
 Spectral data for this study was obtained from the PROBA-V sensor, provided by VITO. The PROBA-V sensor captures 4 spectral bands: blue, red, near infrared and shortwave infrared. In addition, VITO also provides an NDVI product calculated from the aforementioned bands. The data is provided as rasters in the WGS84 coordinate reference system. In this thesis, the 100 m resolution level 3 top-of-canopy reflectance product was used. Despite the name of the product, the cartesian cell size varies depending on the latitude, since cell boundaries are defined by polar coordinates. On average, the cell size at the area of interest is approximately 109 $\times{}$ 221 m, stretched in the north-south direction. Each image of a 10-by-10-degree tile contains 10080 $\times{}$ 10080 pixels (101.6 megapixels) per band. Radiometry bands are stored as 16-bit signed integers, and NDVI is stored as 32-bit floating point units.
 
 This product is available in composites of five days, made by compositing five one-day composites by using maximum NDVI, after filtering out pixels of poor quality, such as incomplete data, sensor problems and extreme sun or look angles. A quality control layer is also provided, with information on whether a pixel is clouded, shadowed, on land or over water, and whether the sensors for each band were working according to specifications at the time of data acquisition \citep{probavguide2}.
@@ -310,7 +301,6 @@ The data comes in two collections, which differ in the algorithm used to detect 
 
 Spectral data preprocessing involved four major steps: cloud filtering using the built-in quality control layers, cloud filtering by discarding temporal outliers, compositing and deriving indices from the composite. See figure \ref{fig-optical-flowchart} for more details. All preprocessing, algorithm training and prediction was done on a shared virtual machine provided by VITO, which had 32 processor cores (Intel Xeon E3, 2.4 GHz) and 32.8 gigabytes of memory.
 
-% TODO: make colours better and reflect in caption
 \begin{figure}
   \centering
   \begin{tikzpicture}[node distance = 0.5cm, auto]
@@ -341,7 +331,7 @@ Spectral data preprocessing involved four major steps: cloud filtering using the
       \path [line] (clean-timeseries) -- (get-harmonics);
       \path [line] (get-harmonics) -- (harmonics);
   \end{tikzpicture}
-  \caption{Flowchart of the spectral and temporal parameter preprocessing chain. The radiometry layers are a set of 4 spectral bands (blue, red, NIR, SWIR) for each time step; all input layers were 5-day composites for a period of 2014-2016.}
+  \caption{Flowchart of the spectral and temporal parameter preprocessing chain. Grey blocks are input and output data, white blocks are scripts that process the data. The radiometry layers are a set of 4 spectral bands (blue, red, NIR, SWIR) for each time step; all input layers were 5-day composites for a period of 2014-2016.}
   \label{fig-optical-flowchart}
 \end{figure}
 
@@ -349,8 +339,7 @@ The first step in the preprocesing chain was to mask out pixels of bad quality a
 
 While Collection 1 improved the cloud detection algorithm, it still does not detect clouds over water well enough, and tends to confuse barren areas with clouds. In addition, cloud shadow detection has become worse, with one-pixel-wide shadows not being masked properly. Due to the problems with cloud masking in the provided data, extra cloud masking was performed by discarding temporal outliers.
 
-% TODO: Note what the 30 DN actually means
-Temporal outliers caused by undetected cloud cover were additionally filtered out by fitting a LOESS curve on a time series of remaining blue band observations for each pixel, and marking positive outliers that deviate more than 30 digital numbers from the LOESS curve as clouds. This was also done using the \textit{R} package \textit{probaV}. The output of this step is a new cloud mask layer. In order to make use of multithreaded processing, the input raster layers were first stacked into a time series, and then the stack was divided into 1680 blocks, with 30 of them being processed in parallel. Processing took 14 hours, and mosaicking the blocks back into one file using \textit{GDAL} took an extra 33 minutes.
+Temporal outliers caused by undetected cloud cover were additionally filtered out by fitting a LOESS curve on a time series of remaining blue band observations for each pixel, and marking positive outliers that deviate more than 30 digital numbers (0.015 reflectance values) from the LOESS curve as clouds. This was also done using the \textit{R} package \textit{probaV}. The output of this step is a new cloud mask layer. In order to make use of multithreaded processing, the input raster layers were first stacked into a time series, and then the stack was divided into 1680 blocks, with 30 of them being processed in parallel. Processing took 14 hours, and mosaicking the blocks back into one file using \textit{GDAL} took an extra 33 minutes.
 
 Then the resulting temporal cloud mask was applied to NDVI time series to filter the clouds from it by writing an \textit{R} script that makes use of the \textit{raster}, \textit{foreach} and \textit{doParallel} packages to perform the cloud masking in parallel on 20 threads. This step took 16 minutes.
 
@@ -417,7 +406,7 @@ The primary data source was chosen to be the Digital Elevation Model over Europe
       \path [line] (process-eudem) -- (dem-merge);
       \path [line] (dem-merge) -- (dem-indices);
   \end{tikzpicture}
-  \caption{Elevation parameter preprocessing chain.}
+  \caption{Elevation parameter preprocessing chain. Grey blocks are input and output data, white blocks are scripts that process the data.}
   \label{fig-elevation-preprocessing}
 \end{figure}
 
@@ -483,7 +472,7 @@ The tested algorithms were trained on a subset of ground truth data (360 pixels)
       \path [line] (validation-set) -- (validation-process);
     \end{tikzpicture}
   %}
-  \caption{Classification method training, prediction and validation process. The splitting into training and validation set is automated as 4-fold cross-validation for all methods except multiclass gradient boosing, in which case the training set was all endmember pixels and validation set was all mixed pixels.}
+  \caption{Generalised classification method training, prediction and validation process. The splitting into training and validation set is automated as 4-fold cross-validation for all methods except multiclass gradient boosing, in which case the training set was all endmember pixels (242) and validation set was all mixed pixels (238).}
   \label{fig-classification-flowchart}
 \end{figure}
 
@@ -776,7 +765,6 @@ In the case of multiclass gradient boosting, its prediction is not directly comp
 %TODO: Do I put in the wetlands curve?
 %TODO: Do I put the section below to the methods? It's a bit odd to make a section just for this though.
 %TODO: Do I add x over y plots?
-%TODO: Do I mention the variables dropped for all models here?
 
 Covariate importance was assessed using permutation importance on holdout random forest regression, as per \citet{Janitza2016holdoutrf}. The holdout technique trains a set of decision trees only on half of the training set supplied to it, and then uses the other half for validation, thus achieving more realistic variable importance metrics compared to using out-of-bag samples for it. Permutation variable importance works by measuring RMSE for a full model, then shuffling the values of the covariate being tested, and tracking the resulting change in RMSE. Most often RMSE increases when values are shuffled, but if a covariate is confounding for a given class, it may decrease and thus the importance reported is negative. Since the covariates have different value ranges, the permutation errors are scaled by the standard error of the training set so as to be comparable with one another \citep{breiman2001random}. Since it is known that permutation importance is biased against correlated covariates \citep{tolosi2011importancebias}, OSAVI has been excluded due to a 0.94 correlation with mean NDVI. 
 
@@ -788,6 +776,22 @@ Covariates that were important for classification varied depending on the class 
   \caption{Covariate permutation importance for holdout random forest regression. Values indicate the increase in prediction RMSE when a given covariate is shuffled, thus higher values mean higher importance of the covariate.}
   \label{fig-variable-importance}
 \end{figure}
+
+The model optimisation step for each method involved dropping terms one by one until the total RMSE no longer decreased. The terms dropped for each method is shown in table \ref{tbl-covariate-drop}. Aspect and the water mask hindered prediction accuracy for all methods; OSAVI hindered three, whereas TPI, elevation and amplitude of both orders hindered two of the four methods.
+
+\begin{table}
+  \centering
+  \begin{tabular}{ll}
+    Method & Covariates dropped\\ \hline
+    Random forest regression & OSAVI, elevation, aspect, water mask\\
+    Neural networks & Blue, OSAVI, aspect, TPI, amplitude of both orders, water mask\\
+    Fuzzy \textit{c}-means & Red, blue, SWIR, LSWI, aspect, TPI, amplitude of both orders, water mask\\
+    Multiclass gradient boosting & SWIR, OSAVI, LSWI, elevation, aspect, water mask\\
+  \end{tabular}
+  \caption{Covariates dropped in the model optimisation step for each method.}
+  \label{tbl-covariate-drop}
+\end{table}
+
 
 \section{Training and prediction time}
 
@@ -814,11 +818,10 @@ In order to compare the prediction time between classification methods, user tim
 
 Most of the classification methods took 25-49 minutes to predict all 9 classes for each pixel of an entire PROBA-V tile (101,606,400 pixels), of which 9 minutes are attributable to the overhead of the \texttt{raster::predict} function itself. The random forest regression method, however, took much longer: even 20.5 hours. It needed 1.8-2.5 hours to predict the proportion of each individual class, and 19 more minutes to postprocess the values so each pixel sums up to 100\%. The \texttt{raster::predict} overhead for an individual layer was 5 minutes.
 
-Note that these results are in user time, not wall clock time, so as to be able to compare the methods no matter whether their respective packages implement multithreading or not. For instance, while random forest regression takes 25-50 times more user time compared to the other methods, it is multithreaded by default. The wall clock time of random forest regression was only 1 hour, showing a 20-times reduction in processing time needed on the PROBA-V MEP server (using 32 threads). However, current fuzzy \textit{c}-means and neural network implementations do not make use of multithreading yet.
+Note that these results are in user time, which is the total time that a process takes to run on a single thread, not counting time spent by the kernel, such as file input/output. This is different from wall clock time, which is the actual time a task takes to complete; in multithreaded cases, wall clock time is shorter than user time. User time was used so as to be able to compare the methods no matter whether their respective packages implement multithreading or not. For instance, while random forest regression takes 25-50 times more user time compared to the other methods, it is multithreaded by default. The wall clock time of random forest regression was only 1 hour, showing a 20-times reduction in processing time needed on the PROBA-V MEP server (using 32 threads). However, current fuzzy \textit{c}-means and neural network implementations do not make use of multithreading yet.
 
 In addition, the extra preprocessing steps needed before the prediction are not reflected in figure \ref{fig-timing}. These steps varied per classification method. For fuzzy \textit{c}-means, it involved separating the covariate rasters into 25 chunks and converting them into a \texttt{SpatialPixelsDataFrame}. For neural networks, it involved scaling all covariate rasters to the 0-1 range. For random forest regression, extra processing time was needed to store the individual layers on disk and then compress them all to one file. Nothing extra was required for multiclass gradient boosting.
 
-%TODO: Re-read all important articles from introduction and see how their results compare
 \chapter{Discussion}
 
 \section{Classification method accuracy comparison}
@@ -880,7 +883,9 @@ Fuzzy land cover classification has the advantage that it can be suited to parti
   \label{fig-hard-rf}
 \end{figure}
 
-Increasing the number of ground truth samples would increase the accuracy of prediction results, since there would be more samples to train the models on. In addition, none of the tested algorithms are spatial; given a sufficient number and distribution of sampling sites to determine a semivariogram, implementing spatial correlation awareness (such as what is suggested for fuzzy \textit{c}-means by \citet{gong2013improvedcmeans}) could improve the results and eliminate the salt-and-pepper effect. The binary relevance method also allows for optimising the covariates for each class specifically, which could improve the classification accuracy per class. In addition, if global classification is desired, separate models per biome would give better results due to differences in indicators for land cover (for instance, seasonal changes are inverted in the southern hemisphere). If ground truth is collected using manual interpretation, high resolution imagery in summer, autumn and winter, and especially 3D models and panoramic photos help to identify land cover proportions with higher confidence.
+Increasing the number of ground truth samples would increase the accuracy of prediction results, since there would be more samples to train the models on. In addition, none of the tested algorithms are spatial; given a sufficient number and distribution of sampling sites to determine a semivariogram, implementing spatial correlation awareness (such as what is suggested for fuzzy \textit{c}-means by \citet{gong2013improvedcmeans}) could improve the results and eliminate the salt-and-pepper effect. The binary relevance method also allows for optimising the covariates for each class specifically, which could improve the classification accuracy per class. In addition, if global classification is desired, separate models per biome would give better results due to differences in indicators for land cover (for instance, seasonal changes are inverted in the southern hemisphere).
+
+If ground truth is collected using manual interpretation, high resolution imagery in summer, autumn and winter, and especially 3D models and panoramic photos help to identify land cover proportions with higher confidence. Drawing polygons to define the extent of land cover takes more effort compared to subdividing a pixel into a grid and classifying the cells of the subgrid (as done in the case of \citet{perger2012geowiki}), but also results in more accurate ground truth data because border effects are eliminated. It also allows for identifying individual trees, which is crucial for properly identifying proportions of trees in mixed forests.
 
 Additional covariates could help improve the separability of different classes. Soil properties, for instance, could improve the separability of vegetation classes, cultivated, barren and built-up areas. Since soil is important for vegetation nutrient uptake, it could also help discern between the vegetation classes. Additional time series parameters, such as separate parameters for each separate spectral band, additional vegetation indices such as a ratio between NDVI and LSWI, and phenological parameters such as length of season could also give more opportunities for class separation. Including the time series itself as a set of covariates might increase prediction accuracy even more \citep{Pelletier2016hardrf}. Spectral band or vegetation index values during certain times (such as winter or autumn) could also help separate classes such as wetlands \citep{davranche2010wetland}. The classes that would benefit from more separability are grass, shrubs and cultivated areas; water less so, as it can already be discerned from other classes well. Shrubs are difficult to discern from trees using remote sensing, since their differentiating factor is height relative to ground height; this would require a dataset of canopy height. Discerning between grass and cultivated areas depends on the crop type; a covariate of NDVI after harvest date would be helpful in this case.
 
