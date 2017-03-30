@@ -22,3 +22,12 @@ AccuracyStatTable = function(predicted, observed)
     }
     return(Result)
 }
+
+# Simply return a table of differences; used for ANOVA
+CalcErrors = function(predicted, observed, ...)
+{
+    SE = unlist(predicted - observed)^2
+    AE = abs(unlist(predicted - observed))
+    return(data.frame(AE, SE, ...))
+}
+    
