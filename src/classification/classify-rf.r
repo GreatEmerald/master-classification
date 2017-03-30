@@ -56,7 +56,7 @@ PrettifyCovariates = function(covarnames)
     return(covarnames)
 }
 
-pdf("../plot/variable-importance.pdf", width=6, height=5)
+pdf("../thesis/thesis-figures/variable-importance.pdf", width=6, height=5)
 image.plot(1:length(GetValidationNames()), 1:length(TN), as.matrix(Importances),
     axes=FALSE, xlab = "", ylab = "", #xlab = "Class", ylab = "Covariate")
     bigplot=c(0.25, 0.85, 0.25, 0.95), smallplot=c(0.88, 0.9, 0.25, 0.95))
@@ -81,7 +81,7 @@ for(i in 1:length(GetValidationNames())){
 dev.off()
 
 # Do 4-fold cross-validation
-RFCV = function(exclude=c(), filename=paste0(OutputDir, "stat-randomforest.csv"), ...)
+RFCV = function(exclude=c(), outdir=OutputDir, filename="stat-randomforest.csv", ...)
 {
     TN = GetTrainingNames(exclude=exclude)
     FullFormula = paste0("~", paste(TN, collapse = "+"))
@@ -112,11 +112,12 @@ RFCV = function(exclude=c(), filename=paste0(OutputDir, "stat-randomforest.csv")
     AST = AccuracyStatTable(PredictionsPerFold, Validator)
     print(AST)
     plot(unlist(PredictionsPerFold), unlist(Validator))
-    write.csv(AST, filename)
+    write.csv(AST, paste0(outdir, filename))
+    write.csv(CalcErrors(PredictionsPerFold, Validator), paste0(outdir, "errors-", filename))
 }
 
 # Unoptimised
-RFCV(filename = paste0(OutputDir, "stat-randomforest-unoptimised.csv"))
+RFCV(filename = "stat-randomforest-unoptimised.csv")
 # Optimised
 RFCV(exclude=c("osavi", "aspect", "is.water", "height"), splitrule="maxstat", alpha=0.9, minprop=0.11)
 
@@ -129,7 +130,7 @@ RFCV(exclude=c("osavi", "aspect", "is.water", "height"), splitrule="maxstat", al
 # Train on pure, predict fuzzy
 folds=list(which(!alldata@data$pure))
 # Unoptimised
-RFCV(filename = paste0(OutputDir, "stat-randomforest-pure-unoptimised.csv"))
+RFCV(filename = "stat-randomforest-pure-unoptimised.csv")
 # Optimised
 RFCV(exclude=c("osavi", "aspect", "is.water", "height"), splitrule="maxstat", alpha=0.9, minprop=0.11,
-    filename = paste0(OutputDir, "stat-randomforest-pure.csv"))
+    filename = "stat-randomforest-pure.csv")
