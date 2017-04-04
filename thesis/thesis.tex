@@ -17,8 +17,11 @@
 \usepackage{subcaption} % Grid of figures
 \usepackage{rotating} % Landscape page for grid of figures
 \usepackage{adjustbox} % Scale table to height
+%\usepackage{longtable} % Alternatively, cut table into two
 % Formatting as per the template given
-\usepackage[top=1.25cm,bottom=1.25cm,inner=0.66cm,outer=0.53cm,foot=1.19cm,includeheadfoot]{geometry}
+%\usepackage[top=1.25cm,bottom=1.25cm,inner=0.66cm,outer=0.53cm,foot=1.19cm,includeheadfoot]{geometry}
+% Formatting with extra margins for sanity
+\usepackage[top=1.25cm,bottom=1.25cm,inner=1.91cm,outer=1.91cm,foot=1.19cm,includeheadfoot]{geometry}
 \usepackage{titling}
 \usepackage{wrapfig}
 \renewcommand{\familydefault}{\sfdefault}
@@ -108,16 +111,16 @@
 %\pagenumbering{arabic}
 \setcounter{page}{3}
 
+\tableofcontents
+
 \chapter{Introduction}
 
 Global land cover mapping is very important from an ecological and earth systems point of view. Land cover maps are used for a variety of applications, from estimating area covered by forests \citep{bartalev2014probavboreal} to air quality modelling \citep{wiedinmyer2006airquality}. In addition, land cover maps, especially those of fine spatial resolution, have the potential to be used for land cover change monitoring \citep{defourny2012cci}. This is important for a number of land cover classes. For instance, forests are an important terrestrial carbon sink in the global carbon cycle, with different forests having different carbon sink capacities \citep{pan2011large}. Knowing their distribution and changes over time allows for more accurate climate change modelling. Another land cover class, wetlands, is key for maintaining biodiversity due to the uniqueness of wetland ecosystems that allows rare and protected species to live there. Wetlands are protected globally by the Ramsar convention \citep{davis1994ramsar}.
 
 The creation of a global land cover map from remote sensing data has been a goal of many different studies \citep{hansen2000hardtree}. Their results are nowadays freely available as satellite imagery products, such as Global Land Cover 2000 \citep{bartholome2005glc2000}, MODIS land cover \citep{friedl2010modis} and GlobCover \citep{arino2007globcover}. There are also maps based on the fusion of multiple other maps, like Geo-Wiki hybrid \citep{see2015hybrid}, and multiple sensors, like Land Cover CCI \citep{lccciguide} and GlobeLand30 \citep{chen2015globeland30}. However, these land cover maps all have certain drawbacks.
 
-% DM: MODIS is 500 by 500 m
 The first common drawback of current global land cover classification products is that their spatial resolution is low to medium. The majority of aforementioned land cover products are derived from MODIS and MERIS sensor data. The sensors are only capable of capturing images with the finest pixels representing 300 by 300 metre areas (at the equator). Recent advances in satellite sensors and computing power would allow for land cover classification at a higher spatial and temporal resolution. For example, at the moment the PROBA-V mission by the European Space Agency produces imagery with as fine as 100 by 100 metre pixels (with additional products also providing 300 by 300 metre and 1 by 1 kilometre pixel size for comparison with previous sensors) \citep{probavguide}. It is well-suited for time series analysis, because it has an archive that goes back to 2013, as well as a fast revisit time of 2 days for full global coverage (1 day for locations above 35\textdegree{} latitude) \citep{dierckx2014probav}.
 
-% TODO: Is this clear enough?
 The second drawback of current global land cover products is that their classification accuracy tends to be low, averaging at around 65\% \citep{tsendbazar2016integrating}. The third drawback is that all of these products use what is known as ``hard'' or ``crisp'' classification: each pixel is assigned to one particular land cover class only. The result of a hard classification is a thematic map. This classification type treats each pixel as homogeneous with regards to land cover, which is rarely the case in reality. In contrast, a ``fuzzy'' or ``soft'' classification, sometimes also called ``subpixel'' classification or ``linear mixture modelling'' \citep{Okeke2006fuzzyexponent} identifies the proportion of each land cover class within each pixel. The result of a fuzzy classification is one map per land cover class, showing the proportion of the pixel area covered by the land cover class.
 
 Hard classification is not well-suited for coarse resolution imagery, due to a large proportion of mixed pixels in it (representing areas of mixed land cover), compared to endmember pixels (or pure pixels, which are dominated by a single land cover class). When hard classification is attempted on such imagery, the accuracy of the result can be no higher than the area fraction that the dominant land cover type of the pixel occupies \citep{latifovic2004accuracy}. There have been attempts at increasing accuracy by defining mosaic classes, such as mixed forests (50\% needleleaf and 50\% broadleaf trees), but it leads to a proliferation of classes that increases map complexity and still does not deal with the core problem, thus not improving the classification accuracy by much \citep{tsendbazar2016comparative}. In contrast, ``fuzzy'' or ``soft'' classification results in each pixel containing information about the proportion of each class within that pixel, therefore operating on sub-pixel scales. This has the advantage of representing land cover more accurately, and gives the ability to represent mosaic classes as a combination of pure classes instead. Since the output of fuzzy classification is essentially one raster per class, with smooth edges, it is suitable for more in-depth analysis and user-specific visualisation criteria \citep{tsendbazar2016integrating}. Despite that, hard classification is still the most often used classification type due to the number of algorithms developed for it, ease of storing the result (it is thematic and thus takes little storage space), displaying it in a single map (albeit in a less accurate fashion) and performing accuracy assessment.
@@ -128,7 +131,7 @@ In addition, any other algorithms that provide a measure of uncertainty about cl
 
 Furthermore, algorithms that can handle continuous variables, but only one response variable (such as random forest), can be used as well, by creating separate models for every class. This approach is called binary relevance \citep{karalas2016br}. Using this approach, the data needs to be post-processed after classification at a pixel level to conform to physical constraints (class membership must be between 0 and 100\% and sum up to 100\%). Random forest has been reported to give higher or equal accuracy results compared to other algorithms, like Support Vector Machines and individual decision trees, in hard classification scenarios using satellite imagery similar to that of PROBA-V \citep{duro2012algorithmcomparison}. Random forest regression was also shown to perform as well as other algorithms in fuzzy classification scenarios \citep{walton2008subpixelrf}, although it is used in much fewer studies on fuzzy classification than the other algorithms mentioned previously. Gradient boosting is an algorithm related to random forest, with the same advantages and disadvantages, but it is known to perform better in machine learning challenges \citep{chen2015higgs} and has not yet been tested on fuzzy land cover classification.
 
-Accuracy assessment is rather straight-forward for hard classification: typically a confusion matrix is employed for this purpose, showing how many pixels (or in some cases how much area \citep{stehman2009sampling}) in the image have been classified correctly, and how many incorrectly. Such a matrix makes it simple to tell which classes are hard to discern from one another, as well as allows for deriving statistics such as users' accuracy, producers' accuracy, and total accuracy \citep{foody1996fuzzyevaluation}, as well as variance if probability sampling was used. However, a standard confusion matrix is not applicable in the context of fuzzy classification, since misclassification in this case is not absolute, but rather a matter of degree \citep{foody2002accuracy}. Several solutions, such as distance \citep{foody1996fuzzyevaluation}, cross-entropy and mutual information \citep{lu2007methods} have been suggested as alternatives for fuzzy classification accuracy assessment.
+Accuracy assessment is rather straight-forward for hard classification: typically a confusion matrix is employed for this purpose, showing how many pixels (or in some cases how much area \citep{stehman2009sampling}) in the image have been classified correctly, and how many incorrectly. Such a matrix makes it simple to tell which classes are hard to discern from one another, as well as allows for deriving statistics such as users' accuracy, producers' accuracy, and overall accuracy \citep{foody1996fuzzyevaluation}, as well as variance if probability sampling was used. However, a standard confusion matrix is not applicable in the context of fuzzy classification, since misclassification in this case is not absolute, but rather a matter of degree \citep{foody2002accuracy}. Several solutions, such as distance \citep{foody1996fuzzyevaluation}, cross-entropy and mutual information \citep{lu2007methods} have been suggested as alternatives for fuzzy classification accuracy assessment.
 
 Visualisation of the fuzzy classification results is also challenging, since each class effectively is a single-channel raster of its own. Three such classes can easily be combined into RGB channels for visualisation, but with more classes it is no longer possible. There have been attempts to develop a method based on the hue, saturation and intensity colour model to allow for a larger number of distinct classes to be visualised on a single raster \citep{hengl2004fuzzycmeans}. There is also a possibility of ``hardening'' the classification when high accuracy visualisation is not needed, and making use of multiple RGB rasters side-by-side when it is needed.
 
@@ -142,7 +145,7 @@ PROBA-V is a relatively new satellite, with few studies using it for land cover 
 
 Another problem of land cover classification is that there is high disagreement between different land cover products on mixed classes, such as mixed forests \citep{Herold2008lccomparison}. Mixed forests and wetlands are challenging to detect and classify using hard classification and optical remote sensing data, so it is important to check how well large-scale fuzzy classification performs on these classes. Therefore this study focuses specifically on the region of ecotone from boreal forests to temperate broadleaf forests in Europe. This region also includes a large number of boreal wetlands. 
 
-In addition, there is a wide variety of methods that can be used for fuzzy classification, with studies typically only comparing two methods at once. In this thesis, four of them have been tested: fuzzy \textit{c}-means, neural networks, random forest regression and multiclass gradient boosting. All of these methods are based on fundamentally different approaches to classification, so the results give insight into the possible performance of similar methods as well. In addition, the last of the mentioned methods has not yet been tested on fuzzy classification itself (although related methods have been).
+In addition, there is a wide variety of methods that can be used for fuzzy classification. Most studies on this topic focus on comparing only two methods at once. In this thesis, four of them have been tested: fuzzy \textit{c}-means, neural networks, random forest regression and multiclass gradient boosting. All of these methods are based on fundamentally different approaches to classification, so the results give insight into the possible performance of similar methods as well. In addition, the last of the mentioned methods has not yet been tested on fuzzy classification itself (although related methods have been).
 
 When it comes to global image processing, one problem is the amount of data and the time it takes to process it. Some algorithms are known to suffer from the curse of dimensionality, where a linear increase in input data results in a geometric increase in processing time \citep{walton2008subpixelrf}. Therefore it is important to also measure the processing time of different classification methods.
 
@@ -151,7 +154,7 @@ In addition to classification methods, one aspect that is important for classifi
 All in all the goal of this thesis is to improve large-scale land cover maps by performing fuzzy land cover classification in the boreal forest-temperate broadleaf forest gradient zone using PROBA-V satellite imagery. The research questions that the thesis answers are:
 
 \begin{itemize}
- \item Which fuzzy classification method (fuzzy \textit{c}-means, neural networks, random forest regression, multiclass gradient boosting) gives the highest per-class and total classification accuracies?
+ \item Which fuzzy classification method (fuzzy \textit{c}-means, neural networks, random forest regression, multiclass gradient boosting) gives the highest per-class and overall classification accuracies?
  \item Which covariates are most important for classification?
  \item What is the difference in processing speed between the different methods?
 \end{itemize}
@@ -201,8 +204,6 @@ This meant that ground truth had to be collected manually specifically for the p
 
 For determining which pixels to sample, a two-stage selection protocol was used. The first stage was stratified random sampling based on the 2010 CCI Land Cover product by the European Space Agency \citep{lccciguide}. Since this product uses a larger number of classes (since it is a hard rather than a fuzzy classification), some classes were merged into one to fit the classes desired in this study. See Appendix \ref{appendix-classes} for more details. 112 pixels per class (total of 1008) were selected in this stage.
 
-%TODO: Should I set the header to only show chapter names?
-
 The first stage selected pixels that were not always optimal for the needs of this study. First, endmember pixels were needed, while the vast majority of pixels are mixed. Second, the LC-CCI product uses coarser resolution pixels than the PROBA-V data used for classification, therefore the equivalent PROBA-V pixels were not necessarily of the desired land cover class. Third, LC-CCI classification was not always accurate, possibly due to inaccuracies in the classification algorithm used to derive it, and possibly due to land cover changes over time (PROBA-V data goes back only to 2013, three years later than what the LC-CCI product was made for). Fourth, the study requires ground truth where land cover has remained constant over the last three years, whereas in some locations there was clear land cover change occurring (mostly due to deforestation). Therefore a systematic second stage selection was performed for each pixel selected in the first stage. Pixels within a 10 pixel radius from the first stage selection were manually checked, and the best pixel was selected for each. The criteria used, in order, were:
 
 \begin{enumerate}
@@ -235,7 +236,7 @@ In order to better discern land cover classes and minimise the uncertainty of la
 
 \begin{table}
   \centering
-  \begin{tabular}{p{0.4\textwidth}p{0.5\textwidth}}
+  \begin{tabular}{p{0.4\textwidth}p{0.55\textwidth}}
     Image interpretation problem & Approach to minimise uncertainty\\ \hline
     Land cover change & Areas with evident change skipped\\
     Differences in orthorectification & National data preferred\\
@@ -426,10 +427,10 @@ Four classification methods have been tested in total: fuzzy \textit{c}-means, f
 
 \begin{table}
   \begin{center}
-    %\resizebox{\textwidth}{!}{
+    \resizebox{\textwidth}{!}{
       \begin{tabular}{lllll}
 	\hline
-	Method name & Training on mixed pixels & Multiple inputs/outputs & Based on\\
+	Method name & Trains on mixed pixels & Multiple inputs/outputs & Based on\\
 	\hline
 	Fuzzy \textit{c}-means & Yes & Yes & Feature space statistics\\
 	Fuzzy neural network & Yes & Yes & Node weights\\
@@ -437,7 +438,7 @@ Four classification methods have been tested in total: fuzzy \textit{c}-means, f
 	Multiclass gradient boosting & No & Yes & Decision trees\\
 	\hline
       \end{tabular}
-    %}
+    }
   \end{center}
   \caption{Feature comparison between the chosen fuzzy classification methods in this study.}
   \label{tbl-comparison}
@@ -448,7 +449,7 @@ The tested algorithms were trained on a subset of ground truth data (360 pixels)
 %TODO: Discuss covariates in discussion (why not weather, location etc. data)
 \begin{figure}
   \centering
-  %\resizebox{\textwidth}{!}{
+  \resizebox{\textwidth}{!}{
     \begin{tikzpicture}[node distance = 0.5cm, auto]
       % Model
       \node [bigdata] (params) {\textbf{16 parameters}: blue, red, NIR, SWIR, OSAVI, LSWI, water mask, elevation, slope, aspect, TPI, mean NDVI, 1st order phase, 1st order amplitude, 2nd order phase, 2nd order amplitude};
@@ -471,7 +472,7 @@ The tested algorithms were trained on a subset of ground truth data (360 pixels)
       \path [line] (training-set) -- (training);
       \path [line] (validation-set) -- (validation-process);
     \end{tikzpicture}
-  %}
+  }
   \caption{Generalised classification method training, prediction and validation process. The splitting into training and validation set is automated as 4-fold cross-validation for all methods except multiclass gradient boosting, in which case the training set was all endmember pixels (242) and validation set was all mixed pixels (238).}
   \label{fig-classification-flowchart}
 \end{figure}
@@ -534,8 +535,7 @@ where $ MAE_c $ is the mean absolute error of class $ c $.
 
 These two statistics show how many percent did the classification method either overrepresent or underrepresent class $ c $ membership of all pixels in the image on average. The difference between the two is that RMSE gives a larger penalty for large errors compared to MAE.
 
-%TODO: Total or overall accuracy? Binary relevance or One vs All (OvA)?
-These statistics allow comparing how the classification method is capable of separating each class, much like a confusion matrix does in hard classification. A difference is that this approach does not give information about which classes the classification method has trouble separating, since it is not binary but rather a matter of degree in fuzzy classification. A total classification accuracy statistic can be obtained by applying the aforementioned formulas to all pixels in an image regardless of class.
+These statistics allow comparing how the classification method is capable of separating each class, much like a confusion matrix does in hard classification. A difference is that this approach does not give information about which classes the classification method has trouble separating, since it is not binary but rather a matter of degree in fuzzy classification. An overall classification accuracy statistic was obtained by applying the aforementioned formulas to all pixels in an image regardless of class.
 
 In addition to accuracy statistics, a bias statistic mean error (ME) was calculated for each class as well:
 
@@ -549,40 +549,41 @@ Positive ME values mean that the classification method tends to overrepresent cl
 
 \subsection{Statistical comparison}
 
-\subsubsection{Total errors}
+\subsubsection{Overall errors}
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{thesis-figures/total-errors}
-  \caption{Total errors per classification method using 4-fold cross-validation, unoptimised methods (all terms used) in cyan, optimised in yellow. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RFR: random forest regression.}
+  \includegraphics[width=0.55\textwidth]{thesis-figures/total-errors}
+  \caption{Overall errors per classification method using 4-fold cross-validation, unoptimised methods (all terms used) in cyan, optimised in yellow. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RFR: random forest regression.}
   \label{fig-total-errors}
 \end{figure}
 
-Total errors (errors of all classes combined) of each method except multiclass gradient boosting are shown in figure \ref{fig-total-errors}. The largest difference in RMSE between optimised methods is only 1.3 (6\% difference), thus after optimisations all of them seem to perform similarly. Likewise, the largest difference in MAE is only 1 (8\% difference). Thus while random forest regression technically performs the best, the difference between the classification methods is very small. The difference in MAE between all the optimised methods (including control) is significant (one-way ANOVA, $p<0.001$). Post-hoc Tukey's range test indicates that all the methods perform significantly better than the control ($p<0.001$) but the differences between the non-control methods are not significant ($p>0.05$), with the difference between neural networks and random forest regression being on the edge of significance ($p=0.06$). Optimising the model by dropping terms and adjusting the fuzziness of the resulting prediction affects fuzzy \textit{c}-means the most (decrease in RMSE of 3.9), and random forest regression the least (decrease in RMSE of 0.2).
+%TODO: Put ANOVA into methods
+The overall error (errors of all classes combined) of each method except multiclass gradient boosting are shown in figure \ref{fig-total-errors}. The largest difference in RMSE between optimised methods is only 1.3 (6\% difference), thus after optimisations all of the methods exhibit similar prediction accuracy. Likewise, the largest difference in MAE is only 1.0 (8\% difference). Thus while random forest regression achieves the highest prediction accuracy, the difference between the classification methods is very small. The difference in MAE between all the optimised methods (including control) is significant (one-way ANOVA, $p<0.001$). Post-hoc Tukey's range test indicates that all the methods perform significantly better than the control ($p<0.001$) but the differences between the non-control methods are not significant ($p>0.05$), with the difference between neural networks and random forest regression being on the edge of significance ($p=0.06$). Optimising the model by dropping terms and adjusting the fuzziness of the resulting prediction affects fuzzy \textit{c}-means prediction the most (decrease in RMSE of 3.9), and random forest regression prediction the least (decrease in RMSE of 0.2).
 
 Multiclass gradient boosting errors are not directly comparable with the errors of other classification methods, as the validation sample size is different, and all validation samples are mixed pixels. So in order to compare multiclass gradient boosting, all methods were also tested by training them on endmember pixels and validating on mixed pixels (see figure \ref{fig-total-errors-gb}). In this case, the control algorithm of assigning each pixel equal land cover class proportions (the 100\%/9 fraction value for each class) has lower errors than in the 4-fold cross-validation scenario above, since a completely fuzzy set is closer to mixed pixels compared to both mixed and endmember pixels. Thus optimising multiclass gradient boosting for lower RMSE in this test increases the fuzziness of the result by decreasing the number of optimisation rounds to just 5. As the number of optimisation rounds increases, the decision trees generated by multiclass gradient boosting are fitted more closely to predict the endmember pixels the model is trained on, and that results in poorer accuracy when trying to predict mixed pixels instead.
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{thesis-figures/total-errors-gb}
-  \caption{Total errors per classification method using holdout validation (training on endmember pixels and validating on mixed pixels), unoptimised methods (all terms used in the model) in cyan, optimised in yellow. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RFR: random forest regression, MGB: multiclass gradient boosting.}
+  \includegraphics[width=0.55\textwidth]{thesis-figures/total-errors-gb}
+  \caption{Overall errors per classification method using holdout validation (training on endmember pixels and validating on mixed pixels), unoptimised methods (all terms used in the model) in cyan, optimised in yellow. Ctrl: fully fuzzy set (100\%/9 predicted in each cell), NN: neural networks, FCM: fuzzy \textit{c}-means, RFR: random forest regression, MGB: multiclass gradient boosting.}
   \label{fig-total-errors-gb}
 \end{figure}
 
-The total mean error (ME) for all classification methods is 0, if rounding errors and floating point imprecision is disregarded. This is an indication that all the resulting predicted class fractions sum up to 100\% for each pixel in all of the classification methods, as the positive errors cancel out the negative errors. ME is more useful for indicating bias per class, however (see the next section).
+The overall mean error (ME) for all classification methods is 0, if rounding errors and floating point imprecision is disregarded. This is an indication that all the resulting predicted class fractions sum up to 100\% for each pixel in all of the classification methods, as the positive errors cancel out the negative errors. ME is more useful for indicating bias per class, however (see the next section).
 
 \subsubsection{Errors per class}
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-rf}
+  \includegraphics[width=0.8\textwidth]{thesis-figures/perclass-errors-rf}
   \caption{Errors per class using random forest regression. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-rf}
 \end{figure}
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-cm}
+  \includegraphics[width=0.8\textwidth]{thesis-figures/perclass-errors-cm}
   \caption{Errors per class using fuzzy \textit{c}-means. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-cm}
 \end{figure}
@@ -597,20 +598,20 @@ Neural network prediction accuracy per class was in between the two classificati
 
 \begin{sidewaysfigure}
   \centering
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/fulltile-google}
     \caption{Full tile, Google true colour}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/fulltile-rf}
     \caption{Full tile, random forest regression}
     \label{subfig-fulltile-rf}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/fulltile-nn}
     \caption{Full tile, neural networks}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/fulltile-cm}
     \caption{Full tile, fuzzy \textit{c}-means}
     \label{subfig-fulltile-cm}
@@ -621,38 +622,38 @@ Neural network prediction accuracy per class was in between the two classificati
 \begin{sidewaysfigure}
   \ContinuedFloat
   \centering
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-google}
     \caption{Riga, Google true colour}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-rf}
     \caption{Riga, random forest regression}
     \label{subfig-riga-rf}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-nn}
     \caption{Riga, neural networks}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/riga-cm}
     \caption{Riga, fuzzy \textit{c}-means}
     \label{subfig-riga-cm}
   \end{subfigure} \
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/karsuva-google}
     \caption{Kar\v{s}uva, Google true colour}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/karsuva-rf}
     \caption{Kar\v{s}uva, random forest regression}
     \label{subfig-karsuva-rf}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/karsuva-nn}
     \caption{Kar\v{s}uva, neural networks}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/karsuva-cm}
     \caption{Kar\v{s}uva, fuzzy \textit{c}-means}
     \label{subfig-karsuva-cm}
@@ -663,38 +664,38 @@ Neural network prediction accuracy per class was in between the two classificati
 \begin{sidewaysfigure}
   \ContinuedFloat
   \centering
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/kursiunerija-google}
     \caption{Curonian spit, Google true colour}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/kursiunerija-rf}
     \caption{Curonian spit, random forest regression}
     \label{subfig-kursiunerija-rf}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/kursiunerija-nn}
     \caption{Curonian spit, neural networks}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/kursiunerija-cm}
     \caption{Curonian spit, fuzzy \textit{c}-means}
     \label{subfig-kursiunerija-cm}
   \end{subfigure} \
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/medziokalnis-google}
     \caption{Med\v{z}iokalnis, Google true colour}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/medziokalnis-rf}
     \caption{Med\v{z}iokalnis, random forest regression}
     \label{subfig-medziokalnis-rf}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/medziokalnis-nn}
     \caption{Med\v{z}iokalnis, neural networks}
   \end{subfigure} \hfill
-  \begin{subfigure}[t]{.23\textwidth}
+  \begin{subfigure}[t]{.24\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/figures-qgis/medziokalnis-cm}
     \caption{Med\v{z}iokalnis, fuzzy \textit{c}-means}
     \label{subfig-medziokalnis-cm}
@@ -702,8 +703,6 @@ Neural network prediction accuracy per class was in between the two classificati
   \caption{Visual comparison of fuzzy classification prediction output. Red, green and blue colour channels represent: n-p: barren, grass, evergreen trees; r-t: cultivated, deciduous trees, evergreen trees, respectively.}
   \label{fig-visualcomparison}
 \end{sidewaysfigure}
-
-%TODO: How do I relate these to other results? They are results in and of themselves, since sample size is much bigger
 
 To better visualise the differences between the fuzzy classification methods, predictions were made using each method for the whole study area. See figure \ref{fig-visualcomparison} for some examples. Overall visual comparison confirms that the differences between the methods are minor. However, the differences are easier to spot with a side-by-side comparison.
 
@@ -719,11 +718,11 @@ Figures \ref{subfig-medziokalnis-rf}-\ref{subfig-medziokalnis-cm} show the area 
 
 \begin{figure}
   \centering
-  \begin{subfigure}[b]{0.48\textwidth}
+  \begin{subfigure}[t]{0.49\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/karsuva-atlas}
-    \caption{Kar\v{s}uvos wood, also known as Vie\v{s}vil\.{e}s-Smalinink\k{u} wood}
+    \caption{Wood of Kar\v{s}uva, also known as Vie\v{s}vil\.{e}s-Smalinink\k{u} wood}
   \end{subfigure} \hfill
-  \begin{subfigure}[b]{0.48\textwidth}
+  \begin{subfigure}[t]{0.45\textwidth}
     \includegraphics[width=\textwidth]{thesis-figures/medziokalnis-atlas}
     \caption{Med\v{z}iokalnis forest}
   \end{subfigure}
@@ -737,22 +736,22 @@ Tree type prediction accuracy can be validated with national atlas data (see fig
   \centering
   \begin{subfigure}[b]{0.48\textwidth}
     \centering
-    \includegraphics[width=0.7\textwidth]{thesis-figures/figures-qgis/riga-gbu}
+    \includegraphics[width=0.8\textwidth]{thesis-figures/figures-qgis/riga-gbu}
     \caption{Riga, unoptimised multiclass gradient boosting}
   \end{subfigure} \hfill
   \begin{subfigure}[b]{0.48\textwidth}
     \centering
-    \includegraphics[width=0.7\textwidth]{thesis-figures/figures-qgis/riga-gbo}
+    \includegraphics[width=0.8\textwidth]{thesis-figures/figures-qgis/riga-gbo}
     \caption{Riga, optimised multiclass gradient boosting}
   \end{subfigure}
   \begin{subfigure}[b]{0.48\textwidth}
     \centering
-    \includegraphics[width=0.7\textwidth]{thesis-figures/figures-qgis/medziokalnis-gbu}
+    \includegraphics[width=0.8\textwidth]{thesis-figures/figures-qgis/medziokalnis-gbu}
     \caption{Med\v{z}iokalnis, unoptimised multiclass gradient boosting}
   \end{subfigure} \hfill
   \begin{subfigure}[b]{0.48\textwidth}
     \centering
-    \includegraphics[width=0.7\textwidth]{thesis-figures/figures-qgis/medziokalnis-gbo}
+    \includegraphics[width=0.8\textwidth]{thesis-figures/figures-qgis/medziokalnis-gbo}
     \caption{Med\v{z}iokalnis, optimised multiclass gradient boosting}
   \end{subfigure}
   \caption{Visual comparison of optimised and unoptimised multiclass gradient boosting prediction. Red, green and blue colour channels represent: a and b: built-up, wetlands, water; c and d: cultivated, deciduous tree and evergreen tree cover proportion, respectively.}
@@ -772,15 +771,16 @@ Covariates that were important for classification varied depending on the class 
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.6\textwidth]{thesis-figures/variable-importance}
+  \includegraphics[width=0.72\textwidth]{thesis-figures/variable-importance}
   \caption{Covariate permutation importance for holdout random forest regression. Values indicate the increase in prediction RMSE when a given covariate is shuffled, thus higher values mean higher importance of the covariate.}
   \label{fig-variable-importance}
 \end{figure}
 
-The model optimisation step for each method involved dropping terms one by one until the total RMSE no longer decreased. The terms dropped for each method is shown in table \ref{tbl-covariate-drop}. Aspect and the water mask hindered prediction accuracy for all methods; OSAVI hindered three, whereas TPI, elevation and amplitude of both orders hindered two of the four methods.
+The model optimisation step for each method involved dropping terms one by one until the overall RMSE no longer decreased. The terms dropped for each method are shown in table \ref{tbl-covariate-drop}. Aspect and the water mask hindered prediction accuracy for all methods; OSAVI hindered three, whereas TPI, elevation and amplitude of both orders hindered two of the four methods.
 
 \begin{table}
   \centering
+  \resizebox{\textwidth}{!}{
   \begin{tabular}{ll}
     Method & Covariates dropped\\ \hline
     Random forest regression & OSAVI, elevation, aspect, water mask\\
@@ -788,6 +788,7 @@ The model optimisation step for each method involved dropping terms one by one u
     Fuzzy \textit{c}-means & Red, blue, SWIR, LSWI, aspect, TPI, amplitude of both orders, water mask\\
     Multiclass gradient boosting & SWIR, OSAVI, LSWI, elevation, aspect, water mask\\
   \end{tabular}
+  }
   \caption{Covariates dropped in the model optimisation step for each method.}
   \label{tbl-covariate-drop}
 \end{table}
@@ -809,7 +810,7 @@ For gradient boosting, the \texttt{xgboost} package employs a method where a mod
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.5\textwidth]{thesis-figures/timing}
+  \includegraphics[width=0.6\textwidth]{thesis-figures/timing}
   \caption{Prediction user time for the different classification methods (Ctrl: control prediction of a fully fuzzy set 100\%/9; RFR: random forest regression; MGB: multiclass gradient boosting; FCM: fuzzy \textit{c}-means; NN: neural networks), using unoptimised variants (predictions done using all covariates). The different colours in random forest regression case show time needed to process each separate class layer, whereas all other methods process all layers at once.}
   \label{fig-timing}
 \end{figure}
@@ -852,7 +853,7 @@ All in all there appears to be a tradeoff between processing speed and predictio
 
 \section{Covariate importance}
 
-The covariates that were useful for all the classification methods (dropping them would always result in an increase in total RMSE) were NIR, slope, mean NDVI and phase of both orders. This shows that it is beneficial for class separation to have all types of data: spectral, indices derived from spectral, parameters derived from elevation and time series parameters. Several covariates were correlated with each other: Red with blue (0.90), NIR with SWIR (0.76) and OSAVI with mean NDVI (0.93), so it was advantageous to drop one of the pair for algorithms such as neural networks.
+The covariates that were useful for all the classification methods (dropping them would always result in an increase in overall RMSE) were NIR, slope, mean NDVI and phase of both orders. This shows that it is beneficial for class separation to have all types of data: spectral, indices derived from spectral, parameters derived from elevation and time series parameters. Several covariates were correlated with each other: Red with blue (0.90), NIR with SWIR (0.76) and OSAVI with mean NDVI (0.93), so it was advantageous to drop one of the pair for algorithms such as neural networks.
 
 From the covariates, most important was mean NDVI. It is a good indicator of vegetation properties and especially helps to separate vegetation classes from water, built-up and barren cover. Slope and NIR were useful for classification of every class as well. Slope particularly helped to determine the proportion of wetlands, which require flat terrain for water to stay, and water itself, since the surface of open water is relatively flat. NIR at summer particularly helped to determine cultivated area and water fractions, as crops have very high reflectance in NIR during the peak of their growth, whereas water has low NIR throughout the year. LSWI, red and \nth{1} order amplitude helped to distinguish between all classes, with none standing out in particular. SWIR also helped overall, but it was particularly useful for water.
 
@@ -885,7 +886,7 @@ Fuzzy land cover classification has the advantage that it can be suited to parti
 
 Increasing the number of ground truth samples would increase the accuracy of prediction results, since there would be more samples to train the models on. In addition, none of the tested algorithms are spatial; given a sufficient number and distribution of sampling sites to determine a semivariogram, implementing spatial correlation awareness (such as what is suggested for fuzzy \textit{c}-means by \citet{gong2013improvedcmeans}) could improve the results and eliminate the salt-and-pepper effect. The binary relevance method also allows for optimising the covariates for each class specifically, which could improve the classification accuracy per class. In addition, if global classification is desired, separate models per biome would give better results due to differences in indicators for land cover (for instance, seasonal changes are inverted in the southern hemisphere).
 
-If ground truth is collected using manual interpretation, high resolution imagery in summer, autumn and winter, and especially 3D models and panoramic photos help to identify land cover proportions with higher confidence. Drawing polygons to define the extent of land cover takes more effort compared to subdividing a pixel into a grid and classifying the cells of the subgrid (as done in the case of \citet{perger2012geowiki}), but also results in more accurate ground truth data because border effects are eliminated. It also allows for identifying individual trees, which is crucial for properly identifying proportions of trees in mixed forests.
+If ground truth is collected using manual interpretation, high resolution imagery in summer, autumn and winter, and especially 3D models derived from photogrammery data and panoramic photos help to identify land cover proportions with higher confidence. Drawing polygons to define the extent of land cover takes more effort compared to subdividing a pixel into a grid and classifying the cells of the subgrid (as done in the case of \citet{perger2012geowiki}), but also results in more accurate ground truth data because border effects are eliminated. It also allows for identifying individual trees, which is crucial for properly identifying proportions of trees in mixed forests.
 
 Additional covariates could help improve the separability of different classes. Soil properties, for instance, could improve the separability of vegetation classes, cultivated, barren and built-up areas. Since soil is important for vegetation nutrient uptake, it could also help discern between the vegetation classes. Additional time series parameters, such as separate parameters for each separate spectral band, additional vegetation indices such as a ratio between NDVI and LSWI, and phenological parameters such as length of season could also give more opportunities for class separation. Including the time series itself as a set of covariates might increase prediction accuracy even more \citep{Pelletier2016hardrf}. Spectral band or vegetation index values during certain times (such as winter or autumn) could also help separate classes such as wetlands \citep{davranche2010wetland}. The classes that would benefit from more separability are grass, shrubs and cultivated areas; water less so, as it can already be discerned from other classes well. Shrubs are difficult to discern from trees using remote sensing, since their differentiating factor is height relative to ground height; this would require a dataset of canopy height. Discerning between grass and cultivated areas depends on the crop type; a covariate of NDVI after harvest date would be helpful in this case.
 
@@ -957,7 +958,7 @@ Given the recent advances in remote sensing technology (such as the Sentinel-2 a
  \begin{table}[!ht]
   \begin{center}
     %\resizebox{0.6\textwidth}{!}{
-    %\begin{adjustbox}{totalheight=\textheight-5\baselineskip}
+    \begin{adjustbox}{totalheight=\textheight-13\baselineskip}
       \begin{tabular}{lp{10.5cm}l}
 	\hline
 	Class in this study & Equivalent classes in LC-CCI and their digital numbers & \\
@@ -1008,7 +1009,7 @@ Given the recent advances in remote sensing technology (such as the Sentinel-2 a
 	\hline
       \end{tabular}
     %}
-    %\end{adjustbox}
+    \end{adjustbox}
   \end{center}
   \caption{List of classes used in this study and their relation with LC-CCI classes. The LC-CCI classes listed for each class in this study were merged in order to perform stratified random sampling for the first stage of ground truth sample selection.}
   \label{tbl-classes}
@@ -1018,13 +1019,13 @@ Given the recent advances in remote sensing technology (such as the Sentinel-2 a
  \section{Cross-validation}
  \begin{figure}[!h]
   \centering
-  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-nn}
+  \includegraphics[width=0.75\textwidth]{thesis-figures/perclass-errors-nn}
   \caption{Errors per class using neural networks, 4-fold cross-validation. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-nn}
  \end{figure}
  \begin{figure}[!h]
   \centering
-  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-ctrl}
+  \includegraphics[width=0.75\textwidth]{thesis-figures/perclass-errors-ctrl}
   \caption{Errors per class if assigning equal proportions for each class (100\%/9). RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-ctrl}
  \end{figure}
@@ -1032,7 +1033,7 @@ Given the recent advances in remote sensing technology (such as the Sentinel-2 a
  \section{Mixed pixel validation}
  \begin{figure}[!h]
   \centering
-  \includegraphics[width=0.6\textwidth]{thesis-figures/perclass-errors-gb}
+  \includegraphics[width=0.75\textwidth]{thesis-figures/perclass-errors-gb}
   \caption{Errors per class using multiclass gradient boosting, trained on endmember pixels and validated on mixed pixels. RMSE: root mean squared error, MAE: mean absolute error, ME: mean error.}
   \label{fig-perclass-errors-gb}
  \end{figure}
