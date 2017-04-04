@@ -21,11 +21,6 @@ RP = function(...)
     return(rp$predictions)
 }
 
-dummypredict = function(model, blockvals, ...)
-{
-    return(rep(100/9, nrow(blockvals)))
-}
-
 FullFormula = paste0("~", paste(TrainingNames, collapse = "+"))
 AllPredictions = stack()
 print("Starting prediction phase 1...")
