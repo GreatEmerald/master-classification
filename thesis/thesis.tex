@@ -57,9 +57,13 @@
   
   {\bfseries \Large \MakeUppercase{\thetitle}}\vspace{2.0cm}
   
-  \begin{wrapfigure}[1]{r}{0.3\textwidth}
-    \centering
-    \includegraphics[height=9.5cm]{thesis-figures/figures-qgis/fulltile-rf}
+  \begin{wrapfigure}[1]{r}{0.55\textwidth}
+    \begin{subfigure}[t]{0.25\textwidth}
+      \includegraphics[height=9.5cm]{thesis-figures/figures-qgis/fulltile-rf}
+    \end{subfigure}
+    \begin{subfigure}[t]{0.25\textwidth}
+      \includegraphics[height=9.5cm]{../../master-classification-extra/aoi-blank}
+    \end{subfigure}
     \vspace{-110pt}
   \end{wrapfigure}
   
@@ -74,8 +78,7 @@
   \newpage % Second page
   \thispagestyle{empty}
   
-  \centering
-
+  \begin{center}
   {\bfseries \Large \thetitle} \vspace{2.7cm}
   
   {\Large \theauthor} \vspace{1.1cm}
@@ -89,6 +92,7 @@
   {Dr Nandin-Erdene Tsendbazar} \vspace{3.0cm}
   
   {A thesis submitted in partial fulfilment of the degree of Master of Science at Wageningen University and Research Centre, The Netherlands.} \vspace{3.7cm}
+  \end{center}
   
   \begin{flushright}
     {\thedate}
@@ -96,16 +100,25 @@
     {Wageningen, The Netherlands}
   \end{flushright} \vspace{0.5cm}
 
-  \begin{flushleft}
-    Thesis code number: GRS-804xx
+    Thesis code number: GRS-80436
   
-    Thesis Report: GIRS-2015-xx
+    Thesis Report: GIRS-2017-xx
   
-    Wageningen University and Research Centre
+    {Wageningen University and Research Centre}
   
-    Laboratory of Geo-Information Science and Remote Sensing 
-  \end{flushleft}
+    {Laboratory of Geo-Information Science and Remote Sensing}
 \end{titlingpage}
+
+\chapter*{Abstract}
+
+Global land cover (GLC) classification is well established, and GLC products are used as input to a variety of scientific models. However, traditional GLC classification assumes that each pixel in a map can be classified into one of the predefined land cover classes. This is rarely the case in reality due to heterogeneity in land cover that results in a large number of mixed pixels. Such heterogeneity is better captured by fuzzy land cover classification, in which the proportions of each predefined land cover class is determined in each pixel. Methods used to produce hard GLC maps are not directly applicable to fuzzy land cover classification, and there exist a variety of methods that can be used for fuzzy classification tasks.
+
+Four such methods, based on machine learning, were compared in this thesis: fuzzy \textit{c}-means, neural networks, random forest regression and multiclass gradient boosting. Data on land cover proportions for model training was gathered by image interpretation. Covariates for model prediction were derived from PROBA-V satellite sensor data (spectral bands, vegetation indices, time series parameters) and digital elevation models.
+
+Results showed that all of the tested methods were similarly accurate. Random forest regression was the most accurate method, but also the slowest to predict. Neural networks was the fastest but least accurate method, and fuzzy \textit{c}-means was in between the two. Mean NDVI was the most important covariate, aspect and water mask were the least important.
+
+\textbf{Keywords:} Fuzzy land cover classification, machine learning, random forest, gradient boosting, neural networks, fuzzy c-means, PROBA-V
+
 
 %\maketitle
 %\pagenumbering{arabic}
@@ -1055,11 +1068,8 @@ Given the recent advances in remote sensing technology (such as the Sentinel-2 a
  \end{figure}
  
  \chapter{Source code}
- The source code of the scripts used to perform the processing in this thesis is under the GNU General Public License version 3 or later. It can be accessed via GitHub: \url{https://github.com/GreatEmerald/master-classification}
+ The source code of the scripts used to perform the processing in this thesis is under the GNU General Public License version 3 or later. It can be publicly accessed via GitHub: \url{https://github.com/GreatEmerald/master-classification}
  
 \end{appendices}
 
 \end{document}
-
-%Training: Forest + grass + urban + water ~ Blue + Red + NIR + SWIR + Period + Phase + Amplitude + Etc
-%To predict: . ~ Blue + Red + NIR + SWIR + Period + Phase + Amplitude + Etc
