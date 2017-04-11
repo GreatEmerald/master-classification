@@ -40,8 +40,8 @@ PrettifyClasses = function(classnames)
     classnames = factor(classnames)
     levels(classnames) = list(
         "Overall" = "Overall", "Crops" = "cropland", "Dec. trees" = "dec.trees", "Evgr. trees" = "evgr.trees",
-        "Shrubs" = "shrubland", "Grassland" = "grassland", "Wetland" = "wetland", "Barren" = "bare.soil",
-        "Urban" = "urban", "Water" = "water")
+        "Shrubs" = "shrubland", "Grass" = "grassland", "Wetland" = "wetland", "Barren" = "bare.soil",
+        "Built-up" = "urban", "Water" = "water")
     return(classnames)
 }
 
