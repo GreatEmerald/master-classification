@@ -18,9 +18,10 @@ set.seed(0xbadcafe)
 folds = createFolds(alldata$cropland, 4)
 
 TN = GetTrainingNames(exclude=c("osavi", "aspect", "is.water", "height"))
+TNUnoptimised = GetTrainingNames(exclude=c("osavi"))
 
 # Get and plot variable importance
-FullFormula = paste0("~", paste(TN, collapse = "+"))
+FullFormula = paste0("~", paste(TNUnoptimised, collapse = "+"))
 Importances = data.frame()
 for (Class in GetValidationNames())
 {
@@ -57,12 +58,12 @@ PrettifyCovariates = function(covarnames)
 }
 
 pdf("../thesis/thesis-figures/variable-importance.pdf", width=6, height=5)
-image.plot(1:length(GetValidationNames()), 1:length(TN), as.matrix(Importances),
+image.plot(1:length(GetValidationNames()), 1:length(TNUnoptimised), as.matrix(Importances),
     axes=FALSE, xlab = "", ylab = "", #xlab = "Class", ylab = "Covariate")
     bigplot=c(0.25, 0.85, 0.25, 0.95), smallplot=c(0.88, 0.9, 0.25, 0.95))
 points(0,0)
 axis(side=1, at=1:length(GetValidationNames()), labels=PrettifyClasses(row.names(Importances)), las=2)
-axis(side=2, at=1:length(TN), labels=PrettifyCovariates(names(Importances)), las=1)
+axis(side=2, at=1:length(TNUnoptimised), labels=PrettifyCovariates(names(Importances)), las=1)
 
 
 min.z <- min(Importances)
