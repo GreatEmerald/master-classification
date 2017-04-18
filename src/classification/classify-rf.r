@@ -69,12 +69,16 @@ axis(side=2, at=1:length(TNUnoptimised), labels=PrettifyCovariates(names(Importa
 min.z <- min(Importances)
 max.z <- max(Importances)
 z.yellows <- min.z + (max.z - min.z)/64*c(20,45) 
-# print the labels
-for(i in 1:length(GetValidationNames())){
-  for(j in 1:length(TNUnoptimised)){
-    if((Importances[i,j] > z.yellows[1])&(Importances[i,j] < z.yellows[2])){
+# Loop for label printing: black letters on light background and white letters on dark background
+for (i in 1:length(GetValidationNames()))
+{
+  for (j in 1:length(TNUnoptimised))
+  {
+    if ((Importances[i,j] > z.yellows[1]) & (Importances[i,j] < z.yellows[2]))
+    {
       text(i,j,round(Importances[i,j]), col="black", cex = 0.8)
-    }else{
+    }else
+    {
       text(i,j,round(Importances[i,j]), col="white", cex = 0.8)     
     }
   }

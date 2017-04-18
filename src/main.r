@@ -8,8 +8,11 @@
 
 # Mask out clouds using built-in QC layer
 source("optical/clean-builtin.r")
-# Mask out clouds even more using the time series method
+
+# Mask out clouds from NDVI even more using the time series method: produce a mask file
 source("optical/clean-timeseries.r")
+# Apply the mask file to get a directory of cleaned NDVI layers
+source("optical/apply-timeseries-mask.r")
 
 # Get a summer 2016 composite via maximum NDVI
 source("optical/composite-probav.r")
@@ -34,13 +37,14 @@ source("elevation/dem-merge.r")
 source("validation/remove-nas.r")
 # Preprocess CCI land cover (for reference when gathering data only!)
 source("validation/simplify-cci.r")
-# Read validation data CSV and convert into SpatialPointsDataFrame
+# Check consistency of validation data CSV and convert into SpatialPointsDataFrame
 source("validation/process-csv.r")
-# Merge everything together
+# Merge everything together into a RasterStack/Brick to get the training/validation dataset with all covars
 source("validation/merge-data.r")
 
 ## Classification: make use of coherent files to train and predict classification models
 
+# Calculate error statistics and perform model optimisations:
 # Fuzzy c-means
 source("classification/classify-cmeans.r")
 # Neural networks
@@ -49,3 +53,15 @@ source("classification/classify-nn.r")
 source("classification/classify-mgb.r")
 # Random forest
 source("classification/classify-rf.r")
+
+# Perform full-tile predictions using optimised models:
+# Control
+source("classification/predict-dummy.r")
+# Fuzzy c-means
+source("classification/predict-cmeans.r")
+# Neural networks
+source("classification/predict-nn.r")
+# Gradient boosting
+source("classification/predict-mgb.r")
+# Random forest
+source("classification/predict-rf.r")

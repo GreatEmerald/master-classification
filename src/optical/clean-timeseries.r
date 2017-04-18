@@ -6,7 +6,7 @@
 library(probaV)
 library(tools)
 source("utils/set-temp-path.r")
-source("../../cloud_filter.r") # JD's extra utility script
+source("extra/cloud_filter.r") # JD's extra utility script
 
 IntermediaryDir = "../../userdata/semicleaned/radiometry/"
 OutputDir = "../../userdata/composite/tscleaned/"

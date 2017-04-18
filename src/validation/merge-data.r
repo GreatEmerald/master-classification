@@ -3,7 +3,7 @@ library(raster); source("utils/set-temp-path.r")
 source("utils/load-data.r")
 
 # Original data
-samples = read.csv("../data/samples.csv")
+samples = read.csv("../data/groundtruth.csv")
 coordinates(samples) = ~X+Y
 row.names(samples) = samples$pkuid
 samples$pkuid = NULL
@@ -17,6 +17,7 @@ samples$pure = apply(samples@data[,1:9], 1, max) >= 95
 
 # Extract data from rasters
 rasters = LoadTrainingRasters()
+# Should be scaled, but actually doesn't have any effect aside from taking up more space by being floats
 #rasters$composite.1 = rasters$composite.1 / 2000
 #rasters$composite.2 = rasters$composite.2 / 2000
 #rasters$composite.3 = rasters$composite.3 / 2000

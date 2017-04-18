@@ -28,10 +28,12 @@ library(rgdal)
 # Water: 210 (Water bodies)
 # Permanent snow or ice: 220 (Permanent snow and ice)
 
-CCI = raster("/home/dainius/Downloads/ESACCI-LC-L4-LCCS-Map-300m-P5Y-2010-v1.6.1.tif")
-AOI = readOGR("/home/dainius/Downloads/probavextent/aoi.shp", "aoi")
+# LC-CCI map, freely available
+CCI = raster("../data/ESACCI-LC-L4-LCCS-Map-300m-P5Y-2010-v1.6.1.tif")
+# Boundaries of the area of interest (tile X20Y01)
+AOI = readOGR("../data/aoi.shp", "aoi")
 CCI.crop = crop(CCI, AOI)
-# range min, range max, overwritten by what
+# Vectors of 3: range min, range max, overwritten by what
 reclassifier = c(
     10, 30, 10,
     60, 62, 60, 80, 90, 60,
@@ -41,7 +43,7 @@ reclassifier = c(
     200, 202, 200, 150, 153, 200,
     160, 180, 160)
 CCI.simple = reclassify(CCI.crop, reclassifier, right=NA)
-writeRaster(CCI.simple, "/home/dainius/Downloads/probavextent/cci-simplified.tif")
+writeRaster(CCI.simple, "../data/cci-simplified.tif")
 # Grid params: ~20-~30 x, ~55-~65 y; 10/10080 steps
 # One grid area is exactly 12196.1127540375
 # Create stratified random sample of 1000 points (9 classes since there is no permafrost)
