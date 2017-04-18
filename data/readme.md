@@ -5,6 +5,7 @@ Data included in the repository are:
 - `variables.csv`: The above CSV file with data from all covariated merged into it. This is the file that gets sourced during main processing.
 - `timing.csv`: Timing statistics of the full-tile prediction step. These are written manually by copying the timing statistics from the `system.time()` output so as not to conflict between different methods' prediction steps.
 - `aoi.*`: Boundary shapefile of area of interest (PROBA-V tile X20Y01).
+- `probavgrid.*`: Boundary shapefile of each pixel in the PROBA-V tile of interest.
 - `$1-stat-$2-$3.csv`: Calculated error statistics by the scripts in the classification directory, used only for visualisation in graphs (`plot-errors.r`). `$1` is an optional "errors" (if present, individual errors have been calculated; if not present, per-class errors have been calculated); `$2` is the classification method used (one of: "dummy", "cmeans", "neuralnetworks", "gradientboost", "randomforest"), `$3` is an optional modifier (one of: "unoptimised" for unoptimised models; "pure" for models trained on endmember pixels and validated on mixed pixels; "pure-unoptimised" for a combination of both).
 
 Data used but not included in the repository:
