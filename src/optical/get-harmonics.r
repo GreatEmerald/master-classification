@@ -9,19 +9,24 @@ library(tools)
 source("utils/set-temp-path.r")
 
 # create output name on the metrics
-OutputDir = "../../userdata/harmonics/"
+if (!exists("OutputDir"))
+    OutputDir = "../../userdata/harmonics/"
 OutputFile = paste0(OutputDir, "harmonic-coefficients.tif")
 LogFile = paste0(OutputDir, "get-harmonics.log")
 TileOfInterest = "X20Y01"
-CleanNDVIDir = "../../userdata/cleaned/ndvi/"
+if (!exists("CleanNDVIDir"))
+    CleanNDVIDir = "../../userdata/cleaned/ndvi/"
 CleanDir = "../../userdata/cleaned/"
-TempDir = "../../userdata/temp/"
+if (!exists("TempDir"))
+    TempDir = "../../userdata/temp/"
 
 # Subset for testing
 #xmin <- 27
 #xmax <- 28
 #ymin <- 58
 #ymax <- 59
+if (exists("xmin") && exists("xmax") && exists("ymin") && exists("ymax"))
+    SubsetExtent = c(xmin, ymin, xmax, ymax)
 
 #BandPattern = "(BLUE|NDVI)_sm.tif$"
 #VrtFilename = paste0(OutputDir, "harmonics2.vrt")
@@ -30,22 +35,36 @@ BandPattern = "NDVI_sm.tif$"
 VrtFilename = paste0(TempDir, "harmonics.vrt")
 
 # Create virtual stack
-Vrt = timeVrtProbaV(CleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
-    return_raster = TRUE)#, te = c(xmin, ymin, xmax, ymax))
+if (exists("SubsetExtent"))
+{
+    Vrt = timeVrtProbaV(CleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
+        return_raster = TRUE, te = SubsetExtent)
+} else {
+    Vrt = timeVrtProbaV(CleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
+        return_raster = TRUE)
+}
 
-TS = timeVrtProbaV(CleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
-    return_raster = FALSE)#, te = c(xmin, ymin, xmax, ymax))
+if (exists("SubsetExtent"))
+{
+    TS = timeVrtProbaV(CleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
+        return_raster = FALSE, te = SubsetExtent)
+} else {
+    TS = timeVrtProbaV(CleanNDVIDir, pattern = BandPattern, vrt_name = VrtFilename, tile = TileOfInterest,
+        return_raster = FALSE, te = SubsetExtent)
+}
 
-RowsPerThread = 14
-Cores = 16
+if (!exists("RowsPerThread"))
+    RowsPerThread = 14
+if (!exists("Cores"))
+    Cores = 16
 
-paste("layers:", nlayers(Vrt), "dates:", "blocks:", blockSize(Vrt, minrows = RowsPerThread)$n, "cores:", Cores)
+print(paste("layers:", nlayers(Vrt), "dates:", "blocks:", blockSize(Vrt, minrows = RowsPerThread)$n, "cores:", Cores))
 
 if (!file.exists(OutputFile))
 {
     psnice(value = min(Cores - 1, 19))
-    system.time(Coeffs <- getHarmMetricsSpatial(Vrt, TS, minrows = RowsPerThread, mc.cores = Cores,
-        logfile=LogFile, overwrite=TRUE, filename = OutputFile, order = 2, datatype="FLT4S", progress="text"))
+    print(system.time(Coeffs <- getHarmMetricsSpatial(Vrt, TS, minrows = RowsPerThread, mc.cores = Cores,
+        logfile=LogFile, overwrite=TRUE, filename = OutputFile, order = 2, datatype="FLT4S", progress="text")))
 } else
     Coeffs = brick(OutputFile)
 
