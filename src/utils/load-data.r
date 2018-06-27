@@ -23,20 +23,22 @@ GetTrainingNames = function(uncorelated = FALSE, exclude=c())
 }
 
 # Returns a stack of covariate rasters, with the ability to exclude some
-LoadTrainingRasters = function(uncorelated = FALSE, exclude=c())
+LoadTrainingRasters = function(uncorelated = FALSE, exclude=c(), extent=NULL, basedir="../../userdata/indices-no-na")
 {
-    TrainingFiles = c("../../userdata/indices-no-na/composite.tif",
-        "../../userdata/indices-no-na/OSAVI.tif",
-        "../../userdata/indices-no-na/LSWI.tif",
-        "../../userdata/indices/watermask.tif",
-        "../../userdata/indices-no-na/pv-height.tif",
-        "../../userdata/indices-no-na/pv-slope.tif",
-        "../../userdata/indices-no-na/pv-aspect-2.tif",
-        "../../userdata/indices-no-na/pv-tpi-2.tif",
-        "../../userdata/indices-no-na/phase-amplitude-6.tif")
+    TrainingFiles = c(file.path(basedir, "composite.tif"),
+        file.path(basedir, "OSAVI.tif"),
+        file.path(basedir, "LSWI.tif"),
+        file.path(basedir, "watermask.tif"),
+        file.path(basedir, "pv-height.tif"),
+        file.path(basedir, "pv-slope.tif"),
+        file.path(basedir, "pv-aspect-2.tif"),
+        file.path(basedir, "pv-tpi-2.tif"),
+        file.path(basedir, "phase-amplitude-6.tif"))
     
     # First load everything, then drop what we don't need
     rasters = stack(TrainingFiles)
+    if (!is.null(extent))
+        rasters = crop(rasters, extent)
     names(rasters) = GetTrainingNames()
     
     if (uncorelated)
