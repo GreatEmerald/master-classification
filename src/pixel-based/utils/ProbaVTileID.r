@@ -1,16 +1,4 @@
 # Function that returns the Proba-V tile number when given a set of coordinates
-library(rgeos)
-gIntersects(as(SamplePoints[1,], "Spatial"), extent(exampleRaster))
-
-st_crs(exampleRaster)
-
-ExtentPolygon = as(extent(exampleRaster), "SpatialPolygons")
-ExtentPolygon = st_as_sf(ExtentPolygon)
-st_crs(ExtentPolygon) = 4326
-
-st_intersects(SamplePoints[2,], ExtentPolygon)
-
-# Given a point (or points), returns the Proba-V tile ID.
 ProbaVTileID = function(point)
 {
     # X00Y00 is -180.0005, -170.0005,  65.0005,  75.0005  (xmin, xmax, ymin, ymax)
@@ -35,6 +23,4 @@ ProbaVTileID = function(point)
     return(sprintf("X%02dY%02d", XID, YID))
 }
 
-SampleFiles = list.files("/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M/2014/20140311/PROBAV_S5_TOC_20140311_100M_V101/",
-                        pattern=glob2rx("PROBAV_S5_TOC_X??Y??_20140311_100M_V101_RADIOMETRY.tif"), full.names = TRUE)
-TileList = expand.grid(sprintf("X%02d", 00:35), sprintf("Y%02d", 00:13), stringsAsFactors = FALSE)
+# Africa is from X16Y03 to X23Y10
