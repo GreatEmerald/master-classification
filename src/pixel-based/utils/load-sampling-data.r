@@ -39,3 +39,46 @@ LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018
 
     return(SamplePoints)
 }
+
+LoadVIMatrix = function(Tile, VI, Band, DataDir="../data/pixel-based")
+{
+    CSVFile = file.path(DataDir, paste0(paste(Tile, VI, Band, sep="-"), ".csv"))
+    if (!file.exists(CSVFile))
+    {
+        warning(paste("Requested to load VI matrix from a non-existing file:", CSVFile))
+        return()
+    }
+    Result = as.matrix(read.csv(CSVFile, row.names=1))
+    try(colnames(Result) <- as.character(LoadRawDataDirs()$date)) # May fail if we don't have the cache file
+    return(Result)
+}
+
+LoadRawDataDirs = function(CacheFile = "../data/DataDirs.csv", ...)
+{
+    
+    if (!file.exists(CacheFile))
+    {
+        DataDirs = ProbaVValidDirs(...)
+        DataDirsDates = data.frame(dir=DataDirs, date=as.Date(basename(dirname(DataDirs)), format="%Y%m%d"))
+        write.csv(DataDirsDates, CacheFile, row.names=FALSE)
+    } else {
+        print(paste("Reusing existing list of data directories from", CacheFile))
+        DataDirsDates = read.csv(CacheFile, stringsAsFactors=FALSE)
+        DataDirsDates$date = as.Date(DataDirsDates$date)
+    }
+    return(DataDirsDates)
+}
+
+# Get a list of relevant tiles (tiles with observations over Africa at the moment)
+GetTileList = function(SamplePoints = NULL)
+{
+    if (is.null(SamplePoints))
+        SamplePoints = LoadGlobalTrainingData()
+    
+    TileList = expand.grid(sprintf("X%02d", 15:23), sprintf("Y%02d", 3:10), stringsAsFactors = FALSE)
+    TileList = paste0(TileList[,1], TileList[,2])
+    
+    # Keep only the tiles that are in the reference data
+    TileList = TileList[TileList %in% levels(SamplePoints$Tile)]
+    return(TileList)
+}

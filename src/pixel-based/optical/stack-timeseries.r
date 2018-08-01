@@ -14,24 +14,12 @@ OutputDir = "../data/pixel-based"
 SamplePoints = LoadGlobalTrainingData()
 
 # Tiles to process
-TileList = expand.grid(sprintf("X%02d", 15:23), sprintf("Y%02d", 3:10), stringsAsFactors = FALSE)
-TileList = paste0(TileList[,1], TileList[,2])
-# Keep only the tiles that are in the reference data
-TileList = TileList[TileList %in% levels(SamplePoints$Tile)]
+TileList = GetTileList(SamplePoints)
 
 # Generate a list of directories to read from.
 # This list is semi-static: we don't read in more files when they arrive. Else the lengths would differ.
-DataDirFile = "../data/DataDirs.csv"
-if (!file.exists(DataDirFile))
-{
-    DataDirs = ProbaVValidDirs(RequiredTiles = TileList)#levels(SamplePoints$Tile))
-    DataDirsDates = data.frame(dir=DataDirs, date=as.Date(basename(dirname(DataDirs)), format="%Y%m%d"))
-    write.csv(DataDirsDates, DataDirFile, row.names=FALSE)
-} else {
-    DataDirsDates = read.csv(DataDirFile, stringsAsFactors=FALSE)
-    DataDirsDates$date = as.Date(DataDirsDates$date)
-    DataDirs = DataDirsDates$dir
-}
+DataDirsDates = LoadRawDataDirs(RequiredTiles = TileList)
+DataDirs = DataDirsDates$dir
 
 BuildProbaVTileVRT = function(DataDirs, VI, Tile, Band=1, OutputDir="../../userdata/master-classification/pixel-based/vrt/sr/")
 {
@@ -55,7 +43,7 @@ BuildProbaVTileVRT = function(DataDirs, VI, Tile, Band=1, OutputDir="../../userd
 # FilterQC values are based on GetProbaVQCMask(bluegood=TRUE, redgood=TRUE, nirgood=TRUE, swirgood=TRUE, ice=FALSE, cloud=FALSE, shadow=FALSE)
 ExtractPixelData = function(ExtractLocations, DataDirs, VI, Tile, Band, QCMatrix, FilterQC=c(240, 248), OutputDir="../data/pixel-based")
 {
-    OutputCSVFile = file.path(OutputDir, paste(Tile, VI, Band, ".csv", sep="-"))
+    OutputCSVFile = file.path(OutputDir, paste0(paste(Tile, VI, Band, sep="-"), ".csv"))
     if (file.exists(OutputCSVFile))
         return(read.csv(OutputCSVFile))
         
@@ -63,7 +51,8 @@ ExtractPixelData = function(ExtractLocations, DataDirs, VI, Tile, Band, QCMatrix
     BandValueMatrix = extract(BandStack, ExtractLocations)
     BandValueMatrix[!QCMatrix %in% FilterQC] = NA
     colnames(BandValueMatrix) = paste0(Band, "-", c(getZ(BandStack)))
-    write.csv(BandValueMatrix, OutputCSVFile, row.names=FALSE)
+    rownames(BandValueMatrix) = ExtractLocations$location_id
+    write.csv(BandValueMatrix, OutputCSVFile)
     return(BandValueMatrix)
 }
 
@@ -80,7 +69,9 @@ foreach(Tile=iter(TileList), .inorder=FALSE, .multicombine=TRUE) %dopar%
         # Extract QC values
         QCStack = BuildProbaVTileVRT(DataDirs, "SM", Tile)
         print(any(duplicated(getZ(QCStack))))
-        system.time(QCInTile <- extract(QCStack, PointsInTile))
+        print(system.time(
+            QCInTile <- extract(QCStack, PointsInTile)
+            ))
         
         # Extract NDVI values
         ExtractPixelData(PointsInTile, DataDirs, "NDVI", Tile, 1, QCInTile)
