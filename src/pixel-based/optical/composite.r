@@ -1,11 +1,12 @@
 # Script to composite surface reflectance into a cloud-free "map" and calculate vegetation indices
 
+library(foreach)
+library(doParallel)
 source("pixel-based/utils/load-sampling-data.r")
 
 # Load data and dates
 SamplingPoints = LoadGlobalTrainingData()
-#TileList = GetTileList(SamplingPoints)
-TileList = c("X16Y04", "X16Y05", "X17Y03", "X18Y03", "X18Y04", "X19Y03", "X20Y03", "X20Y04", "X20Y05", "X21Y03", "X22Y03", "X23Y03")
+TileList = GetTileList(SamplingPoints)
 Dates = LoadRawDataDirs()$date
 # Subset data to summer 2016
 StartIndex = which(Dates == as.Date("2016-06-01"))

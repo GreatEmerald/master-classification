@@ -3,6 +3,32 @@ library(sf)
 
 source("pixel-based/utils/ProbaVTileID.r")
 
+CorrectSFDataTypes = function(df)
+{
+    CorrectionMap = c(rowid="integer", location_id="integer", bare="numeric", burnt="integer", crops="numeric",
+                      fallow_shifting_cultivation = "numeric", grassland="numeric", lichen_and_moss="numeric",
+                      shrub="numeric", snow_and_ice="integer", tree="numeric", urban_built_up="numeric",
+                      wetland_herbaceous="integer", water="numeric", not_sure="numeric", dominant_lc="factor",
+                      lc="factor", forest_type="factor", Tile="factor", min="numeric", max="numeric",
+                      intercept="numeric", co="numeric", si="numeric", co2="numeric", si2="numeric",
+                      trend="numeric", phase1="numeric", amplitude1="numeric", phase2="numeric",
+                      amplitude2="numeric", mean.ndvi="numeric", ndvi.25="numeric", ndvi.75="numeric",
+                      ndvi.iqr="numeric", red="numeric", nir="numeric", blue="numeric", swir="numeric",
+                      ndvi="numeric", ndmi="numeric", osavi="numeric", evi="numeric", elevation="integer",
+                      slope="numeric", aspect="numeric", tpi="numeric", tri="numeric", roughness="integer")
+    
+    for (i in 1:length(CorrectionMap))
+    {
+        if (names(CorrectionMap[i]) %in% names(df))
+            df[[names(CorrectionMap[i])]] = switch(CorrectionMap[i],
+               integer=as.integer(df[[names(CorrectionMap[i])]]),
+               numeric=as.numeric(df[[names(CorrectionMap[i])]]),
+               factor=as.factor(df[[names(CorrectionMap[i])]]))
+    }
+    
+    return(df)
+}
+
 # Load the global model training dataset (IIASA).
 LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018_V2.csv")
 {
@@ -10,24 +36,7 @@ LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018
     SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
     
     # Set correct data types
-    SamplePoints$rowid = as.numeric(SamplePoints$rowid)
-    SamplePoints$location_id = as.numeric(SamplePoints$location_id)
-    SamplePoints$bare = as.numeric(SamplePoints$bare)
-    SamplePoints$burnt = as.numeric(SamplePoints$burnt)
-    SamplePoints$crops = as.numeric(SamplePoints$crops)
-    SamplePoints$fallow_shifting_cultivation = as.numeric(SamplePoints$fallow_shifting_cultivation)
-    SamplePoints$grassland = as.numeric(SamplePoints$grassland)
-    SamplePoints$lichen_and_moss = as.numeric(SamplePoints$lichen_and_moss)
-    SamplePoints$shrub = as.numeric(SamplePoints$shrub)
-    SamplePoints$snow_and_ice = as.numeric(SamplePoints$snow_and_ice)
-    SamplePoints$tree = as.numeric(SamplePoints$tree)
-    SamplePoints$urban_built_up = as.numeric(SamplePoints$urban_built_up)
-    SamplePoints$wetland_herbaceous = as.numeric(SamplePoints$wetland_herbaceous)
-    SamplePoints$not_sure = as.numeric(SamplePoints$not_sure)
-    SamplePoints$water = as.numeric(SamplePoints$water)
-    SamplePoints$dominant_lc = as.factor(SamplePoints$dominant_lc)
-    SamplePoints$lc = as.factor(SamplePoints$lc)
-    SamplePoints$forest_type = as.factor(SamplePoints$forest_type)
+    SamplePoints = CorrectSFDataTypes(SamplePoints)
     
     # Set CRS to WGS84
     st_crs(SamplePoints) = 4326
@@ -40,7 +49,16 @@ LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018
     return(SamplePoints)
 }
 
-LoadVIMatrix = function(Tile, VI, Band, DataDir="../data/pixel-based")
+LoadTrainingAndCovariates = function(filename="../data/pixel-based/covariates/all.csv")
+{
+    AllData = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
+    st_crs(AllData) = 4326
+    AllData$field_1 = NULL # Remove duplicate ID
+    AllData = suppressWarnings(CorrectSFDataTypes(AllData))
+    return(AllData)
+}
+
+LoadVIMatrix = function(Tile, VI, Band, DataDir="../data/pixel-based/vegetation-indices")
 {
     CSVFile = file.path(DataDir, paste0(paste(Tile, VI, Band, sep="-"), ".csv"))
     if (!file.exists(CSVFile))
@@ -82,3 +100,11 @@ GetTileList = function(SamplePoints = NULL)
     TileList = TileList[TileList %in% levels(SamplePoints$Tile)]
     return(TileList)
 }
+
+GetIIASAClassNames = function()
+{
+    return(c("bare", "burnt", "crops", "fallow_shifting_cultivation", "grassland", "lichen_and_moss", "shrub",
+             "snow_and_ice", "tree", "urban_built_up", "water", "wetland_herbaceous", "not_sure"))
+}
+
+

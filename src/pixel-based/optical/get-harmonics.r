@@ -7,7 +7,7 @@ source("pixel-based/utils/load-sampling-data.r")
 MaskedOutputDir = "../data/pixel-based/masked-ndvi/"
 HarmonicsOutputDir = "../data/pixel-based/covariates/"
 
-TileList = c("X23Y03", "X16Y04")#GetTileList()
+TileList = GetTileList()
 Dates = LoadRawDataDirs()$date
 
 TemporalFilter = function(TimeSeriesToMask, TimeSeriesBlue, Dates, span=0.3, threshold=c(-30, Inf), ...)
