@@ -1,0 +1,250 @@
+\ProvidesPackage{beamerthemePosterWUR}
+%Last update: 26-04-2013 Peter van Beveren
+
+\selectcolormodel{rgb}
+\mode<presentation>
+
+\RequirePackage{setspace}
+\RequirePackage{pgf}
+\RequirePackage{tikz}
+\RequirePackage{beamerbasethemes}
+\RequirePackage[absolute,overlay]{textpos}
+
+%-------------------------------------------------------------------------------
+%                                                               detect PDF-LaTeX
+\newif\ifpdf
+\ifx\pdfoutput\undefined\pdffalse\else\pdftrue\fi
+
+%-------------------------------------------------------------------------------
+\definecolor{wurlightblue}{HTML}{6AADE4}
+\definecolor{wurgreen}{RGB}{52,178,51}
+\definecolor{wuryellow}{HTML}{EAB200}
+\definecolor{wurdarkgray}{HTML}{A59D95}
+\definecolor{wurlightgray}{HTML}{D5D2CA}
+\definecolor{wurazure}{HTML}{005172}
+\definecolor{wurorange}{HTML}{FF7900}
+%\definecolor{wursignblue}{HTML}{00549F}
+\definecolor{wursignblue}{RGB}{0,81,114}
+\definecolor{wurwhite}{HTML}{FFFFFF}
+\definecolor{wurlogobarcolor}{HTML}{FFFFFF}
+\definecolor{lightgray}{HTML}{EEEEEE}
+\definecolor{wurgray}{RGB}{165,157,149}
+\definecolor{linegray}{RGB}{213,210,202}
+\definecolor{rulecolor}{named}{wurgreen}%{Blue}
+\definecolor{wurblack}{HTML}{000000}
+
+% see documentation for a0poster class for the size options here
+\let\Textsize\normalsize\linespread{1.2}
+\def\Head#1{\noindent\hbox to \hsize{\hfil{\LARGE\color{wurwhite} #1}}\bigskip}
+\def\LHead#1{\noindent{\large\textbf{\color{wursignblue} #1}} \\ \color{black}}
+\def\smallHead#1{\vskip2ex\noindent{\large\textit{\color{wursignblue} #1}} \\ \color{black}}
+\def\SubHead#1{\noindent{\large\color{wurwhite} #1}\smallskip}
+\def\Title#1{\noindent{\Huge\color{wurwhite} #1}\linespread{1.2}}
+\def\Line#1{{{\color{linegray}\rule{\textwidth}{3.5pt}}\bigskip} \newline #1}
+\def\Adress#1{\noindent \footnotesize \color{wursignblue}#1}
+
+%                                                                   font options
+\RequirePackage[onlymath]{beamerfontthemeserif}
+\RequirePackage[T1]{fontenc}
+%\RequirePackage{lmodern}
+\setbeamerfont{title}{size=\Large}
+\setbeamerfont{subtitle}{size=\large}
+\setbeamerfont{author}{}
+\setbeamerfont{institution}{size=\small}
+\setbeamerfont{section in toc}{size=\normalsize}
+\setbeamerfont{subsection in toc}{size=\small}
+%\def\sfdefault{verdana}
+
+%\RequirePackage{microtype}
+%\DisableLigatures{encoding = *, family = * }
+
+%                                                                   caption options
+\setbeamertemplate{caption}{%
+\begin{beamercolorbox}[wd=7\TPHorizModule]{block body}\normalsize \hskip2ex \textbf{\insertcaptionname \;\insertcaptionnumber .} \insertcaption%
+\end{beamercolorbox}%
+}
+
+\ProcessOptionsBeamer
+
+%                                                                   top of the poster
+\def\greenhead{
+\mode<presentation>{
+  \setbeamertemplate{headline}{  
+  \leavevmode
+
+  \begin{beamercolorbox}[wd=\paperwidth]{headline}
+    	\begin{textblock}{15}(0,0)
+		\begin{figure}
+			\resizebox{15\TPHorizModule}{3.5\TPVertModule}{\begin{tikzpicture}
+				\filldraw[draw=black,color=wurgreen] (0,0) rectangle (12,7);
+		\end{tikzpicture}}
+		\end{figure}
+		\end{textblock}
+		
+		\begin{textblock}{15}(0.2,0.3) %Title
+			\includegraphics[width=5\TPHorizModule]{../thesis/wur-template/WUR_W_standard_cropped}
+			\vskip10ex
+ 			\Title{\inserttitle}
+			\vskip8ex	
+			\SubHead{\insertauthor}
+		\end{textblock}
+  \end{beamercolorbox}
+}}}
+
+\def\bluehead{
+\mode<presentation>{
+  \setbeamertemplate{headline}{  
+  \leavevmode
+
+  \begin{beamercolorbox}[wd=\paperwidth]{headline}
+    	\begin{textblock}{15}(0,0)
+		\begin{figure}
+			\resizebox{15\TPHorizModule}{5\TPVertModule}{\begin{tikzpicture}
+				\filldraw[draw=black,color=wurlightblue] (0,0) rectangle (12,7);
+		\end{tikzpicture}}
+		\end{figure}
+		\end{textblock}
+		
+		\begin{textblock}{15}(0.2,0.3) %Title
+			\includegraphics[width=7\TPHorizModule]{../thesis/wur-template/WUR_W_standard_cropped}
+			\vskip10ex
+ 			\Title{\inserttitle}
+			\vskip8ex	
+			\SubHead{\insertauthor}
+		\end{textblock}
+  \end{beamercolorbox}
+}}}
+
+\def\grayhead{
+\mode<presentation>{
+  \setbeamertemplate{headline}{  
+  \leavevmode
+
+  \begin{beamercolorbox}[wd=\paperwidth]{headline}
+    	\begin{textblock}{15}(0,0)
+		\begin{figure}
+			\resizebox{15\TPHorizModule}{5\TPVertModule}{\begin{tikzpicture}
+				\filldraw[draw=black,color=wurgray] (0,0) rectangle (12,7);
+		\end{tikzpicture}}
+		\end{figure}
+		\end{textblock}
+		
+		\begin{textblock}{15}(0.2,0.3) %Title
+			\includegraphics[width=7\TPHorizModule]{../thesis/wur-template/WUR_W_standard_cropped}
+			\vskip10ex
+ 			\Title{\inserttitle}
+			\vskip8ex	
+			\SubHead{\insertauthor}
+		\end{textblock}
+  \end{beamercolorbox}
+}}}
+
+
+\def\greenheadlogos{
+\mode<presentation>{
+  \setbeamertemplate{headline}{  
+  \leavevmode
+
+  \begin{beamercolorbox}[wd=\paperwidth]{headline}
+    	\begin{textblock}{15}(0,0)
+		\begin{figure}
+			\resizebox{15\TPHorizModule}{3.6\TPVertModule}{\begin{tikzpicture}
+				\filldraw[draw=black,color=wurgreen] (0,0) rectangle (12,7);
+		\end{tikzpicture}}
+		\end{figure}
+		\end{textblock}	
+
+		\begin{textblock}{15}(0.2,0.3) %Title
+			\vskip5ex
+ 			\Title{\inserttitle}
+			\vskip8ex	
+			\SubHead{\insertauthor}
+		\end{textblock}
+		
+		\begin{textblock}{15}(0,3.9)
+			\includegraphics[width=4\TPHorizModule]{wu.png}
+		\end{textblock}
+		
+		\begin{textblock}{15}(0,4.9)			
+			\color{wurgray}\rule{\textwidth}{3.5pt}
+		\end{textblock}
+			
+  \end{beamercolorbox}
+}}}
+
+\def\blueheadlogos{
+\mode<presentation>{
+  \setbeamertemplate{headline}{  
+  \leavevmode
+
+  \begin{beamercolorbox}[wd=\paperwidth]{headline}
+    	\begin{textblock}{15}(0,0)
+		\begin{figure}
+			\resizebox{15\TPHorizModule}{3.6\TPVertModule}{\begin{tikzpicture}
+				\filldraw[draw=black,color=wurlightblue] (0,0) rectangle (12,7);
+		\end{tikzpicture}}
+		\end{figure}
+		\end{textblock}	
+
+		\begin{textblock}{15}(0.2,0.3) %Title
+			\vskip5ex
+ 			\Title{\inserttitle}
+			\vskip8ex	
+			\SubHead{\insertauthor}
+		\end{textblock}
+		
+		\begin{textblock}{15}(0,3.9)
+			\includegraphics[width=4\TPHorizModule]{wu.png}
+		\end{textblock}
+		
+		\begin{textblock}{15}(0,4.9)			
+			\color{wurgray}\rule{\textwidth}{3.5pt}
+		\end{textblock}
+			
+  \end{beamercolorbox}
+}}}
+
+\def\grayheadlogos{
+\mode<presentation>{
+  \setbeamertemplate{headline}{  
+  \leavevmode
+
+  \begin{beamercolorbox}[wd=\paperwidth]{headline}
+    	\begin{textblock}{15}(0,0)
+		\begin{figure}
+			\resizebox{15\TPHorizModule}{3.6\TPVertModule}{\begin{tikzpicture}
+				\filldraw[draw=black,color=wurgray] (0,0) rectangle (12,7);
+		\end{tikzpicture}}
+		\end{figure}
+		\end{textblock}	
+
+		\begin{textblock}{15}(0.2,0.3) %Title
+			\vskip5ex
+ 			\Title{\inserttitle}
+			\vskip8ex	
+			\SubHead{\insertauthor}
+		\end{textblock}
+		
+		\begin{textblock}{15}(0,3.9)
+			\includegraphics[width=4\TPHorizModule]{wu.png}
+		\end{textblock}
+		
+		\begin{textblock}{15}(0,4.9)			
+			\color{wurgray}\rule{\textwidth}{3.5pt}
+		\end{textblock}
+			
+  \end{beamercolorbox}
+}}}
+
+
+%																color options
+\DeclareOptionBeamer{blue}[]{\bluehead} % blue sheet option
+\DeclareOptionBeamer{green}[]{\greenhead} % green sheet option
+\DeclareOptionBeamer{gray}[]{\grayhead}% gray sheet option
+\DeclareOptionBeamer{greenlogos}[]{\greenheadlogos} %option with logobar green
+\DeclareOptionBeamer{bluelogos}[]{\blueheadlogos} %option with logobar
+\DeclareOptionBeamer{graylogos}[]{\grayheadlogos} %option with logobar
+
+\ProcessOptionsBeamer
+
+\endinput
