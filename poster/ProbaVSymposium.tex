@@ -23,12 +23,12 @@
   \beamertemplatenavigationsymbolsempty
   \begin{frame}{} 
 
-	\begin{textblock}{15}(12,3.8)
+	\begin{textblock}{15}(4,22)
 		\includegraphics[height=0.5\TPVertModule]{figures/PVMEP.png} \hskip 1cm
 		\includegraphics[height=0.5\TPVertModule]{figures/vito-black}
 	\end{textblock}
 
-	\begin{textblock}{7}(0,4.9)
+	\begin{textblock}{7}(0,3.9)
 	  \Line
 	  \LHead{1. Abstract}
 	  The current standard of land cover classification is to assign each pixel to one land cover class, which at coarse resolution causes loss of information about mixed land cover. Fuzzy land cover classification, which assigns fractions of each land cover class to each pixel, can deal with mixed pixels. However, so far its application has been limited to city-scale areas and four or fewer classes.
@@ -37,10 +37,10 @@
 	
 	\end{textblock}
 	
-	\begin{textblock}{7}(0,10)
+	\begin{textblock}{7}(0,9)
 	  \Line 
 	  \LHead{2. Data and methods}
-	  6 spectral and 4 temporal metrics were derived from the full 100 m Proba-V surface reflectance archive over tile X20Y01. EUDEM was used to derive 4 terrestrial metrics. These metrics (see figure \ref{fig-varimp}) were input into machine learning models (fuzzy \textit{c}-means, random forest regression, neural networks) for predicting the fraction of each land cover class in each pixel: cultivated land, deciduous trees, evergreen trees, shrubs, grasslands, barren, wetland, built-up and water. The models were trained and validated on samples collected through manual high-resolution image interpretation. All processing was done on a virtual machine with 32 threads and 32 GiB RAM.
+	  6 spectral and 4 temporal metrics were derived from the full 100 m Proba-V surface reflectance archive over tile X20Y01. EUDEM was used to derive 4 terrestrial metrics. In addition, a water mask was derived from the Proba-V quality control layers. These 15 metrics (see figure \ref{fig-varimp}, Y axis) were input into machine learning models (fuzzy \textit{c}-means, random forest regression, neural networks) for predicting the fraction of each of the 9 land cover classes in each pixel: cultivated land, deciduous trees, evergreen trees, shrubs, grasslands, barren, wetland, built-up and water. The models were trained and validated on 480 sample points collected through manual high-resolution satellite and aerial image interpretation. All processing was done on a Proba-V MEP virtual machine with 32 threads and 32 GiB RAM.
 	  
 	  \begin{figure}
 			\includegraphics[width=7\TPHorizModule]{../thesis/thesis-figures/variable-importance}
@@ -50,7 +50,7 @@
 	
 	\end{textblock}
 	
-	\begin{textblock}{7}(8,4.9)
+	\begin{textblock}{7}(8,3.9)
 		\Line
 		\LHead{3. Results}
 		
@@ -72,7 +72,7 @@
 
 	\end{textblock}
 	
-	\begin{textblock}{7}(8,16.7)
+	\begin{textblock}{7}(8,15.5)
 		\Line
 		\LHead{4. Conclusion}
 		Random forest regression was the most accurate (MAE: 11.7\%), but not significantly more than fuzzy \textit{c}-means (MAE: 12.0\%) and neural networks (MAE: 12.7\%). The prediction times were very different: 1229, 42 and 25 minutes respectively to process an entire tile. Thus random forest regression was the most accurate but slowest algorithm, neural networks was the least accurate and fastest. All of these algorithms produced spatially consistent output. All types of covariates were important to include in the models, with the exception of terrain aspect and the Proba-V water mask (see figure \ref{fig-varimp}).
@@ -96,17 +96,17 @@
 
 	\end{textblock}
 
-	\begin{textblock}{7}(8,19.9)
+	\begin{textblock}{7}(8,18.5)
 		\Line
 		\LHead{5. Discussion}
-		Fractional land cover mapping is capable of representing smooth transitions between classes in space (and time), and users can produce customised discrete maps by defining their own rules. Larger scale application of fuzzy classification is needed to test whether it is computationally feasible for global mapping and whether model accuracies change depending on the area of interest.
+		Fractional land cover mapping is capable of representing smooth transitions between classes in space (and time), and users can produce customised discrete maps by defining their own rules. Larger scale application of fuzzy classification is needed to test whether it is computationally feasible for global mapping and whether model accuracies change depending on the area of interest. This will be investigated in the future as part of the Copernicus Global Land Operations ``Vegetation and Energy'' (CGLOPS) project.
 		
 	\end{textblock}
 	
-	\begin{textblock}{7}(0,21.5)
+	\begin{textblock}{7}(8,21.3)
 		\Line
 		\LHead{6. Acknowledgements}
-		We would like to thank VITO for providing access to and support for computational resources on the Proba-V Mission Exploitation Platform (MEP).
+		We would like to thank the MEP-TPS project and VITO for providing support for and access to data and computational resources on the Proba-V Mission Exploitation Platform (MEP).
 		
 	\end{textblock}
 	
