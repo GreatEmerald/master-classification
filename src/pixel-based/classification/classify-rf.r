@@ -24,12 +24,20 @@ apply(Data.df, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 
 # Do some cross-validation
 
-folds = createFolds(Data.df$location_id, 10)
+set.seed(0xfedbeef)
+folds = createFolds(Data.df$location_id, 2)
 Classes = GetIIASAClassNames()
-Truth = Data.df[unlist(folds),Classes]
+Truth = Data.df[,Classes]
 
-RFCV = function(outdir, filename, ZeroInflated = TRUE, ...)
+# We have zero- and 100-inflation in the data.
+# If we adjust for the zero inflation and use zero-truncated data for the second model, it tends to just predict 100.
+# If we use both zero- and 100-truncated data, it still tends to 100, but is more fuzzy.
+RFCV = function(outdir, filename, ZeroInflated = TRUE, scale=TRUE, ...)
 {
+    OutputFile = file.path(outdir, paste0("predictions-", filename))
+    if (file.exists(OutputFile))
+        return(read.csv(OutputFile))
+        
     Covariates = GetUncorrelatedPixelCovars()
     FullFormula = paste0("~", paste(Covariates, collapse = "+"))
     PredictionsPerFold = data.frame()
@@ -48,8 +56,8 @@ RFCV = function(outdir, filename, ZeroInflated = TRUE, ...)
             if (ZeroInflated)
             {
                 # Predict zeroes
-                ZeroFormula = update.formula(FullFormula, paste0(ZeroClass, " ~ ."))
-                ZeroModel = ranger(Formula, TrainingSet, seed = 0xbadcafe)
+                ZeroFormula = update.formula(FullFormula, paste0("as.factor(", ZeroClass, ") ~ ."))
+                ZeroModel = ranger(ZeroFormula, TrainingSet, seed = 0xbadcafe)
                 ClassPredictions = predict(ZeroModel, ValidationSet)
                 ClassPredictions = as.numeric(!as.logical(ClassPredictions$predictions))
                 NonZeroes = ClassPredictions==1
@@ -68,18 +76,21 @@ RFCV = function(outdir, filename, ZeroInflated = TRUE, ...)
             
             Predictions[,Class] = ClassPredictions
         }
-        ScaledPredictions = Predictions / rowSums(Predictions) * 100
-        # There is a possibility that all classes have been predicted as 0, so we can't normalise.
-        # In that case we just keep them as 0%. It won't add up to 100%. Alternatively we can set it to 1/nclass.
-        ScaledPredictions[is.nan(ScaledPredictions)] = 0
-        PredictionsPerFold = rbind(PredictionsPerFold, ScaledPredictions)
+        if (scale)
+        {
+            Predictions = Predictions / rowSums(Predictions) * 100
+            # There is a possibility that all classes have been predicted as 0, so we can't normalise.
+            # In that case we just keep them as 0%. It won't add up to 100%. Alternatively we can set it to 1/nclass.
+            Predictions[is.nan(Predictions)] = 0
+        }
+        PredictionsPerFold = rbind(PredictionsPerFold, Predictions)
     }
-    write.csv(AST, paste0(outdir, filename))
-    write.csv(PredictionsPerFold[unlist(folds),], paste0(outdir, "predictions-", filename))
+    # Sort everything back to the order of the original
+    write.csv(PredictionsPerFold[order(unlist(folds)),], OutputFile, row.names=FALSE)
     return(PredictionsPerFold)
 }
 
-PredictionResult = RFCV("../data/pixel-based/predications", "randomforest-twostep-uncorrelated.csv")
+PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-uncorrelated-unscaled-2.csv", scale=FALSE)
 
 AST = AccuracyStatTable(PredictionResult, Truth)
 print(AST)
@@ -88,6 +99,7 @@ barplot(AST$MAE, names.arg=rownames(AST), main="MAE")
 barplot(AST$ME, names.arg=rownames(AST), main="ME")
 #plot(unlist(PredictionsPerFold), unlist(Truth))
 #abline(0, 1, col="red")
+write.csv(AST, paste0("../data/pixel-based/predictions/", "randomforest-twostep-uncorrelated.csv"))
 
 # ggplot for more reasonable display of ludicrous amounts of points
 ggplot(data.frame(Prediction=unlist(PredictionResult), Truth=Truth), aes(Prediction, Truth)) +
