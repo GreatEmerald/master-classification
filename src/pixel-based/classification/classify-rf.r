@@ -1,71 +1,95 @@
 # Predict pixels using Random Forest
 
 library(ranger)
+library(caret)
 source("pixel-based/utils/load-sampling-data.r")
+source("pixel-based/utils/covariate-names.r")
+source("utils/accuracy-statistics.r")
 
-Data = LoadTrainingAndCovariates()
+Data.df = LoadTrainingAndCovariates()
+class(Data.df) = "data.frame"
+Data.df = AddZeroValueColumns(Data.df)
 
-# Explore data
-library(corrplot)
-oldClass(Data) = "data.frame"
-DC = cor(Data[,c(1:17, 22:49)], use="complete.obs")
-DP = cor.mtest(Data[,c(1:17, 22:49)])
-corrplot(DC, p.mat=DP$p, method="ellipse", insig="blank")
-# Trend and intercept are colinear, mean.ndvi and its quantiles (including min max) are highly correlated
-# Then red with swir, osavi with ndvi, ndvi.mean with ndvi, evi with ndmi, blue with swir and ndvi, si with co
-# TRI and roughness are also correlated with slope
-# And NDMI, IQR are correleated with mean.ndvi
-DC = cor(Data[,c(1:17, 25, 27:34, 39, 46:49)], use="complete.obs")
-DP = cor.mtest(Data[,c(1:17, 25, 27:34, 39, 46:49)])
-corrplot(DC, p.mat=DP$p, method="ellipse", insig="blank")
-names(Data)[c(1:17, 25, 27:34, 39, 46:49)]
+# Filter out data with NAs:
+nrow(Data.df) # 31964
+# No harmonics
+Data.df = Data.df[!is.na(Data.df$phase2),]
+# And all values that don't have observations in 2017
+Data.df = Data.df[!is.na(Data.df$nir),]
+# And all data that is outside Africa (we didn't process terrain there)
+Data.df = Data.df[!is.na(Data.df$slope),]
+nrow(Data.df) # 26925
+# Make sure there are no NAs
+apply(Data.df, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 
-ClassNames = GetIIASAClassNames()
-CovariateNames = c(names(Data)[c(1:4, 25, 27:34, 39, 46:49)])#which(names(Data)=="min"):(length(Data)-1)])
-WaterFormula = formula(paste("water ~", paste(CovariateNames, collapse="+")))
-RFFullModel = ranger(WaterFormula, data=Data)
-plot(Data$water~predict(RFFullModel, Data)$prediction, col="blue")
+# Do some cross-validation
 
-# Impute values
-apply(Data, 2, function(x){sum(is.na(x))}) / nrow(Data) * 100 # Most missing in slope, 13.5%
-library(yaImpute)
-ImputeFormula = formula(co+co2+si2+trend+phase1+amplitude1+phase2+amplitude2+mean.ndvi+nir+elevation+slope+aspect ~
-                            x+y+location_id+rowid+tpi)
-Imputer = yai(ImputeFormula, ImputeFormula, data=Data)
-str(impute(Imputer))
-library(Hmisc)
-Data$co = impute(Data$co)
-Data$co2 = impute(Data$co2)
-Data$si2 = impute(Data$si2)
-Data$trend = impute(Data$trend)
-Data$phase1 = impute(Data$phase1)
-Data$amplitude1 = impute(Data$amplitude1)
-Data$phase2 = impute(Data$phase2)
-Data$amplitude2 = impute(Data$amplitude2)
-Data$mean.ndvi = impute(Data$mean.ndvi)
-Data$nir = impute(Data$nir)
-Data$elevation = impute(Data$elevation)
-Data$slope = impute(Data$slope)
-Data$tpi = impute(Data$tpi)
+folds = createFolds(Data.df$location_id, 10)
+Classes = GetIIASAClassNames()
+Truth = Data.df[unlist(folds),Classes]
 
-apply(Data[,5:17], 2, function(x){sum(x==0)}) / nrow(Data) * 100 # 84% of all data is 0
-apply(Data[,5:17], 2, function(x){sum(x==100)}) / nrow(Data) * 100 # Only bare soil has a lot (18%) of 100
+RFCV = function(outdir, filename, ZeroInflated = TRUE, ...)
+{
+    Covariates = GetUncorrelatedPixelCovars()
+    FullFormula = paste0("~", paste(Covariates, collapse = "+"))
+    PredictionsPerFold = data.frame()
+    for (i in 1:length(folds))
+    {
+        TrainingSet = Data.df[-folds[[i]],]
+        ValidationSet = Data.df[folds[[i]],]
+        
+        Predictions = matrix(ncol=length(Classes), nrow=length(folds[[i]]), dimnames=list(list(), Classes))
+        for (Class in Classes)
+        {
+            print(Class)
+            ZeroClass = paste("no", Class, sep=".")
+            
+            Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
+            if (ZeroInflated)
+            {
+                # Predict zeroes
+                ZeroFormula = update.formula(FullFormula, paste0(ZeroClass, " ~ ."))
+                ZeroModel = ranger(Formula, TrainingSet, seed = 0xbadcafe)
+                ClassPredictions = predict(ZeroModel, ValidationSet)
+                ClassPredictions = as.numeric(!as.logical(ClassPredictions$predictions))
+                NonZeroes = ClassPredictions==1
+                
+                # Predict non-zeroes
+                if (any(NonZeroes))
+                {
+                    NonzeroModel = ranger(Formula, TrainingSet[!TrainingSet[,ZeroClass],], seed = 0xbadcafe)
+                    ClassPredictions[NonZeroes] = predict(NonzeroModel, ValidationSet[NonZeroes,])$prediction
+                } else print("Everything was predicted to be zero!")
+            } else {
+                # Predict all
+                rfmodel = ranger(Formula, TrainingSet, seed = 0xbadcafe)
+                ClassPredictions = predict(rfmodel, ValidationSet)
+            }
+            
+            Predictions[,Class] = ClassPredictions
+        }
+        ScaledPredictions = Predictions / rowSums(Predictions) * 100
+        # There is a possibility that all classes have been predicted as 0, so we can't normalise.
+        # In that case we just keep them as 0%. It won't add up to 100%. Alternatively we can set it to 1/nclass.
+        ScaledPredictions[is.nan(ScaledPredictions)] = 0
+        PredictionsPerFold = rbind(PredictionsPerFold, ScaledPredictions)
+    }
+    write.csv(AST, paste0(outdir, filename))
+    write.csv(PredictionsPerFold[unlist(folds),], paste0(outdir, "predictions-", filename))
+    return(PredictionsPerFold)
+}
 
-Data$no.water = Data$water == 0
-Data$no.water = as.factor(Data$no.water)
+PredictionResult = RFCV("../data/pixel-based/predications", "randomforest-twostep-uncorrelated.csv")
 
-WaterFormulaBin = formula(paste("no.water ~", paste(CovariateNames, collapse="+")))
-RFFullModelbin = ranger(WaterFormulaBin, data=Data)
-plot(Data$no.water~predict(RFFullModelbin, Data)$prediction)
+AST = AccuracyStatTable(PredictionResult, Truth)
+print(AST)
+barplot(AST$RMSE, names.arg=rownames(AST), main="RMSE")
+barplot(AST$MAE, names.arg=rownames(AST), main="MAE")
+barplot(AST$ME, names.arg=rownames(AST), main="ME")
+#plot(unlist(PredictionsPerFold), unlist(Truth))
+#abline(0, 1, col="red")
 
-RFIsWaterModel = ranger(WaterFormula, data=Data[Data$no.water==FALSE,])
-plot(Data[Data$no.water==FALSE,"water"]~predict(RFIsWaterModel, Data[Data$no.water==FALSE,])$prediction)
-abline(0,1)
-CombinedPred = predict(RFFullModelbin, Data)$prediction
-CombinedPred = as.numeric(!as.logical(CombinedPred))
-CombinedPred[CombinedPred == 1] = predict(RFIsWaterModel, Data[Data$no.water==FALSE,])$prediction
-points(Data$water~CombinedPred, col="green")
-
-MAE.full = mean(abs(Data$water - predict(RFFullModel, Data)$prediction))
-MAE.combined = mean(abs(Data$water - CombinedPred)) # Much better
-
+# ggplot for more reasonable display of ludicrous amounts of points
+ggplot(data.frame(Prediction=unlist(PredictionResult), Truth=Truth), aes(Prediction, Truth)) +
+    geom_hex() +
+    scale_fill_viridis_c(trans="log") #log scale
