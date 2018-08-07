@@ -3,7 +3,7 @@
 # List of names of pixel-based covariates that are known to not be correlated. Useful for random forest VarImp.
 GetUncorrelatedPixelCovars = function()
 {
-    return(c("location_id", "rowid", "x", "y", "co", "co2", "si2", "trend", "phase1", "amplitude1", "phase2",
+    return(c("x", "y", "co", "co2", "si2", "trend", "phase1", "amplitude1", "phase2",
              "amplitude2", "mean.ndvi", "nir", "elevation", "slope", "aspect", "tpi"))
 }
 
