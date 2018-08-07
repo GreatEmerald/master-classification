@@ -1,11 +1,12 @@
 # Script to download GLSDEM and calculate terrestrial metrics
 
 library(raster)
+library(gdalUtils)
 source("pixel-based/utils/load-sampling-data.r")
 
 # GLSDEM files are 1x1 degree. Downloading it is already implemented for the tile processing chain.
 # For pixels, we need to figure out which tiles we need.
-# Tiles are in LYYYLXXX, where XXX and YYY are the top-left coordinates.
+# Tiles are in LYYYLXXX, where XXX and YYY are the bottom(!)-left coordinates.
 
 OutputDEMDir = "../../userdata/master-classification/dem/glsdem/" # GLSDEM_n055e020.tif
 OutputCSVDir = "../data/pixel-based/covariates/"
@@ -13,8 +14,8 @@ OutputCSVDir = "../data/pixel-based/covariates/"
 ReferenceData = LoadGlobalTrainingData()
 
 # Figure out the tiles we need
-XIDs = as.integer(ReferenceData$x)
-YIDs = as.integer(ReferenceData$y)
+XIDs = floor(ReferenceData$x) # Floor due to this being the lower-left corner
+YIDs = floor(ReferenceData$y)
 
 Tiler = function(i)
 {
@@ -50,9 +51,12 @@ DownloadedTiles = sapply(UniqueTiles, GLSDEMDownloader)
 
 # Write the list to a file (too long to fit on a command line)
 write(DownloadedTiles, file.path(OutputDEMDir, "AfricaElevation.txt"), sep="\n")
+# The DEM has no NA values, because there are simply no NAs (water is 0, after all).
+# Some tiles are missing because they are sea; this implies that they should be set to 0.
 gdalbuildvrt(input_file_list=file.path(OutputDEMDir, "AfricaElevation.txt"), output.vrt=file.path(OutputDEMDir, "AfricaElevation.vrt"), verbose=TRUE)
 CreationOptions = c("COMPRESS=DEFLATE", "BIGTIFF=YES", "ZLEVEL=9", "NUM_THREADS=ALL_CPUS")
 gdaldem("slope", file.path(OutputDEMDir, "AfricaElevation.vrt"), file.path(OutputDEMDir, "AfricaSlope.tif"), s=111120, co=CreationOptions)
+# Aspect is set to NA if Slope = 0. We replace it with 0 down the line for RF.
 gdaldem("aspect", file.path(OutputDEMDir, "AfricaElevation.vrt"), file.path(OutputDEMDir, "AfricaAspect.tif"), co=CreationOptions)
 gdaldem("TPI", file.path(OutputDEMDir, "AfricaElevation.vrt"), file.path(OutputDEMDir, "AfricaTPI.tif"), co=CreationOptions)
 gdaldem("TRI", file.path(OutputDEMDir, "AfricaElevation.vrt"), file.path(OutputDEMDir, "AfricaTRI.tif"), co=CreationOptions)

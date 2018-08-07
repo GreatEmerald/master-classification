@@ -2,6 +2,7 @@
 library(sf)
 
 source("pixel-based/utils/ProbaVTileID.r")
+source("pixel-based/utils/covariate-names.r")
 
 CorrectSFDataTypes = function(df)
 {
@@ -49,12 +50,15 @@ LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018
     return(SamplePoints)
 }
 
-LoadTrainingAndCovariates = function(filename="../data/pixel-based/covariates/all.csv")
+LoadTrainingAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-based/covariates/all.csv")
 {
     AllData = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
     st_crs(AllData) = 4326
     AllData$field_1 = NULL # Remove duplicate ID
     AllData = suppressWarnings(CorrectSFDataTypes(AllData))
+    
+    if (zerovalues)
+        AllData = AddZeroValueColumns(AllData)
     return(AllData)
 }
 
@@ -101,10 +105,14 @@ GetTileList = function(SamplePoints = NULL)
     return(TileList)
 }
 
-GetIIASAClassNames = function()
+# Append binary "lack of class x" columns to a data frame
+AddZeroValueColumns = function(df)
 {
-    return(c("bare", "burnt", "crops", "fallow_shifting_cultivation", "grassland", "lichen_and_moss", "shrub",
-             "snow_and_ice", "tree", "urban_built_up", "water", "wetland_herbaceous", "not_sure"))
+    Classes = GetIIASAClassNames()
+    for (Class in Classes)
+    {
+        ColumnName = paste("no", Class, sep=".")
+        df[,ColumnName] = df[,Class]==0
+    }
+    return(df)
 }
-
-
