@@ -25,20 +25,20 @@ apply(Data.df, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 # Do some cross-validation
 
 set.seed(0xfedbeef)
-folds = createFolds(Data.df$location_id, 2)
+folds = createFolds(Data.df$location_id, 10)
 Classes = GetIIASAClassNames()
 Truth = Data.df[,Classes]
 
 # We have zero- and 100-inflation in the data.
 # If we adjust for the zero inflation and use zero-truncated data for the second model, it tends to just predict 100.
 # If we use both zero- and 100-truncated data, it still tends to 100, but is more fuzzy.
-RFCV = function(outdir, filename, ZeroInflated = TRUE, scale=TRUE, ...)
+RFCV = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE, scale=TRUE, ...)
 {
     OutputFile = file.path(outdir, paste0("predictions-", filename))
     if (file.exists(OutputFile))
         return(read.csv(OutputFile))
         
-    Covariates = GetUncorrelatedPixelCovars()
+    Covariates = GetAllPixelCovars()#GetUncorrelatedPixelCovars()
     FullFormula = paste0("~", paste(Covariates, collapse = "+"))
     PredictionsPerFold = data.frame()
     for (i in 1:length(folds))
@@ -53,25 +53,54 @@ RFCV = function(outdir, filename, ZeroInflated = TRUE, scale=TRUE, ...)
             ZeroClass = paste("no", Class, sep=".")
             
             Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
-            if (ZeroInflated)
+            if (InflationAdjustment > 0)
             {
-                # Predict zeroes
-                ZeroFormula = update.formula(FullFormula, paste0("as.factor(", ZeroClass, ") ~ ."))
-                ZeroModel = ranger(ZeroFormula, TrainingSet, seed = 0xbadcafe)
-                ClassPredictions = predict(ZeroModel, ValidationSet)
-                ClassPredictions = as.numeric(!as.logical(ClassPredictions$predictions))
-                NonZeroes = ClassPredictions==1
+                if (InflationAdjustment == 1) # Zero-inflation only
+                {
+                    # Predict zeroes
+                    ZeroFormula = update.formula(FullFormula, paste0("as.factor(", ZeroClass, ") ~ ."))
+                    ZeroModel = ranger(ZeroFormula, TrainingSet, seed = 0xbadcafe)
+                    ClassPredictions = predict(ZeroModel, ValidationSet)
+                    ClassPredictions = as.numeric(!as.logical(ClassPredictions$predictions))
+                    NonZeroes = ClassPredictions==1
+                } else if (InflationAdjustment == 2) # Zero and 100 inflation
+                {
+                    # Convert the "no." column to a factor, "zero", "hundred", "in-between"
+                    TrainingCategories = rep("in-between", nrow(TrainingSet))
+                    TrainingCategories[TrainingSet[,Class] == 0] = "zero"
+                    TrainingCategories[TrainingSet[,Class] == 100] = "hundred"
+                    TrainingCategories = factor(TrainingCategories)
+                    TrainingSet[,ZeroClass] = TrainingCategories
+                    
+                    ZeroFormula = update.formula(FullFormula, paste0(ZeroClass, " ~ ."))
+                    ZeroModel = ranger(ZeroFormula, TrainingSet, seed = 0xbadcafe)
+                    
+                    CategoryPredictions = predict(ZeroModel, ValidationSet)$prediction
+                    ClassPredictions = as.numeric(CategoryPredictions) # For length
+                    ClassPredictions[CategoryPredictions == "zero"] = 0
+                    ClassPredictions[CategoryPredictions == "hundred"] = 100
+                    NonZeroes = CategoryPredictions=="in-between"
+                }
                 
                 # Predict non-zeroes
                 if (any(NonZeroes))
                 {
-                    NonzeroModel = ranger(Formula, TrainingSet[!TrainingSet[,ZeroClass],], seed = 0xbadcafe)
+                    # Whether to use all data for training, or zero-truncate. Truncating makes the model biased towards 100...
+                    if (TruncateZeroes)
+                    {
+                        if (InflationAdjustment == 1)
+                            NonzeroModel = ranger(Formula, TrainingSet[TrainingSet[,Class] > 0,], seed = 0xbadcafe)
+                        else if (InflationAdjustment == 2)
+                            NonzeroModel = ranger(Formula, TrainingSet[TrainingSet[,Class] > 0 & TrainingSet[,Class] < 100,], seed = 0xbadcafe)
+                    }
+                    else
+                        NonzeroModel = ranger(Formula, TrainingSet, seed = 0xbadcafe)
                     ClassPredictions[NonZeroes] = predict(NonzeroModel, ValidationSet[NonZeroes,])$prediction
                 } else print("Everything was predicted to be zero!")
             } else {
                 # Predict all
                 rfmodel = ranger(Formula, TrainingSet, seed = 0xbadcafe)
-                ClassPredictions = predict(rfmodel, ValidationSet)
+                ClassPredictions = predict(rfmodel, ValidationSet)$prediction
             }
             
             Predictions[,Class] = ClassPredictions
@@ -90,7 +119,7 @@ RFCV = function(outdir, filename, ZeroInflated = TRUE, scale=TRUE, ...)
     return(PredictionsPerFold)
 }
 
-PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-uncorrelated-unscaled-2.csv", scale=FALSE)
+PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
 
 AST = AccuracyStatTable(PredictionResult, Truth)
 print(AST)
@@ -99,9 +128,9 @@ barplot(AST$MAE, names.arg=rownames(AST), main="MAE")
 barplot(AST$ME, names.arg=rownames(AST), main="ME")
 #plot(unlist(PredictionsPerFold), unlist(Truth))
 #abline(0, 1, col="red")
-write.csv(AST, paste0("../data/pixel-based/predictions/", "randomforest-twostep-uncorrelated.csv"))
+write.csv(AST, paste0("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds.csv"))
 
 # ggplot for more reasonable display of ludicrous amounts of points
-ggplot(data.frame(Prediction=unlist(PredictionResult), Truth=Truth), aes(Prediction, Truth)) +
+ggplot(data.frame(Prediction=unlist(PredictionResult), Truth=unlist(Truth)), aes(Prediction, Truth)) +
     geom_hex() +
-    scale_fill_viridis_c(trans="log") #log scale
+    scale_fill_distiller(palette=7, trans="log") #log scale
