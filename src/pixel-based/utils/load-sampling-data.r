@@ -50,12 +50,23 @@ LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018
     return(SamplePoints)
 }
 
-LoadTrainingAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-based/covariates/all.csv")
+LoadTrainingAndCovariates = function(zerovalues=FALSE, excludenotsure=TRUE, filename="../data/pixel-based/covariates/all.csv")
 {
     AllData = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
     st_crs(AllData) = 4326
     AllData$field_1 = NULL # Remove duplicate ID
     AllData = suppressWarnings(CorrectSFDataTypes(AllData))
+    
+    # Redo the dominant_lc column to exclude "not sure"
+    if (excludenotsure)
+    {
+        Classes = GetIIASAClassNames()
+        ClassProportions = AllData
+        class(ClassProportions) = "data.frame"
+        ClassProportions = ClassProportions[,Classes]
+        DominantClasses = apply(ClassProportions, 1, which.max)
+        AllData$dominant_lc = factor(Classes[DominantClasses])
+    }
     
     if (zerovalues)
         AllData = AddZeroValueColumns(AllData)
