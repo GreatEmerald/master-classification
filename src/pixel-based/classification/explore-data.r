@@ -1,4 +1,5 @@
 # Scratchpad for data exploration. Used to be part of classify-*.r scripts.
+library(caret)
 
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
@@ -9,7 +10,12 @@ class(Data.df) = "data.frame"
 rm(Data)
 Data.df = AddZeroValueColumns(Data.df)
 
+ClassNames = GetIIASAClassNames()
+CovariateNames = GetUncorrelatedPixelCovars() #names(Data[which(names(Data)=="min"):(length(Data)-1)])
+
 # Explore correlations
+Covariates[findCorrelation(cor(Data.df[,CovariateNames]), cutoff = 0.75)]
+
 library(corrplot)
 DC = cor(Data.df[,c(1:17, 22:49)], use="complete.obs")
 DP = cor.mtest(Data.df[,c(1:17, 22:49)])
@@ -23,8 +29,8 @@ DP = cor.mtest(Data.df[,c(1:17, 25, 27:34, 39, 46:49)])
 corrplot(DC, p.mat=DP$p, method="ellipse", insig="blank")
 names(Data.df)[c(1:17, 25, 27:34, 39, 46:49)]
 
-ClassNames = GetIIASAClassNames()
-CovariateNames = GetUncorrelatedPixelCovars() #names(Data[which(names(Data)=="min"):(length(Data)-1)])
+# Zero inflation
+nearZeroVar(Data.df[,ClassNames], saveMetrics = TRUE)
 
 # Impute values
 apply(Data.df, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100 # Most missing in terrain covars, 10%
@@ -59,6 +65,12 @@ Data$nir = impute(Data$nir)
 Data$elevation = impute(Data$elevation)
 Data$slope = impute(Data$slope)
 Data$tpi = impute(Data$tpi)
+
+# With caret - actually works
+pp = preProcess(Data.df[,CovariateNames], method="bagImpute")
+Imputed = predict(pp, Data.df[,CovariateNames])
+head(Data.df[is.na(Data.df$elevation),CovariateNames])
+head(Imputed[is.na(Data.df$elevation),])
 
 # Drop values instead; all values that have no harmonics:
 Data.df = Data.df[!is.na(Data.df$phase2),]
