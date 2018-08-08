@@ -7,6 +7,14 @@ GetUncorrelatedPixelCovars = function()
              "amplitude2", "mean.ndvi", "nir", "elevation", "slope", "aspect", "tpi"))
 }
 
+GetAllPixelCovars = function()
+{
+    return(c("x", "y", "min", "max", "intercept", "co", "si", "co2", "si2", "trend",
+             "phase1", "amplitude1", "phase2", "amplitude2", "mean.ndvi", "ndvi.25", "ndvi.75", "ndvi.iqr",
+             "red", "nir", "blue", "swir", "ndvi", "ndmi", "osavi", "evi",
+             "elevation", "slope", "aspect", "tpi", "tri", "roughness"))
+}
+
 # Names of the classes in the original data collected by IIASA
 GetIIASAClassNames = function()
 {
