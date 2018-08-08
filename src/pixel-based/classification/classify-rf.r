@@ -25,7 +25,9 @@ apply(Data.df, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 # Do some cross-validation
 
 set.seed(0xfedbeef)
-folds = createFolds(Data.df$location_id, 10)
+#folds = createFolds(Data.df$location_id, 10)
+# Use stratified random sampling: make sure that we validate using all classes. Due to a large dataset, this hardly matters, but hey.
+folds = createFolds(Data.df$dominant_lc, 10)
 Classes = GetIIASAClassNames()
 Truth = Data.df[,Classes]
 
