@@ -10,8 +10,9 @@ class(Data.df) = "data.frame"
 rm(Data)
 Data.df = AddZeroValueColumns(Data.df)
 
-ClassNames = GetIIASAClassNames()
+ClassNames = GetIIASAClassNames(TRUE)
 CovariateNames = GetUncorrelatedPixelCovars() #names(Data[which(names(Data)=="min"):(length(Data)-1)])
+CovariateNames = GetAllPixelCovars()
 
 # Explore correlations
 Covariates[findCorrelation(cor(Data.df[,CovariateNames]), cutoff = 0.75)]
@@ -79,29 +80,62 @@ nrow(Data.df)
 Data.df = Data.df[!is.na(Data.df$nir),]
 Data.df = Data.df[!is.na(Data.df$slope),]
 
-apply(Data[,5:17], 2, function(x){sum(x==0)}) / nrow(Data) * 100 # 84% of all data is 0
-apply(Data[,5:17], 2, function(x){sum(x==100)}) / nrow(Data) * 100 # Only bare soil has a lot (18%) of 100
+apply(Data.df[,5:17], 2, function(x){sum(x==0)}) / nrow(Data.df) * 100 # 84% of all data is 0
+apply(Data.df[,5:17], 2, function(x){sum(x==100)}) / nrow(Data.df) * 100 # Only bare soil has a lot (18%) of 100
 
+## Imbalanced classes
+table(Data.df[["dominant_lc"]])
+# Drop lichen and moss
+Data.df = Data.df[!Data.df$dominant_lc == "lichen_and_moss",]
+# Also drop the level, otherwise sampling would try to sample from 0 points
+Data.df$dominant_lc = droplevels(Data.df$dominant_lc)
+# We'd lose only 81 points if we exclude wetlands as well, but they are present in Africa
+
+# Test ROSE
+library(ROSE)
+# fails due to only supporting 2 classes
+ovun.sample(paste("dominant_lc ~", paste(CovariateNames, collapse="+")), data=Data.df, method="over", N=max(table(Data.df[["dominant_lc"]]))*length(ClassNames))
+
+# Test DMwR
+library(DMwR)
+# Crashes if we don't use droplevels beforehand, and crashes if a column is logical
+SmoteSample = SMOTE(formula(paste("dominant_lc ~", paste(CovariateNames, collapse="+"))), data=Data.df[,c(ClassNames, "dominant_lc")], k=1)
+str(SmoteSample)
+# It seems to balance the last level of dominant_lc against all others, rather than balance all among themselves
+table(SmoteSample[["dominant_lc"]])
+Data.df[Data.df$dominant_lc == "wetland_herbaceous","wetland_herbaceous"]
+
+# Test with just the water class
 Data.df$no.water = Data.df$water == 0
 Data.df$no.water = as.factor(Data.df$no.water)
 
+Result1 = NULL
+Result2 = NULL
+for (i in 1:length(folds))
+{
+ValidationSet = Data.df[folds[[i]],]
+TrainingSet = Data.df[-folds[[i]],]
 WaterFormula = formula(paste("water ~", paste(CovariateNames, collapse="+")))
-WaterFormulaBin = formula(paste("no.water ~", paste(CovariateNames, collapse="+")))
-RFFullModelbin = ranger(WaterFormulaBin, data=Data.df)
+WaterFormulaBin = formula(paste("as.factor(no.water) ~", paste(CovariateNames, collapse="+")))
+RFFullModelbin = ranger(WaterFormulaBin, data=TrainingSet)
 
-CombinedPred = predict(RFFullModelbin, Data.df)$prediction
-plot(Data.df$no.water~CombinedPred) # This is in fact a perfect prediction
+CombinedPred = predict(RFFullModelbin, ValidationSet)$prediction
+#plot(ValidationSet$no.water~CombinedPred) # This is in fact a perfect prediction
 CombinedPred = as.numeric(!as.logical(CombinedPred)) # Turn FALSE into 1 and TRUE into 0
 # Predict the cases where there is more than 0 water
-RFIsWaterModel = ranger(WaterFormula, data=Data.df[CombinedPred == 1,])
-CombinedPred[CombinedPred == 1] = predict(RFIsWaterModel, Data.df[Data.df$no.water==FALSE,])$prediction
-
+RFIsWaterModel = ranger(WaterFormula, data=TrainingSet[CombinedPred == 1,])
+CombinedPred[CombinedPred == 1] = predict(RFIsWaterModel, ValidationSet[CombinedPred == 1,])$prediction
+Result1 = c(Result1, CombinedPred)
 # Compare between single model and two-step model
-RFFullModel = ranger(WaterFormula, data=Data.df)
-plot(Data.df$water~predict(RFFullModel, Data.df)$prediction, col="blue")
-points(Data.df$water~CombinedPred, col="green")
+RFFullModel = ranger(WaterFormula, data=TrainingSet)
+Result2 = c(Result2, predict(RFFullModel, ValidationSet)$prediction)
+}
+AccuracyStats(c(Result1)[order(unlist(folds))], Data.df$water)
+AccuracyStats(c(Result2)[order(unlist(folds))], Data.df$water)
+
+plot(ValidationSet$water~predict(RFFullModel, ValidationSet)$prediction, col="blue")
+points(ValidationSet$water~CombinedPred, col="green")
 abline(0,1)
 
-MAE.single = mean(abs(Data.df$water - predict(RFFullModel, Data.df)$prediction))
-MAE.twostep = mean(abs(Data.df$water - CombinedPred)) # Much better
-
+AccuracyStats(predict(RFFullModel, ValidationSet)$prediction, ValidationSet$water)
+AccuracyStats(CombinedPred, ValidationSet$water) # MAE is better, but RMSE is worse

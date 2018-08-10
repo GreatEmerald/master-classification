@@ -22,13 +22,18 @@ nrow(Data.df) # 26925
 # Make sure there are no NAs
 apply(Data.df, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 
+# Drop lichen and moss
+Data.df = Data.df[!Data.df$dominant_lc == "lichen_and_moss",]
+# Also drop the level, otherwise sampling would try to sample from 0 points
+Data.df$dominant_lc = droplevels(Data.df$dominant_lc)
+
 # Do some cross-validation
 
 set.seed(0xfedbeef)
 #folds = createFolds(Data.df$location_id, 10)
 # Use stratified random sampling: make sure that we validate using all classes. Due to a large dataset, this hardly matters, but hey.
 folds = createFolds(Data.df$dominant_lc, 10)
-Classes = GetIIASAClassNames()
+Classes = GetIIASAClassNames(TRUE)
 Truth = Data.df[,Classes]
 
 # We have zero- and 100-inflation in the data.
@@ -46,6 +51,7 @@ RFCV = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE,
     for (i in 1:length(folds))
     {
         TrainingSet = Data.df[-folds[[i]],]
+        #TrainingSet = Oversample(TrainingSet)
         ValidationSet = Data.df[folds[[i]],]
         
         Predictions = matrix(ncol=length(Classes), nrow=length(folds[[i]]), dimnames=list(list(), Classes))
@@ -117,13 +123,33 @@ RFCV = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE,
         PredictionsPerFold = rbind(PredictionsPerFold, Predictions)
     }
     # Sort everything back to the order of the original
-    write.csv(PredictionsPerFold[order(unlist(folds)),], OutputFile, row.names=FALSE)
+    PredictionsPerFold = PredictionsPerFold[order(unlist(folds)),]
+    write.csv(PredictionsPerFold, OutputFile, row.names=FALSE)
     return(PredictionsPerFold)
 }
 
-PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
+# Actually, oversampling in this case is not needed, because we have a model per class (or two). Y is not unbalanced in that case, just zero-inflated (to various degrees).
+Oversample = function(Data, FactorName = "dominant_lc")
+{
+    Factor = Data[[FactorName]]
+    MaxSamples = max(table(Factor))
+    Result=NULL
+    
+    for (ClassName in levels(Factor))
+    {
+        OneClassOnly = Data[Factor==ClassName,]
+        ClassRows = sample(1:length(OneClassOnly), MaxSamples, replace=TRUE)
+        ClassDF = OneClassOnly[ClassRows,]
+        Result = rbind(Result, ClassDF)
+    }
+    return(Result)
+}
 
-AST = AccuracyStatTable(PredictionResult, Truth)
+PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-10folds.csv", InflationAdjustment = 0, TruncateZeroes = TRUE)
+PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds-repeat.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
+PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-threestep-uncorrelated-truncated.csv", InflationAdjustment = 2, TruncateZeroes = TRUE)
+
+AST = AccuracyStatTable(PredictionResult[,Classes], Truth[,Classes])
 print(AST)
 barplot(AST$RMSE, names.arg=rownames(AST), main="RMSE")
 barplot(AST$MAE, names.arg=rownames(AST), main="MAE")

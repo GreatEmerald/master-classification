@@ -30,6 +30,46 @@ CorrectSFDataTypes = function(df)
     return(df)
 }
 
+# Updates the dominant_lc column based on the classes desired
+UpdateDominantLC = function(df, classes = GetIIASAClassNames())
+{
+    ClassProportions = df[,classes]
+    DominantClasses = apply(ClassProportions, 1, which.max)
+    df$dominant_lc = factor(classes[DominantClasses])
+    return(df)
+}
+
+# Remove rows with NAs and drop covariates with too few observations
+TidyData = function(df, classes = GetIIASAClassNames())
+{
+    Before = nrow(df)
+    DropRows = apply(df, 1, function(x){any(is.na(x))})
+    df = df[!DropRows,]
+    After = nrow(df)
+    print(paste("Dropped NAs, data frame size reduced from", Before, "to", After))
+    Before = After
+    stopifnot(all(apply(df, 2, function(x){sum(is.na(x))}) / nrow(df) * 100 == 0))
+
+    # Recalculate dominant classes based on what we want
+    df = UpdateDominantLC(df, classes)
+    
+    # Drop samples that are too few to be its own class. Also drop pixels dominated by "not sure"
+    RemainingClasses = GetLargeClassNames(df)
+    RemainingClasses = RemainingClasses[RemainingClasses != "not_sure"]
+    #df = df[df$dominant_lc %in% RemainingClasses,]
+    
+    # Drop all points that contain any of the classes we don't care for
+    DroppedClasses = classes[!classes %in% RemainingClasses]
+    df = df[df[,DroppedClasses]==0,]
+    
+    After = nrow(df)
+    print(paste("Dropped small classes, data frame size reduced from", Before, "to", After))
+    
+    # Also drop the level, otherwise sampling would try to sample from 0 points
+    df = UpdateDominantLC(df, RemainingClasses)
+    return(df)
+}
+
 # Load the global model training dataset (IIASA).
 LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018_V2.csv")
 {
@@ -50,23 +90,12 @@ LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018
     return(SamplePoints)
 }
 
-LoadTrainingAndCovariates = function(zerovalues=FALSE, excludenotsure=TRUE, filename="../data/pixel-based/covariates/all.csv")
+LoadTrainingAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-based/covariates/all.csv")
 {
     AllData = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
     st_crs(AllData) = 4326
     AllData$field_1 = NULL # Remove duplicate ID
     AllData = suppressWarnings(CorrectSFDataTypes(AllData))
-    
-    # Redo the dominant_lc column to exclude "not sure"
-    if (excludenotsure)
-    {
-        Classes = GetIIASAClassNames()
-        ClassProportions = AllData
-        class(ClassProportions) = "data.frame"
-        ClassProportions = ClassProportions[,Classes]
-        DominantClasses = apply(ClassProportions, 1, which.max)
-        AllData$dominant_lc = factor(Classes[DominantClasses])
-    }
     
     if (zerovalues)
         AllData = AddZeroValueColumns(AllData)
