@@ -6,10 +6,10 @@ source("pixel-based/utils/covariate-names.r")
 
 CorrectSFDataTypes = function(df)
 {
-    CorrectionMap = c(rowid="integer", location_id="integer", bare="numeric", burnt="integer", crops="numeric",
+    CorrectionMap = c(rowid="integer", location_id="integer", bare="numeric", burnt="numeric", crops="numeric",
                       fallow_shifting_cultivation = "numeric", grassland="numeric", lichen_and_moss="numeric",
-                      shrub="numeric", snow_and_ice="integer", tree="numeric", urban_built_up="numeric",
-                      wetland_herbaceous="integer", water="numeric", not_sure="numeric", dominant_lc="factor",
+                      shrub="numeric", snow_and_ice="numeric", tree="numeric", urban_built_up="numeric",
+                      wetland_herbaceous="numeric", water="numeric", not_sure="numeric", dominant_lc="factor",
                       lc="factor", forest_type="factor", Tile="factor", min="numeric", max="numeric",
                       intercept="numeric", co="numeric", si="numeric", co2="numeric", si2="numeric",
                       trend="numeric", phase1="numeric", amplitude1="numeric", phase2="numeric",
