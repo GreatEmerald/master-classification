@@ -60,7 +60,8 @@ TidyData = function(df, classes = GetIIASAClassNames())
     
     # Drop all points that contain any of the classes we don't care for
     DroppedClasses = classes[!classes %in% RemainingClasses]
-    df = df[df[,DroppedClasses]==0,]
+    RowsToDrop = apply(df[,DroppedClasses], 1, function(x){any(x > 0)})
+    df = df[!RowsToDrop,]
     
     After = nrow(df)
     print(paste("Dropped small classes, data frame size reduced from", Before, "to", After))
