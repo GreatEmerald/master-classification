@@ -56,6 +56,18 @@ U_FullMatrix = cbind(U_kl, total=U_kp)
 U_FullMatrix = rbind(U_FullMatrix, total=c(U_pl, U_pp))
 # Without uncertainty we'd use r_nl and s_nk
 
+# Accuracy indices
+# P_kk means the diagonal!
+P_OA_s = (P_pp*sum(diag(P_kl))) / (P_pp^2 - U_pp^2)
+U_OA_s = (U_pp*sum(diag(P_kl))) / (P_pp^2 - U_pp^2)
+
+P_UA_s = (diag(P_kl)*P_kp) / (P_kp^2 - U_kp^2) # Problems when we have uncertainty == prediction, division by 0
+U_UA_s = (diag(P_kl)*U_kp) / (P_kp^2 - U_kp^2) # In which case the diagonals are 0, so it's 0 by definition
+
+P_PA_s = (diag(P_kl)*P_pl) / (P_pl^2 - U_pl^2)
+U_PA_s = (diag(P_kl)*U_pl) / (P_pl^2 - U_pl^2)
+
+
 # Comparator function
 Comparator = function(s_nk, r_nl, A=MIN, D=PROD_D)
 {
