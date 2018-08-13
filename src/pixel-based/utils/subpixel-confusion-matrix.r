@@ -17,18 +17,6 @@ s_pk = sum(s_nk)
 r_pl = sum(r_nl)
 sp_nk = s_nk - r_nl; sp_nk[sp_nk<0] = 0
 rp_nl = r_nl - s_nk; rp_nl[rp_nl<0] = 0
-p_nkl = Comparator(s_nk, r_nl) # colSums == r_nl
-p_min = Comparator(s_nk, r_nl, D=MIN_D) # colSums != r_nl (pessimistic, values higher)
-p_least= Comparator(s_nk, r_nl, D=LEAST_D) # colSums != r_nl (optimistic, values lower)
-corrplot::corrplot(p_nkl) # The part of [row] that was predicted should actually have gone to [column]
-image(p_nkl)
-lattice::levelplot(p_nkl, ylab="Observed", xlab="Predicted")
-lattice::levelplot(p_min, ylab="Observed", xlab="Predicted")
-lattice::levelplot(p_least, ylab="Observed", xlab="Predicted")
-P_kl = sum(p_nkl)
-P_kp = rowSums(p_nkl)
-P_pl = colSums(p_nkl)
-P_pp = sum(P_kl) # Same as P_kl?..
 
 # Sanity checks
 stopifnot(all(r_nl >= 0))
@@ -38,6 +26,35 @@ stopifnot(all(s_nk <= 1))
 # There may be a loss in float precision, so round
 stopifnot(all(round(rowSums(s_nk), 10) == 1))
 stopifnot(all(round(rowSums(r_nl), 10) == 1))
+
+p_nkl = Comparator(s_nk, r_nl) # colSums == r_nl
+p_min = Comparator(s_nk, r_nl, D=MIN_D) # colSums != r_nl (pessimistic, values higher)
+p_least= Comparator(s_nk, r_nl, D=LEAST_D) # colSums != r_nl (optimistic, values lower)
+corrplot::corrplot(p_nkl) # The part of [row] that was predicted should actually have gone to [column]
+image(p_nkl)
+lattice::levelplot(p_nkl, ylab="Observed", xlab="Predicted")
+lattice::levelplot(p_min, ylab="Observed", xlab="Predicted")
+lattice::levelplot(p_least, ylab="Observed", xlab="Predicted")
+P_kl = (p_min + p_least)/2
+lattice::levelplot(P_kl, ylab="Observed", xlab="Predicted")
+P_kp = rowSums(P_kl) # These classes were overestimated (similar to, but less accurate than, s_nk)
+P_pl = colSums(P_kl) # These classes were underestimated (similar to, but less accurate than, r_nl)
+P_pp = sum(P_kl) # Similar to, but less acurrate than, 1 (fractions summing to 1)
+
+# Uncertainties associated with the estimates P
+U_kl = (p_min - p_least)/2
+lattice::levelplot(U_kl, ylab="Observed", xlab="Predicted")
+U_kp = rowSums(U_kl)
+U_pl = colSums(U_kl)
+U_pp = sum(U_kl)
+
+# Add total rows/columns: with uncertainty
+P_FullMatrix = cbind(P_kl, total=P_kp)
+P_FullMatrix = rbind(P_FullMatrix, total=c(P_pl, P_pp))
+
+U_FullMatrix = cbind(U_kl, total=U_kp)
+U_FullMatrix = rbind(U_FullMatrix, total=c(U_pl, U_pp))
+# Without uncertainty we'd use r_nl and s_nk
 
 # Comparator function
 Comparator = function(s_nk, r_nl, A=MIN, D=PROD_D)
