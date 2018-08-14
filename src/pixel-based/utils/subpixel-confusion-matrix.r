@@ -167,7 +167,7 @@ LEAST_D = function(sp_nk, rp_nl, k, l)
 }
 
 # Function for calculating a confusion matrix
-SCM = function(predicted, observed, agreement=MIN, disagreement="SCM", accuracy=FALSE, totals=FALSE)
+SCM = function(predicted, observed, agreement=MIN, disagreement="SCM", accuracy=FALSE, totals=FALSE, plot=FALSE, ...)
 {
     # Aliases; TODO: remove/rename
     s_nk = predicted
@@ -184,9 +184,7 @@ SCM = function(predicted, observed, agreement=MIN, disagreement="SCM", accuracy=
     if (is.character(disagreement) && disagreement == "SCM") # Mean of MIN_D and LEAST_D + confusion
     {
         p_min = Comparator(s_nk, r_nl, A=agreement, D=MIN_D)
-        #print(p_min)
         p_least = Comparator(s_nk, r_nl, A=agreement, D=LEAST_D)
-        #print(p_least)
         P_kl = (p_min + p_least)/2
         U_kl = (p_min - p_least)/2
     } else {
@@ -194,6 +192,18 @@ SCM = function(predicted, observed, agreement=MIN, disagreement="SCM", accuracy=
         U_kl = matrix(0, nrow=nrow(P_kl), ncol=ncol(P_kl), dimnames=dimnames(P_kl)) # No uncertainties for other types; U is a zero matrix
     }
     scm = structure(list(P=P_kl, U=U_kl, agreement=as.character(substitute(agreement)), disagreement=as.character(substitute(disagreement))), class="scm")
+    
+    if (plot)
+    {
+        if (requireNamespace("lattice", quietly = TRUE) && requireNamespace("gridExtra", quietly = TRUE))
+        {
+            P_plot = lattice::levelplot(t(P_kl), xlab="Observed", ylab="Predicted", sub="Centre values", ...)
+            U_plot = lattice::levelplot(t(U_kl), xlab="Observed", ylab="Predicted", sub="Uncertainty", ...)
+            gridExtra::grid.arrange(P_plot, U_plot, ncol=2)
+        } else {
+            warning("Function called with plot=TRUE, but packages lattice and gridExtra failed to load!")
+        }
+    }
     
     if (accuracy || totals)
         scm = accuracy.scm(scm)
@@ -330,9 +340,10 @@ control = c(dec.trees=12.5, evg.trees=12.5, agriculture=12.5, grass=12.5, water=
 
 totals.scm(accuracy.scm(SCM(reference, observed, disagreement=PROD_D)))
 totals.scm(accuracy.scm(SCM(reference, observed)))
+SCM(reference, observed, totals=TRUE, plot=TRUE)
 
-totals.scm(accuracy.scm(SCM(model1, observed, disagreement=PROD_D)))
-totals.scm(accuracy.scm(SCM(model1, observed)))
+totals.scm(accuracy.scm(SCM(model1, observed, disagreement=PROD_D, plot=TRUE)))
+totals.scm(accuracy.scm(SCM(model1, observed, plot=TRUE)))
 
-totals.scm(accuracy.scm(SCM(control, observed, disagreement=PROD_D)))
-totals.scm(accuracy.scm(SCM(control, observed)))
+totals.scm(accuracy.scm(SCM(control, observed, disagreement=PROD_D, plot=TRUE)))
+totals.scm(accuracy.scm(SCM(control, observed, plot=TRUE)))
