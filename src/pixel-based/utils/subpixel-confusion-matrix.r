@@ -24,8 +24,8 @@ stopifnot(all(r_nl <= 1))
 stopifnot(all(s_nk >= 0))
 stopifnot(all(s_nk <= 1))
 # There may be a loss in float precision, so round
-stopifnot(all(round(rowSums(s_nk), 10) == 1))
-stopifnot(all(round(rowSums(r_nl), 10) == 1))
+stopifnot(all(round(sum(s_nk), 10) == 1))
+stopifnot(all(round(sum(r_nl), 10) == 1))
 
 p_nkl = Comparator(s_nk, r_nl) # colSums == r_nl
 p_min = Comparator(s_nk, r_nl, D=MIN_D) # colSums != r_nl (pessimistic, values higher)
@@ -63,10 +63,29 @@ U_OA_s = (U_pp*sum(diag(P_kl))) / (P_pp^2 - U_pp^2)
 
 P_UA_s = (diag(P_kl)*P_kp) / (P_kp^2 - U_kp^2) # Problems when we have uncertainty == prediction, division by 0
 U_UA_s = (diag(P_kl)*U_kp) / (P_kp^2 - U_kp^2) # In which case the diagonals are 0, so it's 0 by definition
+P_UA_s[is.nan(P_UA_s)] = 0
+U_UA_s[is.nan(U_UA_s)] = 0
 
 P_PA_s = (diag(P_kl)*P_pl) / (P_pl^2 - U_pl^2)
 U_PA_s = (diag(P_kl)*U_pl) / (P_pl^2 - U_pl^2)
+P_PA_s[is.nan(P_PA_s)] = 0
+U_PA_s[is.nan(U_PA_s)] = 0
 
+# Kappa coefficient
+# Expected proportion of agreement using the monkey method
+# Loop
+#P_e = 0
+#for (k in 1:K)
+#{
+#    P_e = P_e + ((P_pp^2 + U_pp^2)*(P_pl[k]*P_kp[k] + U_pl[k]*U_kp[k]) - 2 * P_pp*U_pp*(U_pl[k]*P_kp[k] + P_pl[k]*U_kp[k])) / (P_pp^2-U_pp^2)^2
+#}
+# Vectorised
+P_e = sum(((P_pp^2 + U_pp^2)*(P_pl*P_kp + U_pl*U_kp) - 2 * P_pp*U_pp*(U_pl*P_kp + P_pl*U_kp)) / (P_pp^2-U_pp^2)^2)
+U_e = sum((2 * P_pp*U_pp*(P_pl*P_kp + U_pl*U_kp) - (P_pp^2 + U_pp^2)*(U_pl*P_kp + P_pl*U_kp)) / (P_pp^2-U_pp^2)^2)
+
+Sign = (1-P_OA_s-U_OA_s)*(1-P_e-U_e)
+P_Kappa_s = ((P_OA_s-P_e) * (1-P_e) - (sign(Sign)*U_OA_s+U_e) * U_e)/((1-P_e)^2-U_e^2)
+U_Kappa_s = ((sign(Sign)*(1-P_OA_s)*U_e + (1-P_e)*U_OA_s)/((1-P_e)^2-U_e^2))
 
 # Comparator function
 Comparator = function(s_nk, r_nl, A=MIN, D=PROD_D)
