@@ -94,39 +94,52 @@ P_Kappa_s = ((P_OA_s-P_e) * (1-P_e) - (sign(Sign)*U_OA_s+U_e) * U_e)/((1-P_e)^2-
 U_Kappa_s = ((sign(Sign)*(1-P_OA_s)*U_e + (1-P_e)*U_OA_s)/((1-P_e)^2-U_e^2))
 
 # Comparator function
-Comparator = function(s_nk, r_nl, A=MIN, D=PROD_D)
+Comparator = function(s_k, r_l, A=MIN, D=PROD_D)
 {
+    stopifnot(is.numeric(s_k))
+    stopifnot(is.numeric(r_l))
+    
     A = match.fun(A)
     D = match.fun(D)
     
-    stopifnot(is.numeric(s_nk))
-    stopifnot(is.numeric(r_nl))
-    stopifnot(length(s_nk) == length(r_nl))
-    K = length(s_nk)
+    # If s_nk and r_nl are matrices/data.frames, we sum them all
+    # If not, make it a matrix anyway to make the same code handle it
+    if (is.vector(s_k))
+        s_k = t(as.matrix(s_k))
+    if (is.vector(r_l))
+        r_l = t(as.matrix(r_l))
     
-    # Overestimation and underestimation
-    sp_nk = s_nk - r_nl; sp_nk[sp_nk<0] = 0
-    rp_nl = r_nl - s_nk; rp_nl[rp_nl<0] = 0
+    stopifnot(all(dim(s_k) == dim(r_l)))
     
-    stopifnot(is.numeric(sp_nk))
-    stopifnot(is.numeric(rp_nl))
-
-    Result = matrix(NA, K, K) #p_nkl
-    for (k in 1:K)
+    CumulativeResult = matrix(0, ncol(s_k), ncol(r_l))
+    for (n in 1:nrow(s_k))
     {
-        for (l in 1:K)
+        s_nk = s_k[n,]
+        r_nl = r_l[n,]
+        
+        K = length(s_nk)
+        
+        # Overestimation and underestimation
+        sp_nk = s_nk - r_nl; sp_nk[sp_nk<0] = 0
+        rp_nl = r_nl - s_nk; rp_nl[rp_nl<0] = 0
+
+        Result = matrix(NA, K, K) #p_nkl
+        for (k in 1:K)
         {
-            if (k == l) {
-                Result[k,l] = A(s_nk[k], r_nl[l])
-            } else {
-                temp = D(sp_nk, rp_nl, k, l)
-                Result[k,l] = temp
+            for (l in 1:K)
+            {
+                if (k == l) {
+                    Result[k,l] = A(s_nk[k], r_nl[l])
+                } else {
+                    Result[k,l] = D(sp_nk, rp_nl, k, l)
+                }
             }
         }
+        CumulativeResult = CumulativeResult + Result
     }
-    rownames(Result) = names(s_nk)
-    colnames(Result) = names(r_nl)
-    return(Result)
+    rownames(CumulativeResult) = colnames(s_k)
+    colnames(CumulativeResult) = colnames(r_l)
+    return(CumulativeResult)
 }
 
 # Agreement/disagreement operators
@@ -178,8 +191,14 @@ SCM = function(predicted, observed, agreement=MIN, disagreement="SCM", accuracy=
     stopifnot(all(r_nl <= 1))
     stopifnot(all(s_nk >= 0))
     stopifnot(all(s_nk <= 1))
-    stopifnot(all(round(sum(s_nk), 10) == 1))
-    stopifnot(all(round(sum(r_nl), 10) == 1))
+    if (is.vector(s_nk))
+        stopifnot(all(round(sum(s_nk), 10) == 1))
+    else
+        stopifnot(all(round(rowSums(s_nk), 10) == 1))
+    if (is.vector(r_nl))
+        stopifnot(all(round(sum(r_nl), 10) == 1))
+    else
+        stopifnot(all(round(rowSums(r_nl), 10) == 1))
     
     if (is.character(disagreement) && disagreement == "SCM") # Mean of MIN_D and LEAST_D + confusion
     {
@@ -347,3 +366,15 @@ totals.scm(accuracy.scm(SCM(model1, observed, plot=TRUE)))
 
 totals.scm(accuracy.scm(SCM(control, observed, disagreement=PROD_D, plot=TRUE)))
 totals.scm(accuracy.scm(SCM(control, observed, plot=TRUE)))
+
+# What if we have more than one pixel?
+observed3 = rbind(observed, observed, observed)
+predicted = rbind(reference, model1, control)
+
+SCM(predicted, observed3, totals=TRUE, plot=TRUE) # 79%
+SCM(predicted, observed3, totals=TRUE, plot=TRUE, disagreement=PROD_D) # 79%
+
+# Compared to individual ones
+SCM(reference, observed, totals=TRUE, plot=TRUE) # 92%
+SCM(model1, observed, totals=TRUE, plot=TRUE) # 92%
+SCM(control, observed, totals=TRUE, plot=TRUE) # 65%
