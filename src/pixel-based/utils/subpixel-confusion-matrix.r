@@ -2,7 +2,7 @@
 # Implementation following https://doi.org/10.1016/j.rse.2007.07.017
 
 # Comparator function
-Comparator = function(s_k, r_l, A=MIN, D=PROD_D)
+Comparator = function(s_k, r_l, A=MIN, D=PROD_D, scale=FALSE)
 {
     stopifnot(is.numeric(s_k))
     stopifnot(is.numeric(r_l))
@@ -56,6 +56,9 @@ Comparator = function(s_k, r_l, A=MIN, D=PROD_D)
     }
     rownames(CumulativeResult) = colnames(s_k)
     colnames(CumulativeResult) = colnames(r_l)
+    if (scale)
+        CumulativeResult = CumulativeResult / nrow(s_k)
+    
     return(CumulativeResult)
 }
 
@@ -90,7 +93,7 @@ LEAST_D = function(sp_nk, rp_nl, k, l)
 }
 
 # Function for calculating a confusion matrix
-SCM = function(predicted, observed, agreement=min, disagreement="SCM", accuracy=FALSE, totals=FALSE, plot=FALSE)
+SCM = function(predicted, observed, agreement=min, disagreement="SCM", scale=FALSE, accuracy=FALSE, totals=FALSE, plot=FALSE)
 {
     # Aliases; TODO: remove/rename
     s_nk = predicted
@@ -112,12 +115,12 @@ SCM = function(predicted, observed, agreement=min, disagreement="SCM", accuracy=
     
     if (is.character(disagreement) && disagreement == "SCM") # Mean of MIN_D and LEAST_D + confusion
     {
-        p_min = Comparator(s_nk, r_nl, A=agreement, D=MIN_D)
-        p_least = Comparator(s_nk, r_nl, A=agreement, D=LEAST_D)
+        p_min = Comparator(s_nk, r_nl, A=agreement, D=MIN_D, scale=scale)
+        p_least = Comparator(s_nk, r_nl, A=agreement, D=LEAST_D, scale=scale)
         P_kl = (p_min + p_least)/2
         U_kl = (p_min - p_least)/2
     } else {
-        P_kl = Comparator(s_nk, r_nl, A=agreement, D=disagreement)
+        P_kl = Comparator(s_nk, r_nl, A=agreement, D=disagreement, scale=scale)
         U_kl = matrix(0, nrow=nrow(P_kl), ncol=ncol(P_kl), dimnames=dimnames(P_kl)) # No uncertainties for other types; U is a zero matrix
     }
 
@@ -271,6 +274,8 @@ predicted = c(Class_1=0.625, Class_2=0.25, Class_3=0.125)
 SCM(predicted, observed, agreement="*", disagreement=NULL, totals=TRUE) # (b)
 SCM(predicted, observed, agreement=LEAST, disagreement=NULL, totals=TRUE) # (c)
 SCM(predicted, observed, agreement=min, disagreement=NULL, totals=TRUE) # (d)
+SCM(predicted, observed, totals=TRUE, plot=TRUE) # What an SCM would look like of that example
+SCM(predicted, observed, disagreement=PROD_D, totals=TRUE) # Equivalent to MIN-PROD
 
 # From calc example
 observed = c(dec.trees=32, evg.trees=32, agriculture=0, grass=20, water=0, urban=3, bare=10, shrubs=3) / 100
@@ -295,6 +300,7 @@ observed3 = rbind(observed, observed, observed)
 predicted = rbind(reference, model1, control)
 
 SCM(predicted, observed3, totals=TRUE, plot=TRUE) # 79%
+SCM(predicted, observed3, totals=TRUE, scale=TRUE) # Scaling does not affect the accuracy statistics
 SCM(predicted, observed3, totals=TRUE, plot=TRUE, disagreement=PROD_D) # 79%
 
 # Compared to individual ones
