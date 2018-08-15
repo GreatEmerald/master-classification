@@ -1,108 +1,19 @@
 # Sub-pixel confusion–uncertainty matrix
 # Implementation following https://doi.org/10.1016/j.rse.2007.07.017
 
-# Glossary
-# Values should have a range of 0-1
-#observed = Data.df[,GetLargeClassNames(Data.df)]/100
-observed = c(X1=0.4, X2=0.3, X3=0.2, X4=0.1)
-predictedA = c(X1=0.2, X2=0.3, X3=0.4, X4=0.1)
-predictedB = c(X1=0.3, X2=0.4, X3=0.1, X4=0.2)
-#N = nrow(observed)
-#K = length(GetLargeClassNames(Data.df))
-K = length(observed)
-#n = 1:N
-k = 1:K
-l = 1:K
-#s_nk = as.numeric(predicted[nrow(predicted),k]) # Just one pixel
-#names(s_nk) = colnames(predicted)
-s_nk = predictedA
-#r_nl = as.numeric(observed[nrow(predicted),l])
-#names(r_nl) = colnames(observed)
-r_nl = observed
-s_pk = sum(s_nk)
-r_pl = sum(r_nl)
-sp_nk = s_nk - r_nl; sp_nk[sp_nk<0] = 0
-rp_nl = r_nl - s_nk; rp_nl[rp_nl<0] = 0
-
-# Sanity checks
-stopifnot(all(r_nl >= 0))
-stopifnot(all(r_nl <= 1))
-stopifnot(all(s_nk >= 0))
-stopifnot(all(s_nk <= 1))
-# There may be a loss in float precision, so round
-stopifnot(all(round(sum(s_nk), 10) == 1))
-stopifnot(all(round(sum(r_nl), 10) == 1))
-
-p_nkl = Comparator(s_nk, r_nl) # colSums == r_nl
-p_min = Comparator(s_nk, r_nl, D=MIN_D) # colSums != r_nl (pessimistic, values higher)
-p_least= Comparator(s_nk, r_nl, D=LEAST_D) # colSums != r_nl (optimistic, values lower)
-corrplot::corrplot(p_nkl) # The part of [row] that was predicted should actually have gone to [column]
-image(p_nkl)
-lattice::levelplot(p_nkl, ylab="Observed", xlab="Predicted")
-lattice::levelplot(p_min, ylab="Observed", xlab="Predicted")
-lattice::levelplot(p_least, ylab="Observed", xlab="Predicted")
-P_kl = (p_min + p_least)/2
-lattice::levelplot(P_kl, ylab="Observed", xlab="Predicted")
-P_kp = rowSums(P_kl) # These classes were overestimated (similar to, but less accurate than, s_nk)
-P_pl = colSums(P_kl) # These classes were underestimated (similar to, but less accurate than, r_nl)
-P_pp = sum(P_kl) # Similar to, but less acurrate than, 1 (fractions summing to 1)
-
-# Uncertainties associated with the estimates P
-U_kl = (p_min - p_least)/2
-lattice::levelplot(U_kl, ylab="Observed", xlab="Predicted")
-U_kp = rowSums(U_kl)
-U_pl = colSums(U_kl)
-U_pp = sum(U_kl)
-
-# Add total rows/columns: with uncertainty
-P_FullMatrix = cbind(P_kl, total=P_kp)
-P_FullMatrix = rbind(P_FullMatrix, total=c(P_pl, P_pp))
-
-U_FullMatrix = cbind(U_kl, total=U_kp)
-U_FullMatrix = rbind(U_FullMatrix, total=c(U_pl, U_pp))
-# Without uncertainty we'd use r_nl and s_nk
-
-# Accuracy indices
-# P_kk means the diagonal!
-P_OA_s = (P_pp*sum(diag(P_kl))) / (P_pp^2 - U_pp^2)
-U_OA_s = (U_pp*sum(diag(P_kl))) / (P_pp^2 - U_pp^2)
-
-P_UA_s = (diag(P_kl)*P_kp) / (P_kp^2 - U_kp^2) # Problems when we have uncertainty == prediction, division by 0
-U_UA_s = (diag(P_kl)*U_kp) / (P_kp^2 - U_kp^2) # In which case the diagonals are 0, so it's 0 by definition
-P_UA_s[is.nan(P_UA_s)] = 0
-U_UA_s[is.nan(U_UA_s)] = 0
-
-P_PA_s = (diag(P_kl)*P_pl) / (P_pl^2 - U_pl^2)
-U_PA_s = (diag(P_kl)*U_pl) / (P_pl^2 - U_pl^2)
-P_PA_s[is.nan(P_PA_s)] = 0
-U_PA_s[is.nan(U_PA_s)] = 0
-
-# Kappa coefficient
-# Expected proportion of agreement using the monkey method
-# Loop
-#P_e = 0
-#for (k in 1:K)
-#{
-#    P_e = P_e + ((P_pp^2 + U_pp^2)*(P_pl[k]*P_kp[k] + U_pl[k]*U_kp[k]) - 2 * P_pp*U_pp*(U_pl[k]*P_kp[k] + P_pl[k]*U_kp[k])) / (P_pp^2-U_pp^2)^2
-#}
-# Vectorised
-P_e = sum(((P_pp^2 + U_pp^2)*(P_pl*P_kp + U_pl*U_kp) - 2 * P_pp*U_pp*(U_pl*P_kp + P_pl*U_kp)) / (P_pp^2-U_pp^2)^2)
-U_e = sum((2 * P_pp*U_pp*(P_pl*P_kp + U_pl*U_kp) - (P_pp^2 + U_pp^2)*(U_pl*P_kp + P_pl*U_kp)) / (P_pp^2-U_pp^2)^2)
-
-Sign = (1-P_OA_s-U_OA_s)*(1-P_e-U_e)
-P_Kappa_s = ((P_OA_s-P_e) * (1-P_e) - (sign(Sign)*U_OA_s+U_e) * U_e)/((1-P_e)^2-U_e^2)
-U_Kappa_s = ((sign(Sign)*(1-P_OA_s)*U_e + (1-P_e)*U_OA_s)/((1-P_e)^2-U_e^2))
-
 # Comparator function
 Comparator = function(s_k, r_l, A=MIN, D=PROD_D)
 {
     stopifnot(is.numeric(s_k))
     stopifnot(is.numeric(r_l))
+    stopifnot(!is.null(A) || !is.null(D))
     
-    A = match.fun(A)
-    D = match.fun(D)
+    if (!is.null(A))
+        A = match.fun(A)
+    if (!is.null(D))
+        D = match.fun(D)
     
-    # If s_nk and r_nl are matrices/data.frames, we sum them all
+    # If s_k and r_l are matrices/data.frames, we sum them all
     # If not, make it a matrix anyway to make the same code handle it
     if (is.vector(s_k))
         s_k = t(as.matrix(s_k))
@@ -128,10 +39,16 @@ Comparator = function(s_k, r_l, A=MIN, D=PROD_D)
         {
             for (l in 1:K)
             {
-                if (k == l) {
-                    Result[k,l] = A(s_nk[k], r_nl[l])
+                if (k == l) { # Diagonal
+                    if (!is.null(A))
+                        Result[k,l] = A(s_nk[k], r_nl[l])
+                    else
+                        Result[k,l] = D(sp_nk, rp_nl, k, l)
                 } else {
-                    Result[k,l] = D(sp_nk, rp_nl, k, l)
+                    if (!is.null(D))
+                        Result[k,l] = D(sp_nk, rp_nl, k, l)
+                    else
+                        Result[k,l] = A(s_nk[k], r_nl[l])
                 }
             }
         }
@@ -142,20 +59,13 @@ Comparator = function(s_k, r_l, A=MIN, D=PROD_D)
     return(CumulativeResult)
 }
 
-# Agreement/disagreement operators
-MIN = function(s_nk, r_nl)
-{
-    min(s_nk, r_nl) # This is actually literally min, so it's not really worth implementing
-}
+# Agreement operators
+# MIN is literally the function min
+# PROD is literally the function "*"
 
 SI = function(s_nk, r_nl)
 {
     1 - abs(s_nk - r_nl)/(s_nk + r_nl)
-}
-
-PROD = function(s_nk, r_nl)
-{
-    s_nk * r_nl # This is literally "*"
 }
 
 LEAST = function(s_nk, r_nl)
@@ -180,7 +90,7 @@ LEAST_D = function(sp_nk, rp_nl, k, l)
 }
 
 # Function for calculating a confusion matrix
-SCM = function(predicted, observed, agreement=MIN, disagreement="SCM", accuracy=FALSE, totals=FALSE, plot=FALSE, ...)
+SCM = function(predicted, observed, agreement=min, disagreement="SCM", accuracy=FALSE, totals=FALSE, plot=FALSE)
 {
     # Aliases; TODO: remove/rename
     s_nk = predicted
@@ -210,19 +120,11 @@ SCM = function(predicted, observed, agreement=MIN, disagreement="SCM", accuracy=
         P_kl = Comparator(s_nk, r_nl, A=agreement, D=disagreement)
         U_kl = matrix(0, nrow=nrow(P_kl), ncol=ncol(P_kl), dimnames=dimnames(P_kl)) # No uncertainties for other types; U is a zero matrix
     }
+
     scm = structure(list(P=P_kl, U=U_kl, agreement=as.character(substitute(agreement)), disagreement=as.character(substitute(disagreement))), class="scm")
     
     if (plot)
-    {
-        if (requireNamespace("lattice", quietly = TRUE) && requireNamespace("gridExtra", quietly = TRUE))
-        {
-            P_plot = lattice::levelplot(t(P_kl), xlab="Observed", ylab="Predicted", sub="Centre values", ...)
-            U_plot = lattice::levelplot(t(U_kl), xlab="Observed", ylab="Predicted", sub="Uncertainty", ...)
-            gridExtra::grid.arrange(P_plot, U_plot, ncol=2)
-        } else {
-            warning("Function called with plot=TRUE, but packages lattice and gridExtra failed to load!")
-        }
-    }
+        plot(scm)
     
     if (accuracy || totals)
         scm = accuracy.scm(scm)
@@ -231,6 +133,18 @@ SCM = function(predicted, observed, agreement=MIN, disagreement="SCM", accuracy=
         scm = totals.scm(scm)
 
     return(scm)
+}
+
+plot.scm = function(scm, ...)
+{
+    if (requireNamespace("lattice", quietly = TRUE) && requireNamespace("gridExtra", quietly = TRUE))
+    {
+        P_plot = lattice::levelplot(t(scm$P), xlab="Observed", ylab="Predicted", sub="Centre values", ...)
+        U_plot = lattice::levelplot(t(scm$U), xlab="Observed", ylab="Predicted", sub="Uncertainty", ...)
+        gridExtra::grid.arrange(P_plot, U_plot, ncol=2)
+    } else {
+        stop("Unable to plot due to missing lattice or gridExtra packages")
+    }
 }
 
 # Function for adding "total" columns/rows to the SCM
@@ -351,6 +265,13 @@ round(SCM_B[["U_overall_accuracy"]], 4) == 0.1667
 round(SCM_B$P_kappa, 4) == 0.7778
 round(SCM_B$U_kappa, 4) == 0.2222
 
+# Example at the start of the paper; these are agreement matrices only
+observed = c(Class_1=0.5, Class_2=0.375, Class_3=0.125)
+predicted = c(Class_1=0.625, Class_2=0.25, Class_3=0.125)
+SCM(predicted, observed, agreement="*", disagreement=NULL, totals=TRUE) # (b)
+SCM(predicted, observed, agreement=LEAST, disagreement=NULL, totals=TRUE) # (c)
+SCM(predicted, observed, agreement=min, disagreement=NULL, totals=TRUE) # (d)
+
 # From calc example
 observed = c(dec.trees=32, evg.trees=32, agriculture=0, grass=20, water=0, urban=3, bare=10, shrubs=3) / 100
 reference = c(dec.trees=30, evg.trees=40, agriculture=0, grass=20, water=0, urban=0, bare=10, shrubs=0) / 100
@@ -359,7 +280,9 @@ control = c(dec.trees=12.5, evg.trees=12.5, agriculture=12.5, grass=12.5, water=
 
 totals.scm(accuracy.scm(SCM(reference, observed, disagreement=PROD_D)))
 totals.scm(accuracy.scm(SCM(reference, observed)))
-SCM(reference, observed, totals=TRUE, plot=TRUE)
+scmref = SCM(reference, observed)
+plot(scmref)
+totals.scm(accuracy.scm(scmref))
 
 totals.scm(accuracy.scm(SCM(model1, observed, disagreement=PROD_D, plot=TRUE)))
 totals.scm(accuracy.scm(SCM(model1, observed, plot=TRUE)))
