@@ -4,6 +4,7 @@ library(nnet)
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
 source("pixel-based/utils/crossvalidation.r")
+source("pixel-based/utils/subpixel-confusion-matrix.r") # Replace with package eventually
 source("utils/accuracy-statistics.r")
 
 Data.df = LoadTrainingAndCovariates()
@@ -17,36 +18,37 @@ Classes = GetIIASAClassNames(TRUE)
 
 # Very little difference between all and uncorrelated covars
 logmodel = multinom(paste("dominant_lc ~", paste0("scale(", AllCovars, ")", collapse="+")), Data.df)
+lm_uncor = multinom(paste("dominant_lc ~", paste0("scale(", UncorrelatedCovars, ")", collapse="+")), Data.df)
+AIC(logmodel, lm_uncor) # the full model is better
+DropCovars = AllCovars[!AllCovars %in% "aspect"]
+lm_drop = multinom(paste("dominant_lc ~", paste0("scale(", DropCovars, ")", collapse="+")), Data.df)
+AIC(logmodel, lm_drop) # the full model is still better
+DropCovars = AllCovars[!AllCovars %in% "intercept"]
+lm_drop = multinom(paste("dominant_lc ~", paste0("scale(", DropCovars, ")", collapse="+")), Data.df)
+AIC(logmodel, lm_drop) # Even dropping the colinear variables doesn't help, so the full model is the best
+
 Predictions = predict(logmodel, Data.df, type="probs")
-Predictions = Predictions * 100
 summary(logmodel)
 
 CVPrediction = CrossValidate(paste("dominant_lc ~", paste0("scale(", AllCovars, ")", collapse="+")), Data.df, multinom, predict, type="probs")
 
-(AST = AccuracyStatTable(CVPrediction*100, Data.df[, colnames(CVPrediction)]))
-barplot(AST$RMSE, names.arg=rownames(AST), main="RMSE")
-barplot(AST$MAE, names.arg=rownames(AST), main="MAE")
-barplot(AST$ME, names.arg=rownames(AST), main="ME")
-corrplot(cor(CVPrediction, Data.df[, colnames(CVPrediction)]), method="ellipse")
+AccuracyStatisticsPlots(CVPrediction, Data.df[, colnames(CVPrediction)]/100) # RMSE of 17%
+SCM(CVPrediction, as.matrix(Data.df[, colnames(CVPrediction)]/100), plot=TRUE, totals=TRUE, scale=TRUE) # 60% accuracy, kappa 0.51
+ggplot(data.frame(Prediction=c(CVPrediction), Truth=unlist(Data.df[, colnames(CVPrediction)]/100)), aes(Prediction, Truth)) + # Scatterplot: just as non-linear as RF
+    geom_hex() +
+    scale_fill_distiller(palette=7, trans="log") #log scale
 
-AccuracyStatisticsPlots(CVPrediction*100, Data.df[, colnames(CVPrediction)])
-AccuracyStatisticsPlots(Predictions, Data.df[, colnames(Predictions)])
+# How much does it overfit: when without CV
+AccuracyStatisticsPlots(Predictions, Data.df[, colnames(Predictions)]/100) # RMSE of 17% still
+SCM(Predictions, Data.df[, colnames(Predictions)]/100, plot=TRUE, totals=TRUE, scale=TRUE) #61% accuracy, kappa 0.51
+# So CV has little effect
 
-(AST = AccuracyStatTable(Predictions, Data.df[, colnames(Predictions)]))
-barplot(AST$RMSE, names.arg=rownames(AST), main="RMSE")
-barplot(AST$MAE, names.arg=rownames(AST), main="MAE")
-barplot(AST$ME, names.arg=rownames(AST), main="ME")
-library(corrplot)
-corrplot(cor(Predictions, Data.df[, colnames(Predictions)]), method="ellipse") # Pretty fascinting way to get a fuzzy confusion matrix
+# What if we oversample to balance the dataset
+CVPrediction = CrossValidate(paste("dominant_lc ~", paste0("scale(", AllCovars, ")", collapse="+")), Data.df, multinom, predict, type="probs", oversample=TRUE)
+AccuracyStatisticsPlots(CVPrediction, Data.df[, colnames(CVPrediction)]/100) # RMSE of 17%
+SCM(CVPrediction, as.matrix(Data.df[, colnames(CVPrediction)]/100), plot=TRUE, totals=TRUE, scale=TRUE) # 60% accuracy, kappa 0.51
+# So there is no difference
 
-(InterceptAST = AccuracyStatTable(matrix(0, nrow=nrow(Data.df), ncol=length(Classes)), Data.df[, Classes]))
-barplot(InterceptAST$RMSE, names.arg=rownames(InterceptAST), main="RMSE")
-barplot(InterceptAST$ME, names.arg=rownames(InterceptAST), main="ME")
-
-InterceptAST-AST
-
-(InterceptAST2 = AccuracyStatTable(matrix(100/length(Classes), nrow=nrow(Data.df), ncol=length(Classes)), Data.df[, Classes]))
-barplot(InterceptAST2$RMSE, names.arg=rownames(InterceptAST2), main="RMSE")
-barplot(InterceptAST2$ME, names.arg=rownames(InterceptAST2), main="ME")
-
-InterceptAST-InterceptAST2
+# How does it compare to the intercept model
+AccuracyStatisticsPlots(matrix(0.1, nrow=nrow(Data.df), ncol=length(Classes)), Data.df[, colnames(Predictions)]/100) # RMSE of 26%
+SCM(matrix(0.1, nrow=nrow(Data.df), ncol=length(Classes)), Data.df[, colnames(Predictions)]/100, plot=TRUE, totals=TRUE, scale=TRUE) #19% accuracy, kappa 0.1; still surprisingly high, ought to be 10% and 0
