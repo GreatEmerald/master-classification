@@ -1,22 +1,26 @@
 # Util for cross-validation
 library(caret)
+library(foreach)
+library(doParallel)
 source("utils/accuracy-statistics.r")
 
 # Pass in the function that takes as input a data.frame and produces a cross-validated data.frame in return
-CrossValidate = function(formula, data, train_function, predict_function, folds=10, fold_column="dominant_lc", cv_seed=0xfedbeef, oversample=FALSE, ...)
+CrossValidate = function(formula, data, train_function, predict_function, folds=10, fold_column=data[,"dominant_lc"], covariate_names=names(data), cv_seed=0xfedbeef, oversample=FALSE, ...)
 {
     set.seed(cv_seed)
-    folds = createFolds(data[,fold_column], folds)
+    folds = createFolds(fold_column, folds)
     
-    Predictions = NULL
-    for (i in 1:length(folds))
+    #Predictions = NULL
+    #for (i in 1:length(folds))
+    Predictions = foreach(fold=iter(folds), .combine=rbind, .multicombine=TRUE, .inorder=TRUE) %dopar%
     {
-        TrainingData = data[-folds[[i]],]
+        TrainingData = data[-fold,]
         if (oversample)
-            TrainingData = Oversample(TrainingData, seed=cv_seed)
+            TrainingData = Oversample(TrainingData, fold_column=fold_column, seed=cv_seed)
+        set.seed(cv_seed)
         Model = train_function(formula=formula, ..., data=TrainingData)
-        Prediction = predict_function(Model, ..., newdata=data[folds[[i]],])
-        Predictions = rbind(Predictions, Prediction)
+        Prediction = predict_function(Model, ..., newdata=data[fold,covariate_names])
+        #Predictions = rbind(Predictions, Prediction)
     }
     Predictions = Predictions[order(unlist(folds)),]
     return(Predictions)
@@ -37,9 +41,9 @@ AccuracyStatisticsPlots = function(predicted, observed, ...)
 }
 
 # Simple oversampling function
-Oversample = function(Data, FactorName = "dominant_lc", seed=0xfedbeef)
+Oversample = function(Data, fold_column = Data[[FactorName]], seed=0xfedbeef)
 {
-    Factor = Data[[FactorName]]
+    Factor = fold_column
     MaxSamples = max(table(Factor))
     Result=NULL
     

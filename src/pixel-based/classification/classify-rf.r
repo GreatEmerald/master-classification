@@ -136,12 +136,12 @@ SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE)
 PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-untruncated-allcovars-10folds.csv", InflationAdjustment = 1, TruncateZeroes = FALSE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
 AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 71%, kappa 0.63 - this is much better
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 71%, kappa 0.63 - so truncation doesn't matter
 
 PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-threestep-untruncated-allcovars-10folds.csv", InflationAdjustment = 2, TruncateZeroes = FALSE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
 AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 70%, kappa 0.62 - this doesn't help any
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 70%, kappa 0.62 - so truncation doesn't matter here either
 
 
 AST = AccuracyStatTable(PredictionResult[,Classes], Truth[,Classes])
