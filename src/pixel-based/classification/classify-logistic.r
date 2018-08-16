@@ -49,6 +49,8 @@ AccuracyStatisticsPlots(CVPrediction, Data.df[, colnames(CVPrediction)]/100) # R
 SCM(CVPrediction, as.matrix(Data.df[, colnames(CVPrediction)]/100), plot=TRUE, totals=TRUE, scale=TRUE) # 60% accuracy, kappa 0.51
 # So there is no difference
 
+# Modelling zeroes separately doesn't make sense in this case: the model sees labels, which are not zero. So only class balance is an issue.
+
 # How does it compare to the intercept model
 AccuracyStatisticsPlots(matrix(0.1, nrow=nrow(Data.df), ncol=length(Classes)), Data.df[, colnames(Predictions)]/100) # RMSE of 26%
 SCM(matrix(0.1, nrow=nrow(Data.df), ncol=length(Classes)), Data.df[, colnames(Predictions)]/100, plot=TRUE, totals=TRUE, scale=TRUE) #19% accuracy, kappa 0.1; still surprisingly high, ought to be 10% and 0
