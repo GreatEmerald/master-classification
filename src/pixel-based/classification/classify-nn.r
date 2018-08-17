@@ -52,4 +52,13 @@ ggplot(data.frame(Prediction=c(CVR), Truth=unlist(Data.df[, colnames(CVR)]/100))
     scale_fill_distiller(palette=7, trans="log") #log scale
 
 ## What if we balance the dataset
-CVResultBalanced = CrossValidate(FullFormula, Data.scaled, neuralnet, NN_Predict, fold_column=Data.df$dominant_lc, covariate_names=GetAllPixelCovars(), oversample=TRUE, hidden=HiddenNeurons, stepmax=6000, threshold=6000, lifesign="full")
+# The threshold has to be increased dramatically due to the larger dataset
+CVResultBalanced = CrossValidate(FullFormula, Data.scaled, neuralnet, NN_Predict, fold_column=Data.df$dominant_lc, covariate_names=GetAllPixelCovars(), oversample=TRUE, hidden=HiddenNeurons, stepmax=6000, threshold=10000, lifesign="full")
+colnames(CVResultBalanced) = GetLargeClassNames(Data.df)
+CVResultBalanced = ScaleNNPrediction(CVResultBalanced)
+
+AccuracyStatisticsPlots(CVResultBalanced, Data.df[, colnames(CVResultBalanced)]/100) # RMSE of 18%
+SCM(CVResultBalanced, as.matrix(Data.df[, colnames(CVResultBalanced)]/100), plot=TRUE, totals=TRUE, scale=TRUE) # 52% accuracy, 0.41 kappa - that's even worse
+ggplot(data.frame(Prediction=c(CVResultBalanced), Truth=unlist(Data.df[, colnames(CVResultBalanced)]/100)), aes(Prediction, Truth)) + # Scatterplot:
+    geom_hex() +
+    scale_fill_distiller(palette=7, trans="log") #log scale
