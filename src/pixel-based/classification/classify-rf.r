@@ -4,6 +4,8 @@ library(ranger)
 library(caret)
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
+source("pixel-based/utils/crossvalidation.r")
+source("pixel-based/utils/subpixel-confusion-matrix.r")
 source("utils/accuracy-statistics.r")
 
 Data.df = LoadTrainingAndCovariates()
@@ -125,7 +127,7 @@ SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE)
 PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
 AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 71%, kappa 0.63 - this is much better
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±2%, kappa 0.63 - this is much better
 
 PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-threestep-truncated-allcovars-10folds.csv", InflationAdjustment = 2, TruncateZeroes = TRUE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
@@ -156,4 +158,6 @@ write.csv(AST, paste0("../data/pixel-based/predictions/", "randomforest-twostep-
 # ggplot for more reasonable display of ludicrous amounts of points
 ggplot(data.frame(Prediction=unlist(PredictionResult), Truth=unlist(Truth)), aes(Prediction, Truth)) +
     geom_hex() +
-    scale_fill_distiller(palette=7, trans="log") #log scale
+    scale_fill_distiller(palette=7, trans="log") + #log scale
+    geom_abline(slope=1, intercept=0) + ggtitle("Random Forest, 10-fold CV, two models, zeroes truncated")
+    
