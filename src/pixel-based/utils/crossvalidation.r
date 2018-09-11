@@ -5,21 +5,26 @@ library(doParallel)
 source("utils/accuracy-statistics.r")
 
 # Pass in the function that takes as input a data.frame and produces a cross-validated data.frame in return
-CrossValidate = function(formula, data, train_function, predict_function, folds=10, fold_column=data[,"dominant_lc"], covariate_names=names(data), cv_seed=0xfedbeef, oversample=FALSE, ...)
+CrossValidate = function(formula, data, train_function, predict_function, folds=10, fold_column=data[,"dominant_lc"],
+    covariate_names=names(data), cv_seed=0xfedbeef, oversample=FALSE, packages=NULL, ...)
 {
     set.seed(cv_seed)
     folds = createFolds(fold_column, folds)
     
-    #Predictions = NULL
+    Predictions = NULL
     #for (i in 1:length(folds))
-    Predictions = foreach(fold=iter(folds), .combine=rbind, .multicombine=TRUE, .inorder=TRUE) %dopar%
+    Predictions = foreach(fold=iter(folds), .combine=rbind, .multicombine=TRUE, .inorder=TRUE, .packages=packages) %dopar%
     {
+        #fold = folds[[i]]
         TrainingData = data[-fold,]
         if (oversample)
             TrainingData = Oversample(TrainingData, fold_column=fold_column, seed=cv_seed)
         set.seed(cv_seed)
         Model = train_function(formula=formula, ..., data=TrainingData)
+        #print(dim(Model[[1]]))
+        #print(dim(Model[[2]]))
         Prediction = predict_function(Model, ..., newdata=data[fold,covariate_names])
+        #print(dim(Prediction))
         #Predictions = rbind(Predictions, Prediction)
     }
     Predictions = Predictions[order(unlist(folds)),]
