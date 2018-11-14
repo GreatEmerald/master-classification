@@ -7,80 +7,53 @@ Sys.setenv("PATH" = paste0(Sys.getenv("HOME"), "/miniconda3/bin:", Sys.getenv("P
 #Sys.setenv("LD_LIBRARY_PATH" = paste0(Sys.getenv("HOME"), "/miniconda3/envs/r-tensorflow/lib:", Sys.getenv("LD_LIBRARY_PATH")))
 library(keras)
 
-mnist <- dataset_mnist()
-x_train <- mnist$train$x
-y_train <- mnist$train$y
-x_test <- mnist$test$x
-y_test <- mnist$test$y
-# reshape
-x_train <- array_reshape(x_train, c(nrow(x_train), 784))
-x_test <- array_reshape(x_test, c(nrow(x_test), 784))
-# rescale
-x_train <- x_train / 255
-x_test <- x_test / 255
+source("pixel-based/utils/load-sampling-data.r")
+source("pixel-based/utils/covariate-names.r")
+source("pixel-based/utils/crossvalidation.r")
+registerDoParallel(cores=10)
+source("pixel-based/utils/subpixel-confusion-matrix.r") # Replace with package eventually
+source("utils/accuracy-statistics.r")
 
-y_train <- to_categorical(y_train, 10)
-y_test <- to_categorical(y_test, 10)
+Data.df = LoadTrainingAndCovariates()
+class(Data.df) = "data.frame"
+Data.df = AddZeroValueColumns(Data.df)
+Data.df = TidyData(Data.df)
 
-model <- keras_model_sequential() 
-model %>% 
-  layer_dense(units = 256, activation = 'relu', input_shape = c(784)) %>% 
-  layer_dropout(rate = 0.4) %>% 
-  layer_dense(units = 128, activation = 'relu') %>%
-  layer_dropout(rate = 0.3) %>%
-  layer_dense(units = 10, activation = 'softmax')
-summary(model)
+TargetMatrix = as.matrix(Data.df[,GetIIASAClassNames(TRUE)])/100
+CovarMatrix = as.matrix(apply(Data.df[,GetAllPixelCovars()], 2, scale))
 
-compile(model, loss = 'categorical_crossentropy', optimizer = optimizer_rmsprop(), metrics = c('accuracy'))
-
-history <- fit(model, x_train, y_train, epochs = 30, batch_size = 128, validation_split = 0.2)
-plot(history)
-evaluate(model, x_test, y_test)
-predict_classes(model, x_test)
-
-## Fuzzy classification
-
-# generate dummy data
-x_train <- matrix(runif(1000*20), nrow = 1000, ncol = 20)
-
-y_train <- runif(1000, min = 0, max = 9) %>% 
-  round() %>%
-  matrix(nrow = 1000, ncol = 1) %>% 
-  to_categorical(num_classes = 10)
-
-x_test  <- matrix(runif(100*20), nrow = 100, ncol = 20)
-
-y_test <- runif(100, min = 0, max = 9) %>% 
-  round() %>%
-  matrix(nrow = 100, ncol = 1) %>% 
-  to_categorical(num_classes = 10)
-
-# create model
-model <- keras_model_sequential()
-
-# define and compile the model
-model %>% 
-  layer_dense(units = 64, activation = 'relu', input_shape = c(20)) %>% 
-  layer_dropout(rate = 0.5) %>% 
-  layer_dense(units = 64, activation = 'relu') %>% 
+model = keras_model_sequential() %>% 
+  layer_dense(units = 128, activation = 'relu', input_shape = c(32)) %>% 
+  #layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 128, activation = 'relu') %>% 
   layer_dropout(rate = 0.5) %>% 
   layer_dense(units = 10, activation = 'softmax') %>% 
   compile(
     loss = 'categorical_crossentropy',
-    optimizer = optimizer_sgd(lr = 0.01, decay = 1e-6, momentum = 0.9, nesterov = TRUE),
+    optimizer = optimizer_sgd(lr = 0.0001, decay = 1e-4, momentum = 0.9, nesterov = TRUE),
     metrics = c('accuracy')     
   )
 
 # train
-history = fit(model, x_train, y_train, epochs = 50, batch_size = 128)
+history = fit(model, CovarMatrix, TargetMatrix, epochs = 500, batch_size = 128)
 plot(history)
 
 # evaluate
 score <- model %>% evaluate(x_test, y_test, batch_size = 128)
 score
 
-preds = predict(model, x_test)
+preds = predict(model, CovarMatrix)
+colnames(preds) = colnames(TargetMatrix)
 head(preds)
 rowSums(preds)
 
-# How about fuzzy
+library(ggplot2)
+
+ggplot(data.frame(Prediction=c(preds), Truth=c(TargetMatrix)), aes(Prediction, Truth)) +
+    geom_hex() +
+    scale_fill_distiller(palette=7, trans="log") + #log scale
+    geom_abline(slope=1, intercept=0) + ggtitle("Neural Networks, full model")
+
+AccuracyStatisticsPlots(as.data.frame(preds), as.data.frame(TargetMatrix)) # 15.4% RMSE, probably overfitting
+SCM(as.data.frame(preds), as.data.frame(TargetMatrix), plot=TRUE, totals=TRUE)
+

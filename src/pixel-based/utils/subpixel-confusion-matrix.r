@@ -111,13 +111,13 @@ SCM = function(predicted, observed, agreement=min, disagreement="SCM", scale=FAL
     stopifnot(all(s_nk >= 0))
     stopifnot(all(s_nk <= 1))
     if (is.vector(s_nk))
-        stopifnot(all(round(sum(s_nk), 10) == 1))
+        stopifnot(all(round(sum(s_nk), 6) == 1))
     else
-        stopifnot(all(round(rowSums(s_nk), 10) == 1))
+        stopifnot(all(round(rowSums(s_nk), 6) == 1))
     if (is.vector(r_nl))
-        stopifnot(all(round(sum(r_nl), 10) == 1))
+        stopifnot(all(round(sum(r_nl), 6) == 1))
     else
-        stopifnot(all(round(rowSums(r_nl), 10) == 1))
+        stopifnot(all(round(rowSums(r_nl), 6) == 1))
     
     if (is.character(disagreement) && disagreement == "SCM") # Mean of MIN_D and LEAST_D + confusion
     {
