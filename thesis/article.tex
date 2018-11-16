@@ -1,0 +1,151 @@
+% Minimalistic template for a generic article, geared towards MDPI guidelines
+% Use PDFLaTeX
+\documentclass[a4paper,10pt]{article}
+% Packages provided by the MDPI template already
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lineno}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{indentfirst}
+
+% Custom packages
+\usepackage[acronym,toc,shortcuts,nohypertypes=acronym]{glossaries}
+\usepackage[colorlinks, allcolors=blue, unicode]{hyperref}
+\usepackage{hyperxmp} % Import license metadata
+\usepackage{titling} % Get the author for the metadata
+
+% My own definition for the sections that start with a bold name but don't appear in TOC
+\newcommand{\minisection}[1]{\medskip \textbf{#1:}}
+
+
+% Metadata
+\title{Fractional land cover classification method assessment using PROBA-V satellite data}
+\author{Dainius Masiliūnas, Nandin-Erdene Tsendbazar, Jan Verbesselt, Martin Herold}
+
+\hypersetup{
+    pdflicenseurl={http://creativecommons.org/licenses/by-sa/4.0/},
+    pdfcopyright={This work is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License.},
+    pdfauthor={\theauthor}, % These are supposed to be the default but don't seem to be
+    pdftitle={\thetitle},
+    pdflang={en-GB}
+}
+
+% Acronyms - cite with \ac{}
+\newacronym{GNSS}{GNSS}{Global Navigation Satellite System}
+\makenoidxglossaries
+
+% Use \begin{equation} for maths
+
+\begin{document}
+
+\maketitle
+
+\linenumbers
+
+\abstract{The current standard of land cover classification is to assign each pixel to one land cover class, which at coarse resolution causes loss of information about mixed land cover. Fuzzy land cover classification, which assigns fractions of each land cover class to each pixel, can deal with mixed pixels. However, so far its application has been limited to city-scale areas, four or fewer classes, and up to two algorithm comparisons. In this paper, the classification accuracy and processing speed were compared for three fuzzy classification machine learning algorithms: random forest regression, fuzzy \textit{c}-means and neural networks. The algorithms were used to classify the whole boreal-temperate forest gradient zone between Finland and Lithuania into nine land cover classes. Results showed that all of the tested algorithms are able to achieve similarly high classification accuracy. Random forest regression accuracy was the highest, but its processing speed was the lowest. The results are a milestone for creating a global fuzzy land cover classification product incorporating user-specific requirements.
+
+\minisection{Keywords} Fuzzy land cover classification, machine learning, random forest, gradient boosting, neural networks, fuzzy c-means, PROBA-V}
+
+\section{Introduction}
+
+\begin{enumerate}
+ \item Relevance of fractional LC mapping (link to user requirements and SDGs)
+ \item Studies that have looked into fractional LC mapping so far
+ \item Available fractional methods that were introduced in literature (wavelet transform etc.)
+ \item Methods that are tested in this paper
+\end{enumerate}
+
+\section{Materials and Methods}
+
+\subsection{Reference data}
+
+Description of the CGLOPS data, mentioning the balance and zero inflation problems, and the fact that the study area is Africa
+
+\subsection{Preprocessing}
+
+Not sure whether this should be its own section or just mentioned at the top:
+
+\begin{enumerate}
+ \item Temporal cloud filter for Proba-V
+ \item Harmonic metrics extraction
+ \item Terrain metrics calculation
+\end{enumerate}
+
+\subsection{Covariates/Features}
+
+\begin{enumerate}
+ \item GLSDEM
+ \item Proba-V time series
+ \item Perhaps also soil/climate data
+\end{enumerate}
+
+\subsection{Fractional land cover mapping methods}
+
+\subsubsection{Logistic regression}
+
+\subsubsection{Partial least squares regression}
+
+\subsubsection{Fuzzy nearest prototype/centroid}
+
+\subsubsection{Neural networks}
+
+AKA multilayer perceptron
+
+\subsubsection{Random forest regression}
+
+Including variable importance
+
+...and possibly more methods
+
+\subsection{Validation/Accuracy Assessment}
+
+Not sure if this should be a section, or just part of results:
+
+\begin{enumerate}
+ \item RMSE per class
+ \item Sub-pixel confusion-uncertainty matrix
+ \item Comparison with a control/intercept model (10\% of everything)
+\end{enumerate}
+
+\section{Results}
+
+\begin{enumerate}
+ \item RMSE per class comparison: no big differences
+ \item Subpixel confusion matrix metrics: quite a big difference
+ \item RF variable importance
+ \item Truth:prediction scatterplots
+\end{enumerate}
+
+\section{Discussion}
+
+\begin{enumerate}
+ \item Fraction area accuracy goes up to 70\%, that is good considering that hard classification is not much better than that
+ \item RF is the best, even though one model per class means that it does not take everything into account
+ \item Accuracy assessment metric makes a big difference, useful to use subpixel confusion matrix for that
+ \item Grasslands are hard to discern, water is easy, very few wetlands in Africa
+ \item All covariates are important, problem may be getting more of them for the whole world
+ \item Recommendations: more covariates, a fuzzy machine learning method that can deal with zeroes
+\end{enumerate}
+
+\section{Conclusions}
+
+\begin{enumerate}
+ \item Random forest is the best by some margin
+ \item Subpixel confusion matrix is useful for differentiation
+ \item All covariates are important
+\end{enumerate}
+
+\minisection{Author Contributions} Something
+
+\minisection{Funding} Something
+
+\minisection{Acknowledgements} Something
+
+\minisection{Conflicts of Interest} The authors declare no conflict of interest.
+
+%\section*{Abbreviations}
+
+\printnoidxglossary[type=acronym]
+
+\end{document}

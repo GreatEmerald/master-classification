@@ -16,9 +16,21 @@ GetAllPixelCovars = function()
 }
 
 # Names of the classes in the original data collected by IIASA
-GetIIASAClassNames = function()
+GetIIASAClassNames = function(AfricanOnly = FALSE)
 {
     # There is also "not_sure", but it's pointless to predict that
-    return(c("bare", "burnt", "crops", "fallow_shifting_cultivation", "grassland", "lichen_and_moss", "shrub",
-             "snow_and_ice", "tree", "urban_built_up", "water", "wetland_herbaceous"))
+    ClassNames = c("bare", "burnt", "crops", "fallow_shifting_cultivation", "grassland", "shrub",
+             "tree", "urban_built_up", "water", "wetland_herbaceous")
+    if (AfricanOnly)
+        return(ClassNames)
+    
+    return(c(ClassNames, "lichen_and_moss", "snow_and_ice", "not_sure"))
+}
+
+# List of classes with enough observations
+GetLargeClassNames = function(data, threshold=50)
+{
+    Result = levels(data$dominant_lc)
+    Freqs = table(data$dominant_lc)
+    return(Result[Freqs > 50])
 }
