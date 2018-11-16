@@ -28,7 +28,7 @@ set.seed(0xfedbeef)
 #folds = createFolds(Data.df$location_id, 10)
 # Use stratified random sampling: make sure that we validate using all classes. Due to a large dataset, this hardly matters, but hey.
 folds = createFolds(Data.df$dominant_lc, 10)
-Classes = GetIIASAClassNames()
+Classes = Classes[!Classes=="lichen_and_moss"]#GetIIASAClassNames(TRUE)
 Truth = Data.df[,Classes]
 
 # We have zero- and 100-inflation in the data.
@@ -121,9 +121,9 @@ RFCV = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE,
     return(PredictionsPerFold)
 }
 
-PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
+PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds-repeat.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
 
-AST = AccuracyStatTable(PredictionResult, Truth)
+AST = AccuracyStatTable(PredictionResult[,Classes], Truth[,Classes])
 print(AST)
 barplot(AST$RMSE, names.arg=rownames(AST), main="RMSE")
 barplot(AST$MAE, names.arg=rownames(AST), main="MAE")
