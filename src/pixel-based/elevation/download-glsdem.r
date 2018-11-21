@@ -11,7 +11,7 @@ source("pixel-based/utils/load-sampling-data.r")
 OutputDEMDir = "../../userdata/master-classification/dem/glsdem/" # GLSDEM_n055e020.tif
 OutputCSVDir = "../data/pixel-based/covariates/"
 
-ReferenceData = LoadGlobalTrainingData()
+ReferenceData = LoadGlobalValidationData()
 
 # Figure out the tiles we need
 XIDs = floor(ReferenceData$x) # Floor due to this being the lower-left corner
@@ -74,4 +74,4 @@ names(TerrainIndices) = c("elevation", "slope", "aspect", "tpi", "tri", "roughne
 TerrainMatrix = extract(TerrainIndices, ReferenceData)
 rownames(TerrainMatrix) = ReferenceData$location_id
 TerrainMatrix[,"aspect"][is.na(TerrainMatrix[,"aspect"])] = 0 # Replace NA aspect with 0, otherwise can't use RF
-write.csv(TerrainMatrix, file.path(OutputCSVDir, "terrain.csv"))
+write.csv(TerrainMatrix, file.path(OutputCSVDir, "terrain-validation.csv"))
