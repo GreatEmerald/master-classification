@@ -10,13 +10,17 @@ SpectralCovars = read.csv(file.path(DataDir, "spectral.csv"))
 names(SpectralCovars)[1] = "location_id"
 TerrainCovars = read.csv(file.path(DataDir, "terrain.csv"))
 names(TerrainCovars)[1] = "location_id"
+ClimateCovars = read.csv(file.path(DataDir, "climate.csv"))
+SoilCovars = read.csv(file.path(DataDir, "landgis.csv"))
 
 TrainingAndCovars = merge(TrainingData, Harmonics, by="location_id") # silly that it's not vectoried
 TrainingAndCovars = merge(TrainingAndCovars, SpectralCovars, by="location_id")
 TrainingAndCovars = merge(TrainingAndCovars, TerrainCovars, by="location_id")
+TrainingAndCovars = merge(TrainingAndCovars, ClimateCovars, by=c("x","y"))
+TrainingAndCovars = merge(TrainingAndCovars, SoilCovars, by=c("location_id", "x", "y") )
 
 # Remove geometry, we read it from x/y instead
-oldClass(TrainingAndCovars) = "data.frame"
+class(TrainingAndCovars) = "data.frame"
 TrainingAndCovars$geometry = NULL
 
 # Remove samples for which we have no time series data at all (mean NDVI is NA)
@@ -40,10 +44,12 @@ SpectralCovars = read.csv(file.path(DataDir, "spectral-validation.csv"))
 names(SpectralCovars)[1] = "location_id"
 TerrainCovars = read.csv(file.path(DataDir, "terrain-validation.csv"))
 names(TerrainCovars)[1] = "location_id"
+ClimateCovars = read.csv(file.path(DataDir, "climate.csv"))
 
 ValidationAndCovars = merge(ValidationData, Harmonics, by="location_id") # silly that it's not vectoried
 ValidationAndCovars = merge(ValidationAndCovars, SpectralCovars, by="location_id")
 ValidationAndCovars = merge(ValidationAndCovars, TerrainCovars, by="location_id")
+ValidationAndCovars = merge(ValidationAndCovars, ClimateCovars, by=c("x","y"))
 
 # Remove geometry, we read it from x/y instead
 class(ValidationAndCovars) = "data.frame"
