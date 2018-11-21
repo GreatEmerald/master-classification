@@ -24,6 +24,10 @@ CorrectSFDataTypes = function(df)
                       map_tree="integer", map_shrubs="integer", map_grass="integer", map_bare="integer",
                       strata="factor", rc4="factor", res_bare="numeric", res_tree="numeric", res_shrubs="numeric",
                       res_grass="numeric", des_weight="numeric", incl.p="numeric")
+    ClimCovars = GetCovarNames("climate")
+    CCCorrection = rep("numeric", length(ClimCovars))
+    names(CCCorrection) = ClimCovars
+    CorrectionMap = c(CorrectionMap, CCCorrection)
     
     for (i in 1:length(CorrectionMap))
     {
@@ -39,7 +43,7 @@ CorrectSFDataTypes = function(df)
 }
 
 # Updates the dominant_lc column based on the classes desired
-UpdateDominantLC = function(df, classes = GetIIASAClassNames())
+UpdateDominantLC = function(df, classes = GetCommonClassNames())
 {
     ClassProportions = df[,classes]
     DominantClasses = apply(ClassProportions, 1, which.max)
@@ -48,15 +52,15 @@ UpdateDominantLC = function(df, classes = GetIIASAClassNames())
 }
 
 # Remove rows with NAs and drop covariates with too few observations
-TidyData = function(df, classes = GetIIASAClassNames())
+TidyData = function(df, classes = GetCommonClassNames())
 {
     Before = nrow(df)
-    DropRows = apply(df, 1, function(x){any(is.na(x))})
+    DropRows = apply(df[,GetAllPixelCovars()], 1, function(x){any(is.na(x))})
     df = df[!DropRows,]
     After = nrow(df)
     print(paste("Dropped NAs, data frame size reduced from", Before, "to", After))
     Before = After
-    stopifnot(all(apply(df, 2, function(x){sum(is.na(x))}) / nrow(df) * 100 == 0))
+    stopifnot(all(apply(df[,GetAllPixelCovars()], 2, function(x){sum(is.na(x))}) / nrow(df) * 100 == 0))
 
     # Recalculate dominant classes based on what we want
     df = UpdateDominantLC(df, classes)
