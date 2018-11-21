@@ -30,12 +30,12 @@ model = keras_model_sequential() %>%
   layer_dense(units = 10, activation = 'softmax') %>% 
   compile(
     loss = 'categorical_crossentropy',
-    optimizer = optimizer_sgd(lr = 0.0001, decay = 1e-4, momentum = 0.9, nesterov = TRUE),
+    optimizer = optimizer_sgd(lr = 0.000001, decay = 1e-4, momentum = 0.9, nesterov = TRUE),
     metrics = c('accuracy')     
   )
 
 # train
-history = fit(model, CovarMatrix, TargetMatrix, epochs = 500, batch_size = 128)
+history = fit(model, CovarMatrix, TargetMatrix, epochs = 100, batch_size = 128, validation_split=0.3)
 plot(history)
 
 # evaluate
@@ -54,6 +54,6 @@ ggplot(data.frame(Prediction=c(preds), Truth=c(TargetMatrix)), aes(Prediction, T
     scale_fill_distiller(palette=7, trans="log") + #log scale
     geom_abline(slope=1, intercept=0) + ggtitle("Neural Networks, full model")
 
-AccuracyStatisticsPlots(as.data.frame(preds), as.data.frame(TargetMatrix)) # 15.4% RMSE, probably overfitting
+AccuracyStatisticsPlots(as.data.frame(preds), as.data.frame(TargetMatrix)) # 19.5% RMSE
 SCM(as.data.frame(preds), as.data.frame(TargetMatrix), plot=TRUE, totals=TRUE)
 
