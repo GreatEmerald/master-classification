@@ -30,7 +30,7 @@ model = keras_model_sequential() %>%
   layer_dense(units = 10, activation = 'softmax') %>% 
   compile(
     loss = 'categorical_crossentropy',
-    optimizer = optimizer_sgd(lr = 0.000001, decay = 1e-4, momentum = 0.9, nesterov = TRUE),
+    optimizer = optimizer_sgd(lr = 0.00001, decay = 1e-4, momentum = 0.9, nesterov = TRUE),
     metrics = c('accuracy')     
   )
 
