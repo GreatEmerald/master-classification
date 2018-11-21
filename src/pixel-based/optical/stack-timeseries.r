@@ -9,9 +9,9 @@ source("utils/GetProbaVQCMask.r")
 source("pixel-based/utils/ProbaVDataDirs.r")
 
 DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M"
-OutputDir = "../data/pixel-based"
+OutputDir = "../data/pixel-based/validation"
 
-SamplePoints = LoadGlobalTrainingData()
+SamplePoints = LoadGlobalValidationData()
 
 # Tiles to process
 TileList = GetTileList(SamplePoints)
@@ -21,7 +21,7 @@ TileList = GetTileList(SamplePoints)
 DataDirsDates = LoadRawDataDirs(RequiredTiles = TileList)
 DataDirs = DataDirsDates$dir
 
-BuildProbaVTileVRT = function(DataDirs, VI, Tile, Band=1, OutputDir="../../userdata/master-classification/pixel-based/vrt/sr/")
+BuildProbaVTileVRT = function(DataDirs, VI, Tile, Band=1, OutputDir="../../userdata/master-classification/pixel-based/vrt/validation/")
 {
     TileFiles = list.files(DataDirs, pattern=glob2rx(paste0("PROBAV_S5_TOC_", Tile, "*", VI, ".tif")), full.names=TRUE)
     Dates = getProbaVinfo(TileFiles)$date
@@ -57,7 +57,7 @@ ExtractPixelData = function(ExtractLocations, DataDirs, VI, Tile, Band, QCMatrix
 }
 
 registerDoParallel(cores=4)
-foreach(Tile=iter(TileList), .inorder=FALSE, .multicombine=TRUE) %dopar%
+foreach(Tile=iter(TileList), .inorder=FALSE, .multicombine=TRUE, .verbose=TRUE) %dopar%
 {
     PointsInTile = SamplePoints[SamplePoints$Tile == Tile,]
     if (nrow(PointsInTile) < 1)
@@ -74,12 +74,12 @@ foreach(Tile=iter(TileList), .inorder=FALSE, .multicombine=TRUE) %dopar%
             ))
         
         # Extract NDVI values
-        ExtractPixelData(PointsInTile, DataDirs, "NDVI", Tile, 1, QCInTile)
+        ExtractPixelData(PointsInTile, DataDirs, "NDVI", Tile, 1, QCInTile, OutputDir=OutputDir)
         print("NDVI extraction complete, moving on to radiometry")
         
         # Radiometry: do it for 4 bands (Red, NIR, Blue, SWIR)
         for (Band in 1:4)
-            ExtractPixelData(PointsInTile, DataDirs, "RADIOMETRY", Tile, Band, QCInTile)
+            ExtractPixelData(PointsInTile, DataDirs, "RADIOMETRY", Tile, Band, QCInTile, OutputDir=OutputDir)
     }
 }
 

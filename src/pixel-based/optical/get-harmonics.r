@@ -6,8 +6,9 @@ source("pixel-based/utils/load-sampling-data.r")
 
 MaskedOutputDir = "../data/pixel-based/masked-ndvi/"
 HarmonicsOutputDir = "../data/pixel-based/covariates/"
+DataDir = "../data/pixel-based/validation/"
 
-TileList = GetTileList()
+TileList = GetTileList(LoadGlobalValidationData())
 Dates = LoadRawDataDirs()$date
 
 TemporalFilter = function(TimeSeriesToMask, TimeSeriesBlue, Dates, span=0.3, threshold=c(-30, Inf), ...)
@@ -31,8 +32,8 @@ amplituder = function(co, si)
 GlobalNDVIHarmonics = foreach(Tile=iter(TileList), .combine="rbind") %do%
 {
     # Load time series of blue (for reference) and NDVI (we use that after masking clouds)
-    BlueTS = LoadVIMatrix(Tile, "RADIOMETRY", 3)
-    NDVITS = LoadVIMatrix(Tile, "NDVI", 1)
+    BlueTS = LoadVIMatrix(Tile, "RADIOMETRY", 3, DataDir = DataDir)
+    NDVITS = LoadVIMatrix(Tile, "NDVI", 1, DataDir = DataDir)
     
     NDVIFiltered = foreach(i=1:nrow(BlueTS), .combine="rbind", .inorder=TRUE) %do%
     {
@@ -43,6 +44,8 @@ GlobalNDVIHarmonics = foreach(Tile=iter(TileList), .combine="rbind") %do%
             TemporalFilter(NDVITS[i,], BlueTS[i,], Dates)
         }
     }
+    if (length(NDVIFiltered) > 0 && is.null(dim(NDVIFiltered)))
+        NDVIFiltered = t(as.matrix(NDVIFiltered))
     rownames(NDVIFiltered) = rownames(NDVITS)
     write.csv(NDVIFiltered, paste0(MaskedOutputDir, Tile, ".csv"))
     
@@ -65,5 +68,5 @@ GlobalNDVIHarmonics = foreach(Tile=iter(TileList), .combine="rbind") %do%
     NDVIHarmonics
 }
 
-write.csv(GlobalNDVIHarmonics, paste0(HarmonicsOutputDir, "harmonics.csv"))
+write.csv(GlobalNDVIHarmonics, paste0(HarmonicsOutputDir, "harmonics-validation.csv"))
 

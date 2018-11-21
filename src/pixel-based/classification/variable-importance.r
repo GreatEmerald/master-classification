@@ -16,7 +16,7 @@ Data.df = Data.df[!is.na(Data.df$slope),]
 set.seed(0xbadcafe)
 folds = createFolds(Data.df$location_id, 4)
 
-ClassNames = GetIIASAClassNames()
+ClassNames = GetCommonClassNames()
 UncorrelatedCovars = GetUncorrelatedPixelCovars()
 
 # Get and plot variable importance
@@ -61,3 +61,5 @@ for (i in 1:length(ClassNames))
     }
   }
 }
+
+## Group covariates by type of information they provide

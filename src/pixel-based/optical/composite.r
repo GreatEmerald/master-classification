@@ -5,7 +5,8 @@ library(doParallel)
 source("pixel-based/utils/load-sampling-data.r")
 
 # Load data and dates
-SamplingPoints = LoadGlobalTrainingData()
+SamplingPoints = LoadGlobalValidationData()
+DataDir = "../data/pixel-based/validation/"
 TileList = GetTileList(SamplingPoints)
 Dates = LoadRawDataDirs()$date
 # Subset data to summer 2016
@@ -15,15 +16,20 @@ EndIndex = which(Dates == as.Date("2016-08-26"))
 # There must be a nicer way to do this, but I can't think of any
 Subsetter = function(Tile, VI, Band)
 {
-    VIMatrix = LoadVIMatrix(Tile, VI, Band) # Load the VI matrix from file
+    VIMatrix = LoadVIMatrix(Tile, VI, Band, DataDir=DataDir) # Load the VI matrix from file
     VIMatrix = VIMatrix[,StartIndex:EndIndex] # Subset to summer 2016
+    if (length(VIMatrix) > 0 && is.null(dim(VIMatrix)))
+        VIMatrix = t(as.matrix(VIMatrix))
     
     stopifnot(nrow(VIMatrix) == length(MaxNDVIIdx))
     
     # Get the value at the highest NDVI time
     Result = c()
     for (i in 1:nrow(VIMatrix))
-        Result = c(Result, VIMatrix[i, MaxNDVIIdx[i]])
+    {
+        ResultIndex = MaxNDVIIdx[i]
+        Result = c(Result, ifelse(is.na(ResultIndex), NA, VIMatrix[i, ResultIndex]))
+    }
     names(Result) = rownames(VIMatrix)
     return(Result)
 }
@@ -37,8 +43,12 @@ EVI = function(RED, NIR, BLUE, SWIR){return(2.5*((NIR-RED)/((NIR + 6*RED - 7.5*B
 registerDoParallel(cores=4)
 Covariates = foreach(Tile=iter(TileList), .combine=rbind, .inorder=FALSE, .multicombine=TRUE) %do%
 {
-    NDVIMatrix = LoadVIMatrix(Tile, "NDVI", 1)
+    print(Tile)
+    NDVIMatrix = LoadVIMatrix(Tile, "NDVI", 1, DataDir=DataDir)
+    print(dim(NDVIMatrix))
     NDVIMatrix = ScaleNDVI(NDVIMatrix)
+    if (length(NDVIMatrix) > 0 && is.null(dim(NDVIMatrix)))
+        NDVIMatrix = t(as.matrix(NDVIMatrix))
     
     # Get mean NDVI over the whole time series
     MeanNDVI = unlist(apply(NDVIMatrix, 1, mean, na.rm=TRUE))
@@ -48,6 +58,8 @@ Covariates = foreach(Tile=iter(TileList), .combine=rbind, .inorder=FALSE, .multi
     
     # Subset to summer 2016
     NDVIMatrix = NDVIMatrix[,StartIndex:EndIndex]
+    if (length(NDVIMatrix) > 0 && is.null(dim(NDVIMatrix)))
+        NDVIMatrix = t(as.matrix(NDVIMatrix))
     
     # Get date of highest NDVI, that will be the one that we use for the other bands too
     # The function is which.max that on all NAs returns NA rather than integer(0)
@@ -78,11 +90,5 @@ Covariates = foreach(Tile=iter(TileList), .combine=rbind, .inorder=FALSE, .multi
                         evi=EVIMatrix)
 }
 
-write.csv(Covariates, "../data/pixel-based/covariates/spectral.csv")
-
-# Subset the entire dataset to only the points that we have processed (= all points in Africa).
-# This should be done at the very end, after all processing is complete, possibly in a separate file.
-#AfricanSamples = subset(SamplePoints, subset=location_id %in% rownames(Covariates))
-#Covariates$location_id = rownames(Covariates)
-#AfricanSamples = merge(AfricanSamples, Covariates, by="location_id")
+write.csv(Covariates, "../data/pixel-based/covariates/spectral-validation.csv")
 
