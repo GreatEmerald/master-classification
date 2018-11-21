@@ -1,5 +1,4 @@
 # Same as get-soilgrids except using the new LandGIS version
-.libPaths(c("/home/greatemerald-local/R/x86_64-redhat-linux-gnu-library/3.5", .libPaths())) # Temp
 library(rjson)
 source("pixel-based/utils/load-sampling-data.r")
 

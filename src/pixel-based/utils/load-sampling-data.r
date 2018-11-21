@@ -84,7 +84,7 @@ TidyData = function(df, classes = GetCommonClassNames())
 }
 
 # Load the global model training dataset (IIASA).
-LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018_V2.csv")
+LoadGlobalTrainingData = function(filename="../data/pixel-based/raw/training_data_100m_16042018_V2.csv")
 {
     # Read data
     SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
@@ -104,7 +104,7 @@ LoadGlobalTrainingData = function(filename="~/shared/training_data_100m_16042018
 }
 
 # Load the validation dataset (WUR)
-LoadGlobalValidationData = function(filename="../data/data_dainius.csv")
+LoadGlobalValidationData = function(filename="../data/pixel-based/raw/data_dainius.csv")
 {
     SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=sample_x", "Y_POSSIBLE_NAMES=sample_y"), stringsAsFactors = FALSE)
     st_crs(SamplePoints) = 4326

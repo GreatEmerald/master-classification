@@ -3,6 +3,13 @@ source("pixel-based/utils/load-sampling-data.r")
 
 Data.df = LoadTrainingAndCovariates()
 
+TrainingPoints = LoadGlobalTrainingData()
+ValidationPoints = LoadGlobalValidationData()
+AllPoints = rbind(TrainingPoints[,c("x", "y", "location_id")], ValidationPoints[,c("x", "y", "location_id")])
+
+MissingPoints = AllPoints[!AllPoints$location_id %in% Data.df$location_id,]
+
+
 SGURL = function(points)
 {
     return(paste0("https://rest.soilgrids.org/query?lon=", points$x, "&lat=", points$y))
@@ -27,16 +34,13 @@ MyMatrix = MyMatrix[,!EmptyCovars] # 390 covars
 # Remove covariates with no variance (all equal values)
 Variances = apply(MyMatrix, 2, sd, na.rm=TRUE)
 MyMatrix = MyMatrix[,Variances!=0]
-write.csv(MyMatrix, "../data/soilgrids.csv")
 
-sum(complete.cases(MyMatrix)) / nrow(MyMatrix) # 55% of the cases are complete
-CovarNAs = apply(MyMatrix, 2, function(x){sum(is.na(x)) / nrow(MyMatrix)})
-sort(CovarNAs) # 2% missing from each, 50% missing from 8 covars, 12% from 7 more
+# Add location ID
+MyMatrix$location_id = Data.df[["location_id"]]
 
-SmallerMatrix = MyMatrix[,-which(CovarNAs > 0.1)] # 374 covars
-sum(complete.cases(SmallerMatrix)) / nrow(SmallerMatrix) # 98% of complete cases
-
-
-library(nortest)
-Normality = apply(SmallerMatrix, 2, function(x){lillie.test(na.omit(x))$p.value})
+# Replace fill values with NAs
+MyMatrix[MyMatrix == -2^15] = NA
+ColsWith255Fill = c("BDRICM.M.BDRICM_M", "BDRLOG.M.BDRLOG_M", "CLYPPT.M.sl1", "CLYPPT.M.sl2", "CLYPPT.M.sl3", "CLYPPT.M.sl4", "CLYPPT.M.sl5", "CLYPPT.M.sl6", "CLYPPT.M.sl7", "CRFVOL.M.sl1", "CRFVOL.M.sl2", "CRFVOL.M.sl3", "CRFVOL.M.sl4", "CRFVOL.M.sl5", "CRFVOL.M.sl6", "CRFVOL.M.sl7", "PHIHOX.M.sl1", "PHIHOX.M.sl2", "PHIHOX.M.sl3", "PHIHOX.M.sl4", "PHIHOX.M.sl5", "PHIHOX.M.sl6", "PHIHOX.M.sl7", "PHIKCL.M.sl1", "PHIKCL.M.sl2", "PHIKCL.M.sl3", "PHIKCL.M.sl4", "PHIKCL.M.sl5", "PHIKCL.M.sl6", "PHIKCL.M.sl7", "SLTPPT.M.sl1", "SLTPPT.M.sl2", "SLTPPT.M.sl3", "SLTPPT.M.sl4", "SLTPPT.M.sl5", "SLTPPT.M.sl6", "SLTPPT.M.sl7", "SNDPPT.M.sl1", "SNDPPT.M.sl2", "SNDPPT.M.sl3", "SNDPPT.M.sl4", "SNDPPT.M.sl5", "SNDPPT.M.sl6", "SNDPPT.M.sl7")
+MyMatrix[,ColsWith255Fill][MyMatrix[,ColsWith255Fill] == 255] = NA
+write.csv(MyMatrix, "../data/pixel-based/soil/soilgrids-remainder.csv", row.names=FALSE)
 
