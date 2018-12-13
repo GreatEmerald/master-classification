@@ -7,25 +7,31 @@ GetUncorrelatedPixelCovars = function()
              "amplitude2", "mean.ndvi", "nir", "elevation", "slope", "aspect", "tpi"))
 }
 
-GetAllPixelCovars = function()
+GetAllPixelCovars = function(grouped=FALSE)
 {
-    
-    return(c("x", "y", "min", "max", "intercept", "co", "si", "co2", "si2", "trend",
-             "phase1", "amplitude1", "phase2", "amplitude2", "mean.ndvi", "ndvi.25", "ndvi.75", "ndvi.iqr",
-             "red", "nir", "blue", "swir", "ndvi", "ndmi", "osavi", "evi",
-             "elevation", "slope", "aspect", "tpi", "tri", "roughness",
-             GetCovarNames("climate")))
+    AllCovars = list(location=c("x", "y"),
+        spectral=c("min", "max", "mean.ndvi", "ndvi.25", "ndvi.75", "ndvi.iqr", "red", "nir", "blue", "swir", "ndvi", "ndmi", "osavi", "evi"),
+        harmonic=c("intercept", "co", "si", "co2", "si2", "trend", "phase1", "amplitude1", "phase2", "amplitude2"),
+        terrain=c("elevation", "slope", "aspect", "tpi", "tri", "roughness"),
+        climate=paste0("bio", 1:19))#GetClimateCovars())
+    if (!grouped)
+        return(unlist(AllCovars))
+    return(AllCovars)
 }
 
+# Deprecated
 GetCovarNames = function(type)
 {
     if (type == "climate")
-    {
-        Months = sprintf("%02d", 01:12)
-        WCDS = c("tmin", "tmax", "tavg", "prec", "srad", "wind", "vapr")
-        MDS = expand.grid(WCDS, Months)
-        return(c(paste("wc2.0_30s", MDS[,1], MDS[,2], sep="_"), paste0("bio", 1:19)))
-    }
+        return(GetClimateCovars())
+}
+
+GetClimateCovars = function()
+{
+    Months = sprintf("%02d", 01:12)
+    WCDS = c("tmin", "tmax", "tavg", "prec", "srad", "wind", "vapr")
+    MDS = expand.grid(WCDS, Months)
+    return(c(paste("wc2.0_30s", MDS[,1], MDS[,2], sep="_"), paste0("bio", 1:19)))
 }
 
 # Names of the classes in the original data collected by IIASA
@@ -43,7 +49,7 @@ GetIIASAClassNames = function(AfricanOnly = FALSE)
 # Class names that are in both training and validation sets
 GetCommonClassNames = function()
 {
-    return(c("tree", "shrub", "grassland", "wetland_herbaceous", "crops", "urban_built_up", "bare", "water"))
+    return(c("tree", "shrub", "grassland", "crops", "urban_built_up", "bare", "water"))
 }
 
 # List of classes with enough observations

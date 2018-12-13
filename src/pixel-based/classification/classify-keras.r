@@ -3,7 +3,8 @@
 # Set environment variables
 source("packrat/init.R")
 # Interface with a local conda environment: this needs to be configured for each system
-Sys.setenv("PATH" = paste0(Sys.getenv("HOME"), "/miniconda3/bin:", Sys.getenv("PATH")))
+Sys.setenv("PATH" = paste0("/usr/local/cuda-10.0/bin:", Sys.getenv("HOME"), "/miniconda3/bin:", Sys.getenv("PATH")))
+Sys.setenv(CUDA_HOME="/usr/local/cuda-10.0")
 #Sys.setenv("LD_LIBRARY_PATH" = paste0(Sys.getenv("HOME"), "/miniconda3/envs/r-tensorflow/lib:", Sys.getenv("LD_LIBRARY_PATH")))
 library(keras)
 
@@ -19,15 +20,15 @@ class(Data.df) = "data.frame"
 Data.df = AddZeroValueColumns(Data.df)
 Data.df = TidyData(Data.df)
 
-TargetMatrix = as.matrix(Data.df[,GetIIASAClassNames(TRUE)])/100
+TargetMatrix = as.matrix(Data.df[,GetCommonClassNames()])/100
 CovarMatrix = as.matrix(apply(Data.df[,GetAllPixelCovars()], 2, scale))
 
 model = keras_model_sequential() %>% 
-  layer_dense(units = 128, activation = 'relu', input_shape = c(32)) %>% 
+  layer_dense(units = 128, activation = 'relu', input_shape = c(51)) %>% 
   #layer_dropout(rate = 0.5) %>% 
   layer_dense(units = 128, activation = 'relu') %>% 
   layer_dropout(rate = 0.5) %>% 
-  layer_dense(units = 10, activation = 'softmax') %>% 
+  layer_dense(units = 7, activation = 'softmax') %>% 
   compile(
     loss = 'categorical_crossentropy',
     optimizer = optimizer_sgd(lr = 0.00001, decay = 1e-4, momentum = 0.9, nesterov = TRUE),

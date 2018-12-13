@@ -45,7 +45,7 @@ CorrectSFDataTypes = function(df)
 # Updates the dominant_lc column based on the classes desired
 UpdateDominantLC = function(df, classes = GetCommonClassNames())
 {
-    ClassProportions = df[,classes]
+    ClassProportions = df[,classes[classes %in% names(df)]]
     DominantClasses = apply(ClassProportions, 1, which.max)
     df$dominant_lc = factor(classes[DominantClasses])
     return(df)
@@ -62,24 +62,37 @@ TidyData = function(df, classes = GetCommonClassNames())
     Before = After
     stopifnot(all(apply(df[,GetAllPixelCovars()], 2, function(x){sum(is.na(x))}) / nrow(df) * 100 == 0))
 
-    # Recalculate dominant classes based on what we want
-    df = UpdateDominantLC(df, classes)
+    # Recalculate dominant classes based on all classes
+    df = UpdateDominantLC(df, GetIIASAClassNames(FALSE))
+    # Drop those dominated by "not_sure" and "snow_and_ice"
+    df = df[df$dominant_lc != "not_sure" & df$dominant_lc != "snow_and_ice",]
     
-    # Drop samples that are too few to be its own class. Also drop pixels dominated by "not sure"
-    RemainingClasses = GetLargeClassNames(df)
-    RemainingClasses = RemainingClasses[RemainingClasses != "not_sure"]
-    #df = df[df$dominant_lc %in% RemainingClasses,]
-    
-    # Drop all points that contain any of the classes we don't care for
-    DroppedClasses = classes[!classes %in% RemainingClasses]
-    RowsToDrop = apply(df[,DroppedClasses], 1, function(x){any(x > 0)})
-    df = df[!RowsToDrop,]
+    # Reclassify rare classes to common ones
+    df = ReclassifyAndScale(df)
     
     After = nrow(df)
-    print(paste("Dropped small classes, data frame size reduced from", Before, "to", After))
+    print(paste("Reclassified and rescaled small classes, data frame size reduced from", Before, "to", After))
     
     # Also drop the level, otherwise sampling would try to sample from 0 points
-    df = UpdateDominantLC(df, RemainingClasses)
+    df = UpdateDominantLC(df, classes)
+    return(df)
+}
+
+ReclassifyAndScale = function(df, output.classes=GetCommonClassNames())
+{
+    # Some classes map to other classes. Put the values there
+    ClassMap = c(burnt="grassland", fallow_shifting_cultivation="crops", wetland_herbaceous="grassland", lichen_and_moss="grassland")
+    
+    for (class in 1:length(ClassMap))
+    {
+        if (names(ClassMap[class]) %in% names(df))
+            df[[ClassMap[class]]] = df[[ClassMap[class]]] + df[[names(ClassMap[class])]]
+    }
+    
+    # Scale relevant classes to 100%; that way we get rid of influences from not_sure and snow_and_ice
+    RelevantClasses = df[,output.classes]
+    df[,output.classes] = RelevantClasses / (rowSums(RelevantClasses) / 100)
+    stopifnot(all(round(rowSums(df[,output.classes])) == 100))
     return(df)
 }
 
