@@ -4,7 +4,7 @@ library(ranger)
 #library(caret)
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
-#source("pixel-based/utils/crossvalidation.r")
+source("pixel-based/utils/crossvalidation.r")
 source("pixel-based/utils/subpixel-confusion-matrix.r")
 source("utils/accuracy-statistics.r")
 
@@ -31,6 +31,9 @@ apply(Data.val, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 #folds = createFolds(Data.df$dominant_lc, 10)
 Classes = GetCommonClassNames()
 Truth = Data.val[,Classes]
+# Add column for purity
+Data.df$pure = apply(Data.df[,Classes], 1, max) > 99 # At 95%, half of our data is pure
+Data.val$pure = apply(Data.val[,Classes], 1, max) > 99 # At 95%, 42% of our validation is pure
 
 # We have zero- and 100-inflation in the data.
 # If we adjust for the zero inflation and use zero-truncated data for the second model, it tends to just predict 100.
@@ -187,6 +190,11 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
                     NonzeroModel = ranger(Formula, TrainingSet, seed = 0xbadcafe, ...)
                 ClassPredictions[NonZeroes] = predict(NonzeroModel, ValidationSet[NonZeroes,])$prediction
             } else print("Everything was predicted to be zero!")
+        } else if (InflationAdjustment == -1) { # Three-model approach
+            # Model to predict purity
+            PureFormula = update.formula(FullFormula, paste0("as.factor(", pure, ") ~ ."))
+            PureModel = ranger()
+            
         } else {
             # Predict all
             rfmodel = ranger(Formula, TrainingSet, seed = 0xbadcafe, ...)
@@ -216,10 +224,10 @@ SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE)
 cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.65
 
 # Holdout validation
-PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0, mtry=20)
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18%, still pretty good
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 64%, kappa 0.57
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.58
+PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.6%, MAE 9.1%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.52
+cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.68
 
 PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
@@ -230,9 +238,9 @@ cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.6
 # Holdout
 PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 20%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 68±3%, kappa 0.60 - this is much better
-cor(c(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.52
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.3%, MAE 7.6%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 73±2%, kappa 0.66 - this is much better
+cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.64
 
 PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-threestep-truncated-allcovars-10folds.csv", InflationAdjustment = 2, TruncateZeroes = TRUE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
@@ -264,8 +272,30 @@ write.csv(AST, paste0("../data/pixel-based/predictions/", "randomforest-twostep-
 
 library(ggplot2)
 # ggplot for more reasonable display of ludicrous amounts of points
-ggplot(data.frame(Prediction=unlist(PredictionResult), Truth=unlist(Truth)), aes(Prediction, Truth)) +
+ggplot(data.frame(Prediction=unlist(PredictionResult), Truth=unlist(Truth)), aes(Truth, Prediction)) +
     geom_hex() +
     scale_fill_distiller(palette=7, trans="log") + #log scale
     geom_abline(slope=1, intercept=0) + ggtitle("Random Forest, Validation, single model")
-    
+
+
+TruthBins = unlist(Truth)
+TruthBins = round(TruthBins, -1)
+ValidationDF = data.frame(Truth=unlist(Truth), Bins=as.factor(TruthBins), Predicted=unlist(PredictionResult))
+boxplot(Predicted~TruthBins, ValidationDF, xlab="Truth", ylab="Predicted")
+OneToOne = data.frame(Predicted=seq(0, 100, 10), Bins=1:11)
+lines(Predicted~Bins, OneToOne)
+
+# Pure model
+Covariates = GetAllPixelCovars()
+FullFormula = paste0("~", paste(Covariates, collapse = "+"))
+PureFormula = update.formula(FullFormula, paste0("as.factor(pure) ~ ."))
+PureModel = ranger(PureFormula, Data.df)
+PurityPredictions = predict(PureModel, Data.val)$prediction
+PurityPredictions = ifelse(PurityPredictions == "TRUE", TRUE, FALSE)
+AccuracyStats(PurityPredictions, Data.val$pure)
+mean(PurityPredictions == Data.val$pure) # 81% accuracy, 85% if using 100% as a threshold; you can guess 50% of the times
+
+PureData = Data.val[PurityPredictions,]
+ClassFormula = update.formula(FullFormula, paste0("dominant.lc ~ ."))
+ClassModel = ranger(ClassFormula, Data.val[PurityPredictions,])
+
