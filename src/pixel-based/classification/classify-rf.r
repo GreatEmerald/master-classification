@@ -9,7 +9,7 @@ source("pixel-based/utils/subpixel-confusion-matrix.r")
 source("utils/accuracy-statistics.r")
 
 Data.df = LoadTrainingAndCovariates()
-class(Data.df) = "data.frame"
+Data.df = as.data.frame(Data.df)
 Data.df = AddZeroValueColumns(Data.df)
 Data.df = TidyData(Data.df)
 
@@ -32,8 +32,8 @@ apply(Data.val, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 Classes = GetCommonClassNames()
 Truth = Data.val[,Classes]
 # Add column for purity
-Data.df$pure = apply(Data.df[,Classes], 1, max) > 99 # At 95%, half of our data is pure
-Data.val$pure = apply(Data.val[,Classes], 1, max) > 99 # At 95%, 42% of our validation is pure
+Data.df$pure = apply(Data.df[,Classes], 1, max) > 95 # At 95%, half of our data is pure
+Data.val$pure = apply(Data.val[,Classes], 1, max) > 95 # At 95%, 42% of our validation is pure
 
 # We have zero- and 100-inflation in the data.
 # If we adjust for the zero inflation and use zero-truncated data for the second model, it tends to just predict 100.
@@ -190,11 +190,6 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
                     NonzeroModel = ranger(Formula, TrainingSet, seed = 0xbadcafe, ...)
                 ClassPredictions[NonZeroes] = predict(NonzeroModel, ValidationSet[NonZeroes,])$prediction
             } else print("Everything was predicted to be zero!")
-        } else if (InflationAdjustment == -1) { # Three-model approach
-            # Model to predict purity
-            PureFormula = update.formula(FullFormula, paste0("as.factor(", pure, ") ~ ."))
-            PureModel = ranger()
-            
         } else {
             # Predict all
             rfmodel = ranger(Formula, TrainingSet, seed = 0xbadcafe, ...)
@@ -210,6 +205,57 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
         # In that case we just keep them as 0%. It won't add up to 100%. Alternatively we can set it to 1/nclass.
         Predictions[is.nan(Predictions)] = 0
     }
+    
+    write.csv(Predictions, OutputFile, row.names=FALSE)
+    return(as.data.frame(Predictions))
+}
+
+# Three-step classification. More complex and doesn't share much code with the other approach, hence separate function.
+RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, ...)
+{
+    OutputFile = file.path(outdir, paste0("predictions-threestep-", filename))
+    if (file.exists(OutputFile))
+        return(read.csv(OutputFile))
+        
+    Covariates = GetAllPixelCovars()#GetUncorrelatedPixelCovars()
+    FullFormula = paste0("~", paste(Covariates, collapse = "+"))
+    TrainingSet = Data.df
+    #TrainingSet = Oversample(TrainingSet)
+    TrainingSet$pure = apply(Data.df[,Classes], 1, max) > purity_threshold
+    ValidationSet = Data.val
+    ValidationSet$pure = apply(Data.val[,Classes], 1, max) > purity_threshold
+    
+    Predictions = matrix(ncol=length(Classes), nrow=nrow(ValidationSet), dimnames=list(list(), Classes))
+    
+    # Step one: pure/non-pure binary classification
+    PureModel = ranger(paste0("as.factor(pure)", FullFormula), TrainingSet, seed = 0xbadcafe, ...)
+    PureValPredictions = predict(PureModel, ValidationSet)
+    PureValPredictions = as.logical(PureValPredictions$predictions)
+    PurityAcc = mean(PureValPredictions == ValidationSet$pure)
+    print(paste("Built purity classifier, accuracy:", PurityAcc))
+    # We know whether the input is pure or not already, so for training we give the actual pure and nonpure pixels.
+    # For predicting, we assume that PureModel is perfectly accurate.
+    
+    # Step two: classification of pure pixels
+    ClassificationModel = ranger(paste0("dominant_lc", FullFormula), TrainingSet[TrainingSet$pure,], seed = 0xbadcafe, ...)
+    ClassPredictions = predict(ClassificationModel, ValidationSet[PureValPredictions,]) # We use our pure model to select on which to predict
+    # Expand into columns
+    ClassCols = unclass(table(1:length(ClassPredictions$prediction),ClassPredictions$prediction)*100)
+    Predictions[PureValPredictions, Classes] = ClassCols[,Classes]
+    
+    # Step three: regression of non-pure pixels, one model per class
+    for (Class in Classes)
+    {
+        print(Class)
+        Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
+        
+        RegressionModel = ranger(Formula, TrainingSet[!TrainingSet$pure,], seed = 0xbadcafe, ...)
+        RegPredictions = predict(RegressionModel, ValidationSet[!PureValPredictions,])
+        Predictions[!PureValPredictions, Class] = RegPredictions$predictions
+    }
+    
+    if (scale)
+        Predictions = Predictions / rowSums(Predictions) * 100
     
     write.csv(Predictions, OutputFile, row.names=FALSE)
     return(as.data.frame(Predictions))
@@ -261,6 +307,24 @@ AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # R
 SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 70%, kappa 0.62 - so truncation doesn't matter here either
 cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.59
 
+# Three-model approach
+PredictionResult = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-allcovars-validation.csv")
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.1%, MAE 8.0%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 72±3%, kappa 0.65 - little difference from two-step model, slightly worse
+cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.63
+
+# Higher purity
+PredictionResult = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-p99-allcovars-validation.csv", purity_threshold=99)
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17.3%, MAE 8.3%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±4%, kappa 0.64 - worse, closer to one step
+cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.65
+
+# Lower purity
+PredictionResult = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-p85-allcovars-validation.csv", purity_threshold=85)
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17.3%, MAE 8.3%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±4%, kappa 0.64 - worse, closer to one step
+cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.65
+
 AST = AccuracyStatTable(PredictionResult[,Classes], Truth[,Classes])
 print(AST)
 barplot(AST$RMSE, names.arg=rownames(AST), main="RMSE")
@@ -275,7 +339,7 @@ library(ggplot2)
 ggplot(data.frame(Prediction=unlist(PredictionResult), Truth=unlist(Truth)), aes(Truth, Prediction)) +
     geom_hex() +
     scale_fill_distiller(palette=7, trans="log") + #log scale
-    geom_abline(slope=1, intercept=0) + ggtitle("Random Forest, Validation, single model")
+    geom_abline(slope=1, intercept=0) + ggtitle("Random Forest, Validation, two models")
 
 
 TruthBins = unlist(Truth)
