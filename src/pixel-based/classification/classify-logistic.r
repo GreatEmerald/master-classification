@@ -19,6 +19,11 @@ AllCovars = GetAllPixelCovars()
 UncorrelatedCovars = GetUncorrelatedPixelCovars()
 Classes = GetCommonClassNames()
 
+# Feature selection
+FullModelFormula = formula(paste("dominant_lc~", paste0("scale(", AllCovars, ")", collapse="+")))
+FullModel = multinom(FullModelFormula, Data.df, MaxNWts=2000)
+ReducedModel = step(FullModel) # This takes forever as it rebuilds the model for each covariate
+
 # Very little difference between all and uncorrelated covars
 logmodel = multinom(paste("dominant_lc ~", paste0("scale(", AllCovars, ")", collapse="+")), Data.df, MaxNWts = 2000)
 lm_uncor = multinom(paste("dominant_lc ~", paste0("scale(", UncorrelatedCovars, ")", collapse="+")), Data.df)
