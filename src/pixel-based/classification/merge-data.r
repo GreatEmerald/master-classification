@@ -11,7 +11,7 @@ names(SpectralCovars)[1] = "location_id"
 TerrainCovars = read.csv(file.path(DataDir, "terrain.csv"))
 names(TerrainCovars)[1] = "location_id"
 ClimateCovars = read.csv(file.path(DataDir, "climate.csv"))
-SoilCovars = read.csv(file.path(DataDir, "landgis.csv"))
+SoilCovars = read.csv(file.path(DataDir, "soil-merged.csv"))
 
 TrainingAndCovars = merge(TrainingData, Harmonics, by="location_id") # silly that it's not vectoried
 TrainingAndCovars = merge(TrainingAndCovars, SpectralCovars, by="location_id")
@@ -25,6 +25,15 @@ TrainingAndCovars$geometry = NULL
 
 # Remove samples for which we have no time series data at all (mean NDVI is NA)
 TrainingAndCovars = TrainingAndCovars[!is.na(TrainingAndCovars$mean.ndvi),]
+
+# Add absolute y
+TrainingAndCovars$yabs = abs(TrainingAndCovars$y)
+
+# Generate additional bioclimatic variables for solar radiation, wind speed and water vapour pressure
+# Monthly data isn't terribly useful because in the two hemispheres the patterns are reversed.
+# What's wet is dry and what's cold is warm in the other hemisphere.
+# Min and max and mean and seasonality of solar radiation
+
 
 # Save
 write.csv(TrainingAndCovars, file.path(DataDir, "all.csv"))
@@ -45,11 +54,16 @@ names(SpectralCovars)[1] = "location_id"
 TerrainCovars = read.csv(file.path(DataDir, "terrain-validation.csv"))
 names(TerrainCovars)[1] = "location_id"
 ClimateCovars = read.csv(file.path(DataDir, "climate.csv"))
+SoilCovars = read.csv(file.path(DataDir, "soil-merged.csv"))
 
+# Remove unneeded columns
+ValidationData$X = NULL
+ClimateCovars$X = NULL
 ValidationAndCovars = merge(ValidationData, Harmonics, by="location_id") # silly that it's not vectoried
 ValidationAndCovars = merge(ValidationAndCovars, SpectralCovars, by="location_id")
 ValidationAndCovars = merge(ValidationAndCovars, TerrainCovars, by="location_id")
 ValidationAndCovars = merge(ValidationAndCovars, ClimateCovars, by=c("x","y"))
+ValidationAndCovars = merge(ValidationAndCovars, SoilCovars, by=c("location_id", "x", "y"))
 
 # Remove geometry, we read it from x/y instead
 class(ValidationAndCovars) = "data.frame"
@@ -59,6 +73,9 @@ ValidationAndCovars$geometry = NULL
 nrow(ValidationAndCovars) # 3616
 ValidationAndCovars = ValidationAndCovars[!is.na(ValidationAndCovars$mean.ndvi),]
 nrow(ValidationAndCovars) # 3604
+
+# Add absolute y
+ValidationAndCovars$yabs = abs(ValidationAndCovars$y)
 
 # Fix the timestamps
 TimestampsA = as.POSIXct(ValidationAndCovars$timestamp, "UTC", format="%Y-%m-%d %H:%M:%S")

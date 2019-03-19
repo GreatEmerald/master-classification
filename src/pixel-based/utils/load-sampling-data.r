@@ -6,7 +6,7 @@ source("pixel-based/utils/covariate-names.r")
 
 CorrectSFDataTypes = function(df)
 {
-    CorrectionMap = c(rowid="integer", location_id="integer", bare="numeric", burnt="numeric", crops="numeric",
+    CorrectionMap = c(yabs="numeric",rowid="integer", location_id="integer", bare="numeric", burnt="numeric", crops="numeric",
                       fallow_shifting_cultivation = "numeric", grassland="numeric", lichen_and_moss="numeric",
                       shrub="numeric", snow_and_ice="numeric", tree="numeric", urban_built_up="numeric",
                       wetland_herbaceous="numeric", water="numeric", not_sure="numeric", dominant_lc="factor",
@@ -27,7 +27,10 @@ CorrectSFDataTypes = function(df)
     ClimCovars = GetCovarNames("climate")
     CCCorrection = rep("numeric", length(ClimCovars))
     names(CCCorrection) = ClimCovars
-    CorrectionMap = c(CorrectionMap, CCCorrection)
+    SoilCovars = c(GetLandGISCovars(), GetSoilGridsCovars(), GetSoilGridsClasses())
+    SCCorrection = rep("numeric", length(SoilCovars))
+    names(SCCorrection) = SoilCovars
+    CorrectionMap = c(CorrectionMap, CCCorrection, SCCorrection)
     
     for (i in 1:length(CorrectionMap))
     {
@@ -75,6 +78,7 @@ TidyData = function(df, classes = GetCommonClassNames())
     
     # Also drop the level, otherwise sampling would try to sample from 0 points
     df = UpdateDominantLC(df, classes)
+    
     return(df)
 }
 
@@ -133,6 +137,7 @@ LoadTrainingAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-b
     st_crs(AllData) = 4326
     AllData$field_1 = NULL # Remove duplicate ID
     AllData = suppressWarnings(CorrectSFDataTypes(AllData))
+    AllData = PostprocessCovars(AllData) # Outlier removal
     
     if (zerovalues)
         AllData = AddZeroValueColumns(AllData)
@@ -145,6 +150,7 @@ LoadValidationAndCovariates = function(zerovalues=FALSE, filename="../data/pixel
     st_crs(AllData) = 4326
     AllData$field_1 = NULL # Remove duplicate ID
     AllData = suppressWarnings(CorrectSFDataTypes(AllData))
+    AllData = PostprocessCovars(AllData) # Outlier removal
     
     # Unify class names
     names(AllData)[names(AllData) == "trees"] = "tree"
@@ -155,6 +161,43 @@ LoadValidationAndCovariates = function(zerovalues=FALSE, filename="../data/pixel
     if (zerovalues)
         AllData = AddZeroValueColumns(AllData)
     return(AllData)
+}
+
+PostprocessCovars = function(df)
+{
+    df$amplitude1 = log(df$amplitude1+0.01)
+    df$amplitude2 = log(df$amplitude2+0.001)
+    # Outlier sine/cosine values; very conservative
+    df$co[df$co > 1000 | df$co < -1000] = NA
+    df$si[df$si > 1000 | df$si < -1000] = NA
+    df$co2[df$co2 > 1000 | df$co2 < -1000] = NA
+    df$si2[df$si2 > 1000 | df$si2 < -1000] = NA
+    # All bioclimatic ones from 12
+    df$bio12 = log(df$bio12+1)
+    df$bio13 = log(df$bio13+1)
+    df$bio14 = log(df$bio14+1)
+    df$bio16 = log(df$bio16+1)
+    df$bio17 = log(df$bio17+1)
+    df$bio18 = log(df$bio18+1)
+    df$bio19 = log(df$bio19+1)
+    df$ORCDRC.M.sl7 = log(df$ORCDRC.M.sl7+1)
+    df$ORCDRC.M.sl6 = log(df$ORCDRC.M.sl6+1)
+    df$ORCDRC.M.sl5 = log(df$ORCDRC.M.sl5+1)
+    df$ORCDRC.M.sl4 = log(df$ORCDRC.M.sl4+1)
+    df$ORCDRC.M.sl3 = log(df$ORCDRC.M.sl3+1)
+    df$ORCDRC.M.sl2 = log(df$ORCDRC.M.sl2+1)
+    df$ORCDRC.M.sl1 = log(df$ORCDRC.M.sl1+1)
+    df$OCSTHA.M.sd1 = log(df$OCSTHA.M.sd1+1)
+    df$OCSTHA.M.sd2 = log(df$OCSTHA.M.sd2+1)
+    df$OCSTHA.M.sd3 = log(df$OCSTHA.M.sd3+1)
+    df$OCSTHA.M.sd4 = log(df$OCSTHA.M.sd4+1)
+    df$OCSTHA.M.sd5 = log(df$OCSTHA.M.sd5+1)
+    df$OCSTHA.M.sd6 = log(df$OCSTHA.M.sd6+1)
+    df$tri = log(df$tri+0.1)
+    df$roughness = log(df$roughness+1)
+    df$slope = log(df$slope+0.1)
+    
+    return(df)
 }
 
 LoadVIMatrix = function(Tile, VI, Band, DataDir="../data/pixel-based/vegetation-indices")
