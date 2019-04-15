@@ -8,7 +8,7 @@ MaskedOutputDir = "../data/pixel-based/masked-ndvi/"
 HarmonicsOutputDir = "../data/pixel-based/covariates/"
 DataDir = "../data/pixel-based/validation/"
 
-TileList = GetTileList(LoadGlobalValidationData())
+TileList = GetTileList(LoadGlobalRasterPoints())
 Dates = LoadRawDataDirs()$date
 
 TemporalFilter = function(TimeSeriesToMask, TimeSeriesBlue, Dates, span=0.3, threshold=c(-30, Inf), ...)
@@ -68,5 +68,5 @@ GlobalNDVIHarmonics = foreach(Tile=iter(TileList), .combine="rbind") %do%
     NDVIHarmonics
 }
 
-write.csv(GlobalNDVIHarmonics, paste0(HarmonicsOutputDir, "harmonics-validation.csv"))
+write.csv(GlobalNDVIHarmonics, paste0(HarmonicsOutputDir, "harmonics-raster.csv"))
 

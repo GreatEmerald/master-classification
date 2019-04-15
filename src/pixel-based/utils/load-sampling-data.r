@@ -142,6 +142,17 @@ LoadGlobalValidationData = function(filename="../data/pixel-based/raw/data_daini
     return(SamplePoints)
 }
 
+# Load points for a wall-to-wall global map
+LoadGlobalRasterPoints = function(filename="../data/pixel-based/global-point-grid-02deg.csv")
+{
+    SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=X", "Y_POSSIBLE_NAMES=Y"))
+    st_crs(SamplePoints) = 4326
+    names(SamplePoints)[names(SamplePoints) == "X"] = "x"
+    names(SamplePoints)[names(SamplePoints) == "Y"] = "y"
+    SamplePoints$Tile = as.factor(ProbaVTileID(SamplePoints))
+    return(SamplePoints)
+}
+
 LoadTrainingAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-based/covariates/all.csv")
 {
     AllData = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
