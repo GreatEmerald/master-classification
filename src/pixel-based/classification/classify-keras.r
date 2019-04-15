@@ -11,7 +11,7 @@ library(keras)
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
 source("pixel-based/utils/crossvalidation.r")
-registerDoParallel(cores=10)
+#registerDoParallel(cores=10)
 source("pixel-based/utils/subpixel-confusion-matrix.r") # Replace with package eventually
 source("utils/accuracy-statistics.r")
 
@@ -28,7 +28,7 @@ TargetMatrix = as.matrix(Data.df[,GetCommonClassNames()])/100
 CovarMatrix = as.matrix(apply(Data.df[,GetAllPixelCovars()], 2, scale))
 
 model = keras_model_sequential() %>% 
-  layer_dense(units = 256, activation = 'relu', input_shape = c(51)) %>% 
+  layer_dense(units = 256, activation = 'relu', input_shape = c(313)) %>% 
   #layer_dropout(rate = 0.5) %>% 
   layer_batch_normalization() %>%
   layer_dense(units = 256, activation = 'relu') %>% 
