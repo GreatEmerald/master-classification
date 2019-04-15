@@ -9,22 +9,23 @@ source("utils/GetProbaVQCMask.r")
 source("pixel-based/utils/ProbaVDataDirs.r")
 
 DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M"
-OutputDir = "../data/pixel-based/validation"
+OutputDir = "../data/pixel-based/raster"
 
 SamplePoints = LoadGlobalValidationData()
 
 # Tiles to process
-TileList = GetTileList(SamplePoints)
+TileList = levels(SamplePoints$Tile)#GetTileList(SamplePoints)
 
 # Generate a list of directories to read from.
 # This list is semi-static: we don't read in more files when they arrive. Else the lengths would differ.
 DataDirsDates = LoadRawDataDirs(RequiredTiles = TileList)
 DataDirs = DataDirsDates$dir
 
-BuildProbaVTileVRT = function(DataDirs, VI, Tile, Band=1, OutputDir="../../userdata/master-classification/pixel-based/vrt/validation/")
+BuildProbaVTileVRT = function(TileFiles, VI, Tile, Band=1, OutputDir="../../userdata/master-classification/pixel-based/vrt/raster/")
 {
-    TileFiles = list.files(DataDirs, pattern=glob2rx(paste0("PROBAV_S5_TOC_", Tile, "*", VI, ".tif")), full.names=TRUE)
     Dates = getProbaVinfo(TileFiles)$date
+    if (!dir.exists(OutputDir))
+        dir.create(OutputDir)
     VRTFile = file.path(OutputDir, paste0(Tile, "-", VI, "-", Band, ".vrt"))
     if (!file.exists(VRTFile))
     {
@@ -47,11 +48,14 @@ ExtractPixelData = function(ExtractLocations, DataDirs, VI, Tile, Band, QCMatrix
     if (file.exists(OutputCSVFile))
         return(read.csv(OutputCSVFile))
         
-    BandStack = BuildProbaVTileVRT(DataDirs, VI, Tile, Band)
+    TileFiles = list.files(DataDirs, pattern=glob2rx(paste0("PROBAV_S5_TOC_", Tile, "*", VI, ".tif")), full.names=TRUE)
+    BandStack = BuildProbaVTileVRT(TileFiles, VI, Tile, Band)
     BandValueMatrix = extract(BandStack, ExtractLocations)
     BandValueMatrix[!QCMatrix %in% FilterQC] = NA
     colnames(BandValueMatrix) = paste0(Band, "-", c(getZ(BandStack)))
     rownames(BandValueMatrix) = ExtractLocations$location_id
+    if (!dir.exists(OutputDir))
+        dir.create(OutputDir)
     write.csv(BandValueMatrix, OutputCSVFile)
     return(BandValueMatrix)
 }
@@ -60,14 +64,16 @@ registerDoParallel(cores=4)
 foreach(Tile=iter(TileList), .inorder=FALSE, .multicombine=TRUE, .verbose=TRUE) %dopar%
 {
     PointsInTile = SamplePoints[SamplePoints$Tile == Tile,]
-    if (nrow(PointsInTile) < 1)
+    TileFiles = list.files(DataDirs, pattern=glob2rx(paste0("PROBAV_S5_TOC_", Tile, "*", VI, ".tif")), full.names=TRUE)
+    if (nrow(PointsInTile) < 1) {
         print(paste("Skipping tile", Tile, "because there are no samples here"))
-    else
-    {
+    } else if (length(TileFiles) == 0) {
+        print(paste("Skipping tile", Tile, "because there are no files at", DataDirs))
+    } else {
         print(paste("Processing tile", Tile))
         
         # Extract QC values
-        QCStack = BuildProbaVTileVRT(DataDirs, "SM", Tile)
+        QCStack = BuildProbaVTileVRT(TileFiles, "SM", Tile)
         print(any(duplicated(getZ(QCStack))))
         print(system.time(
             QCInTile <- extract(QCStack, PointsInTile)
