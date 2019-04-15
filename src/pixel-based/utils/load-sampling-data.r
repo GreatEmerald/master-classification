@@ -55,15 +55,26 @@ UpdateDominantLC = function(df, classes = GetCommonClassNames())
 }
 
 # Remove rows with NAs and drop covariates with too few observations
-TidyData = function(df, classes = GetCommonClassNames())
+TidyData = function(df, classes = GetCommonClassNames(), drop.cols=GetUncorrelatedPixelCovars())
 {
-    Before = nrow(df)
-    DropRows = apply(df[,GetAllPixelCovars()], 1, function(x){any(is.na(x))})
-    df = df[!DropRows,]
-    After = nrow(df)
-    print(paste("Dropped NAs, data frame size reduced from", Before, "to", After))
-    Before = After
-    stopifnot(all(apply(df[,GetAllPixelCovars()], 2, function(x){sum(is.na(x))}) / nrow(df) * 100 == 0))
+    # Remove rows that have NA in some key columns.
+    # NA in elevation means that the point is not actually in Africa. Remove those.
+    # NA in amplitude1 means that we have no time series over the area, so remove these (though likely it's bare soil)
+    # NA in evi means that we didn't have an image from the summer of year 2016. That's a lot of points to remove; but the alternative is dropping those covars altogether.
+    # NA in soil or climate covars means it's over water.
+
+    if (is.character(drop.cols))
+    {
+        Before = nrow(df)
+        DropRows = apply(df[,drop.cols], 1, function(x){any(!is.finite(x))})
+        #DropRows = apply(df[,GetAllPixelCovars()], 1, function(x){any(is.na(x))})
+        df = df[!DropRows,]
+        After = nrow(df)
+        print(paste("Dropped NAs, data frame size reduced from", Before, "to", After))
+        Before = After
+        
+        stopifnot(all(apply(df[,drop.cols], 2, function(x){sum(is.na(x))}) / nrow(df) * 100 == 0))
+    }
 
     # Recalculate dominant classes based on all classes
     df = UpdateDominantLC(df, GetIIASAClassNames(FALSE))

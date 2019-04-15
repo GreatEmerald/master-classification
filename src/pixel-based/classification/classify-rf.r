@@ -1,6 +1,8 @@
 # Predict pixels using Random Forest
 
 library(ranger)
+library(hydroGOF)
+library(histmatch) # devtools::install_github("krlmlr/histmatch")
 #library(caret)
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
@@ -9,17 +11,23 @@ source("pixel-based/utils/subpixel-confusion-matrix.r")
 source("utils/accuracy-statistics.r")
 
 Data.df = LoadTrainingAndCovariates()
+Data.df[is.na(Data.df)] = -9999
+#Data.sp = Data.df
 Data.df = as.data.frame(Data.df)
 Data.df = AddZeroValueColumns(Data.df)
 Data.df = TidyData(Data.df)
+#Data.sp = Data.sp[rownames(Data.df),]
 
 # Make sure there are no NAs left
 apply(Data.df[,GetAllPixelCovars()], 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 
 # Validation data
 Data.val = LoadValidationAndCovariates()
+Data.val[is.na(Data.val)] = -9999
+Val.sp = Data.val
 class(Data.val) = "data.frame"
 Data.val = TidyData(Data.val) # Drops around 450 # Now drops ~800!
+Val.sp = Val.sp[rownames(Data.val),]
 
 apply(Data.val, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 
@@ -128,10 +136,10 @@ RFCV = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE,
 }
 
 # No CV
-RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE, scale=TRUE, covars=GetAllPixelCovars(), ...)
+RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE, scale=TRUE, covars=GetAllPixelCovars(), overwrite=FALSE, ...)
 {
     OutputFile = file.path(outdir, paste0("predictions-", filename))
-    if (file.exists(OutputFile))
+    if (!overwrite && file.exists(OutputFile))
         return(read.csv(OutputFile))
     
     Covariates = covars
@@ -145,8 +153,17 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
     {
         print(Class)
         ZeroClass = paste("no", Class, sep=".")
+        
+        # Dynamic feature selection: drop any covariates that have any NA values for this particular class
+        RelevantRows = TrainingSet[[Class]] > 0 # Could also just look at dominant
+        RemainingCovars = !apply(TrainingSet[RelevantRows, Covariates], 2, function(x){any(!is.finite(x))})
+        RemainingNames = names(RemainingCovars)[RemainingCovars]
+        print(paste("Covars with no NA values:", toString(RemainingNames)))
+        # TODO: finish implementing
             
-        Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
+        #Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
+        Formula =  formula(paste0(Class, "~", paste(RemainingNames, collapse = "+")))
+        
         if (InflationAdjustment > 0)
         {
             if (InflationAdjustment == 1) # Zero-inflation only
@@ -198,6 +215,9 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
             
         Predictions[,Class] = ClassPredictions
     }
+    
+    write.csv(Predictions, OutputFile, row.names=FALSE)
+    
     if (scale)
     {
         Predictions = Predictions / rowSums(Predictions) * 100
@@ -206,15 +226,14 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
         Predictions[is.nan(Predictions)] = 0
     }
     
-    write.csv(Predictions, OutputFile, row.names=FALSE)
     return(as.data.frame(Predictions))
 }
 
 # Three-step classification. More complex and doesn't share much code with the other approach, hence separate function.
-RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, covars=GetAllPixelCovars(), ...)
+RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, covars=GetAllPixelCovars(), overwrite=FALSE, ...)
 {
     OutputFile = file.path(outdir, paste0("predictions-threestep-", filename))
-    if (file.exists(OutputFile))
+    if (!overwrite && file.exists(OutputFile))
         return(read.csv(OutputFile))
         
     Covariates = covars
@@ -254,10 +273,10 @@ RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, covars=Ge
         Predictions[!PureValPredictions, Class] = RegPredictions$predictions
     }
     
+    write.csv(Predictions, OutputFile, row.names=FALSE)
+    
     if (scale)
         Predictions = Predictions / rowSums(Predictions) * 100
-    
-    write.csv(Predictions, OutputFile, row.names=FALSE)
     return(as.data.frame(Predictions))
 }
 
@@ -273,16 +292,51 @@ cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.6
 PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)
 AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.3%, MAE 9.1%
 SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.60
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.68
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.68
 
 # Holdout with the ~100 uncorrelated covars
-PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-validation.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars())
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.4%, MAE 9.1%, pretty much no change but much better to explain
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.59
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.68
+PredictionUnscaled = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-validation.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars(), scale=FALSE)
+PredictionResult = PredictionUnscaled / rowSums(PredictionUnscaled) * 100
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.6%, MAE 9.2%, pretty much no change but much better to explain
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.60
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.67
+NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100) # All decent
 PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates")
 PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, single model, uncorrelated covariates")
+# Temp: more plot types to test
+ggplot(data.frame(Prediction=unlist(PredictionResult[,Classes]), Truth=unlist(Truth[,Classes])), aes(Truth, Prediction)) +
+        stat_density_2d(geom = "point", aes(size = stat(sqrt(density))), n = 50, contour = FALSE) + scale_size_area(max_size=10) +
+        geom_abline(slope=1, intercept=0)
+ggplot(data.frame(Prediction=unlist(PredictionResult[,Classes]), Truth=unlist(Truth[,Classes])), aes(Truth, Prediction)) +
+        stat_density_2d(geom = "raster", aes(fill = stat(sqrt(density))), n=50, contour = FALSE) + scale_fill_distiller(palette="Spectral") +
+        geom_abline(slope=1, intercept=0)
+ggplot(data.frame(Prediction=unlist(PredictionResult[,Classes]), Truth=unlist(Truth[,Classes])), aes(Truth, Prediction)) +
+        geom_point(alpha=0.01, size=2) + 
+        geom_abline(slope=1, intercept=0)
+
 OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates")
+ResidualBubblePlot(PredictionResult[,Classes], Truth[,Classes], Val.sp[["geometry"]])
+## Make a raster image
+# Points
+plot(Val.sp["shrub"])
+PR.sp = st_set_geometry(PredictionResult, Val.sp[["geometry"]])
+plot(PR.sp["shrub"])
+library(raster)
+rast <- raster()
+extent(rast) <- extent(PR.sp)
+ncol(rast) <- 100
+nrow(rast) <- 100
+PR.ras = rasterize(PR.sp[Classes], rast, fun=max)
+plot(PR.ras)
+# Histogram matching
+HMPredictions = HistMatchPredictions(PredictionUnscaled[,Classes], Data.df[,Classes])
+AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 17.2%, MAE 7.6%, better on average but bigger outliers, ME is collapsed and then increased due to linear scale
+SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 73%±2, kappa 0.65, this is much better
+NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.64
+NSE(HMPredictions/100, Truth[,Classes]/100) # All decent but quite a bit lower in comparison
+PlotHex(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched")
+PlotBox(HMPredictions, Truth[,Classes], main="RF, single model, uncorrelated covariates, histogram matched")
+OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched") # 0 and 100 accuracy skyrockets, but the middle plummets
 
 PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
@@ -302,10 +356,22 @@ PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-two
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
 AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.3%, MAE 8.0%
 SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 72±2%, kappa 0.63 - this is slightly better
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.62
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.59
+NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100) # shrubs are negative!
+PlotHex(PredictionResult[,"shrub"], Truth[,"shrub"], "RF shrubs, two models, zeroes truncated, uncorrelated covariates")
+PlotHex(PredictionResult[,"tree"], Truth[,"tree"], "RF trees, two models, zeroes truncated, uncorrelated covariates")
 PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, two models, zeroes truncated, uncorrelated covariates")
 PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, two models, zeroes truncated, uncorrelated covariates")
 OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, two models, zeroes truncated, uncorrelated covariates")
+HMPredictions = HistMatchPredictions(PredictionResult[,Classes], Data.df[,Classes])
+AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 18.8%, MAE 8.0%
+SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 72±2%, kappa 0.63 - no change
+NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.56
+NSE(HMPredictions/100, Truth[,Classes]/100) # Very bad ones got better, but good ones got worse
+PlotHex(HMPredictions, Truth[,Classes], "RF, two models, zeroes truncated, uncorrelated covariates, histogram matched")
+PlotBox(HMPredictions, Truth[,Classes], main="RF, two models, zeroes truncated, uncorrelated covariates, histogram matched")
+OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, two models, zeroes truncated, uncorrelated covariates, histogram matched") # Worse across the board
+
 
 PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-threestep-truncated-allcovars-10folds.csv", InflationAdjustment = 2, TruncateZeroes = TRUE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
@@ -345,13 +411,43 @@ SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE,
 cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.65
 
 # Three-model approach with uncorrelated covars
-PredictionResult = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-uncorrelated-validation.csv",  covars=GetUncorrelatedPixelCovars())
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.2%, MAE 8.5%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 70±4%, kappa 0.61
+PredictionUnscaled = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-uncorrelated-unscaled-validation.csv", scale=FALSE, covars=GetUncorrelatedPixelCovars())
+PredictionResult = PredictionUnscaled / rowSums(PredictionUnscaled) * 100
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.6%, MAE 8.2%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±4%, kappa 0.64
 cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.61
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.59
+NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100)
 PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, three models, uncorrelated covariates")
 PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, three models, uncorrelated covariates")
 OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, three models, uncorrelated covariates")
+ResidualBubblePlot(PredictionResult[,Classes], Truth[,Classes], Val.sp[["geometry"]])
+HMPredictions = HistMatchPredictions(PredictionUnscaled[,Classes], Data.df[,Classes])
+AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 21.3%, MAE 9.1%
+SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 68±3%, kappa 0.61
+NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.46
+NSE(HMPredictions/100, Truth[,Classes]/100) # shrubs are awful
+PlotHex(HMPredictions, Truth[,Classes], "RF, three models, uncorrelated covariates, histogram matched")
+PlotBox(HMPredictions, Truth[,Classes], main="RF, three models, uncorrelated covariates, histogram matched")
+OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, three models, uncorrelated covariates, histogram matched") # Helps zeroes, but really hurts the middle
+# Excluding extremes
+HMPredictions = HistMatchPredictions(PredictionUnscaled[,Classes], Data.df[,Classes], extremes=0)
+AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 20.3%, MAE 9.9%
+SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 66±8%, kappa 0.58
+NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.51
+NSE(HMPredictions/100, Truth[,Classes]/100) # Not terrible now
+PlotHex(HMPredictions, Truth[,Classes], "RF, three models, uncorrelated covariates, histogram matched except extremes (A)")
+PlotBox(HMPredictions, Truth[,Classes], main="RF, three models, uncorrelated covariates, histogram matched except extremes (A)")
+OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, three models, uncorrelated covariates, histogram matched except extremes (A)")
+HMPredictions = HistMatchPredictions(PredictionUnscaled[,Classes], Data.df[,Classes], extremes=-1)
+AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 20.6%, MAE 9.1%
+SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 66±8%, kappa 0.60
+NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.50
+NSE(HMPredictions/100, Truth[,Classes]/100) # Terrible again
+PlotHex(HMPredictions, Truth[,Classes], "RF, three models, uncorrelated covariates, histogram matched except extremes (B)")
+PlotBox(HMPredictions, Truth[,Classes], main="RF, three models, uncorrelated covariates, histogram matched except extremes (B)")
+OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, three models, uncorrelated covariates, histogram matched except extremes (B)")
+
 
 AST = AccuracyStatTable(PredictionResult[,Classes], Truth[,Classes])
 print(AST)
@@ -390,4 +486,150 @@ mean(PurityPredictions == Data.val$pure) # 81% accuracy, 85% if using 100% as a 
 PureData = Data.val[PurityPredictions,]
 ClassFormula = update.formula(FullFormula, paste0("dominant.lc ~ ."))
 ClassModel = ranger(ClassFormula, Data.val[PurityPredictions,])
+
+## Test all covars and fewer training vs fewer covars and more training
+Data.df = LoadTrainingAndCovariates()
+Data.df = as.data.frame(Data.df)
+Data.df = AddZeroValueColumns(Data.df)
+Data.df = TidyData(Data.df)
+Data.val = LoadValidationAndCovariates()
+class(Data.val) = "data.frame"
+Data.val = TidyData(Data.val) # Drops around 450 # Now drops ~800!
+Classes = GetCommonClassNames()
+Truth = Data.val[,Classes]
+PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-validation-nabyrow.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars())
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.4%, MAE 9.1%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.59
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.67
+NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100) # All decent
+PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates, NA removed by row")
+PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, single model, uncorrelated covariates, NA removed by row")
+OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates, NA removed by row")
+
+
+
+
+Data.df = LoadTrainingAndCovariates()
+Data.df = as.data.frame(Data.df)
+Data.df = AddZeroValueColumns(Data.df)
+Data.df[is.na(Data.df)] = -1
+Data.df = TidyData(Data.df) # 28000 vs 26000
+Data.val = LoadValidationAndCovariates()
+class(Data.val) = "data.frame"
+Data.val[is.na(Data.val)] = -1
+Data.val = TidyData(Data.val) # 3500 vs 2700
+Classes = GetCommonClassNames()
+Truth = Data.val[,Classes]
+PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-validation-naminusone.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars())
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.6%, MAE 9.2%, slight increase
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.60
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.67
+NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100) # All decent, water is much better
+PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates, NA set to -1")
+PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, single model, uncorrelated covariates, NA set to -1")
+OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates, NA set to -1")
+# Water is much better, bare soil is much worse
+
+# what if we set -9999?
+Data.df = LoadTrainingAndCovariates()
+Data.df = as.data.frame(Data.df)
+Data.df = AddZeroValueColumns(Data.df)
+Data.df[is.na(Data.df)] = -9999
+Data.df = TidyData(Data.df) # 28000 vs 26000
+Data.val = LoadValidationAndCovariates()
+class(Data.val) = "data.frame"
+Data.val[is.na(Data.val)] = -9999
+Data.val = TidyData(Data.val) # 3500 vs 2700
+Classes = GetCommonClassNames()
+Truth = Data.val[,Classes]
+PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-validation-naminusnine.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars())
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.6%, MAE 9.1%, slightly better
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.60
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.67
+NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100) # All decent, water is much better
+PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates, NA set to -9999")
+PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, single model, uncorrelated covariates, NA set to -9999")
+OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates, NA set to -9999")
+# No change
+
+# And how about if we filter out the bare soil
+Data.df = LoadTrainingAndCovariates()
+Data.df = as.data.frame(Data.df)
+Data.df = AddZeroValueColumns(Data.df)
+Data.df = TidyData(Data.df, drop.cols=c("co", "slope")) # 28500 still
+Data.df[is.na(Data.df)] = -9999
+Data.df = TidyData(Data.df) # 28000
+Data.val = LoadValidationAndCovariates()
+class(Data.val) = "data.frame"
+Data.val = TidyData(Data.val, drop.cols=c("co", "slope")) # 3500
+Data.val[is.na(Data.val)] = -9999
+Data.val = TidyData(Data.val) # 3500
+Classes = GetCommonClassNames()
+Truth = Data.val[,Classes]
+PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-validation-naminusnine-noslope.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars())
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.6%, MAE 9.2%, slightly worse again
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.60
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.68
+NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100) # All decent, water is much better
+PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates, NA set to -9999")
+PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, single model, uncorrelated covariates, NA set to -9999")
+OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates, NA set to -9999")
+# No change
+# So just filling with -9999 is fine
+
+## Try to histmatch only the middle
+
+Data.df = LoadTrainingAndCovariates()
+Data.df = as.data.frame(Data.df)
+Data.df = AddZeroValueColumns(Data.df)
+Data.df[is.na(Data.df)] = -9999
+Data.df = TidyData(Data.df) # 28000 vs 26000
+Data.val = LoadValidationAndCovariates()
+class(Data.val) = "data.frame"
+Data.val[is.na(Data.val)] = -9999
+Data.val = TidyData(Data.val) # 3500 vs 2700
+Classes = GetCommonClassNames()
+Truth = Data.val[,Classes]
+
+# Test simply without double rescaling
+PredictionResultUnscaled = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-unscaled-validation.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars(), scale=FALSE)
+PredictionResult = PredictionResultUnscaled / rowSums(PredictionResultUnscaled) * 100
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.6%, MAE 9.2%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.60
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.67
+NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100) # All decent
+PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates")
+PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, single model, uncorrelated covariates")
+OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, single model, uncorrelated covariates")
+# Histogram matching
+HMPredictions = HistMatchPredictions(PredictionResultUnscaled[,Classes], Data.df[,Classes])
+AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 22.0%, MAE 9.7%, terrible
+SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 66%±2, kappa 0.57, this is much worse
+NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.43
+NSE(HMPredictions/100, Truth[,Classes]/100) # Awful, shrubs are off
+PlotHex(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched")
+PlotBox(HMPredictions, Truth[,Classes], main="RF, single model, uncorrelated covariates, histogram matched")
+OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched") # 0 and 100 accuracy skyrockets, but the middle plummets
+
+# And now if we try to match only the non-extremes
+# Type 0: just ignore extreme values
+HMPredictions = HistMatchPredictions(PredictionResultUnscaled[,Classes], Data.df[,Classes], extremes=0)
+AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 22.0%, MAE 14.2%, the worst
+SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 51%±7, kappa 0.42
+NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.43
+NSE(HMPredictions/100, Truth[,Classes]/100) # Negatives
+PlotHex(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched except extremes")
+PlotBox(HMPredictions, Truth[,Classes], main="RF, single model, uncorrelated covariates, histogram matched except extremes")
+OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched except extremes") # 0 and 100 accuracy skyrockets, but the middle plummets
+
+# That was awful as expected, now to the quantile method (results should about equal the standard method)
+HMPredictions = HistMatchPredictions(PredictionResultUnscaled[,Classes], Data.df[,Classes], extremes=-1)
+AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 18.6%, MAE 9.9%, just a bit worse
+SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 65%±5, kappa 0.57
+NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.59
+NSE(HMPredictions/100, Truth[,Classes]/100) # All positive but all worse
+PlotHex(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched except extremes, quantiles")
+PlotBox(HMPredictions, Truth[,Classes], main="RF, single model, uncorrelated covariates, histogram matched except extremes, quantiles")
+OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched except extremes, quantiles") # 0 and 100 accuracy skyrockets, but the middle plummets
+
 

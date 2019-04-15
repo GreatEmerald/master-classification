@@ -69,7 +69,7 @@ Oversample = function(Data, fold_column = Data[[FactorName]], seed=0xfedbeef)
 PlotHex = function(predicted, observed, main="")
 {
     hp = ggplot(data.frame(Prediction=unlist(predicted), Truth=unlist(observed)), aes(Truth, Prediction)) +
-        geom_hex() + xlim(0, 100) + ylim(0, 100) +
+        geom_hex() +# xlim(0, 100) + ylim(0, 100) +
         scale_fill_distiller(palette="Spectral", trans="log") + #log scale, 7 was the oranges
         geom_abline(slope=1, intercept=0) + ggtitle(main)
     return(hp)
@@ -151,4 +151,53 @@ OneToOneStatPlot = function(predicted, observed, main="")
         geom_errorbar(aes(ymax=accuracy+sd, ymin=accuracy-sd), position="dodge") +
         ggtitle(main))
     return(OOTable)
+}
+
+# Spatial residual bubbleplot
+# Predicted and observed should be data.frames with 100 as max value
+# none.threshold: What to take as "no bias"; ==0 is very rare, and 5% off is fine
+ResidualBubblePlot = function(predicted, observed, geometry, none.threshold=5, main="")
+{
+    Resids = predicted-observed
+    Resids.sf = st_set_geometry(Resids, geometry)
+    Resids.long = reshape2::melt(Resids.sf, id.vars="geometry", variable.name="class")
+    Resids.long$size = abs(Resids.long$value)
+    Resids.long$type = ifelse(Resids.long$value > none.threshold, "positive", ifelse(Resids.long$value < -none.threshold, "negative", "none"))
+    ggplot(Resids.long) + geom_sf(aes(colour=type, size=size), alpha=0.5) + 
+        scale_colour_manual(values=c(positive="red", none="green", negative="blue")) + 
+        scale_size(range=c(0.1, 1), breaks=c(0, 20, 40, 60, 80)) + 
+        facet_wrap("class") + ggtitle(main)
+}
+
+# Perform histogram matching for each class
+# extremes is about whether to match extremes; 1 is yes, 0 is not for predicted 0/100, -1 is not for the corresponding quantile
+HistMatchPredictions = function(predicted, training=LoadTrainingAndCovariates(), extremes=1)
+{
+    HMPredictions = predicted
+    for (Class in names(predicted))
+    {
+        if (extremes == 1) {
+            HMPredictions[,Class] = histmatch(predicted[,Class], training[,Class])
+        } else {
+            if (extremes == 0) {
+                ExtremeRowsP = predicted[,Class] == 0 | predicted[,Class] == 100
+            } else if (extremes == -1) {
+                PercentileT0 = mean(training[,Class] == 0)
+                PercentileT100 = 1-mean(training[,Class] == 100)
+                ExtremeRowsP = predicted[,Class] < quantile(predicted[,Class], PercentileT0) |
+                               predicted[,Class] > quantile(predicted[,Class], PercentileT100)
+            }
+            ExtremeRowsT = training[,Class] == 0 | training[,Class] == 100
+            HMPredictions[!ExtremeRowsP,Class] = histmatch(predicted[!ExtremeRowsP,Class], training[!ExtremeRowsT,Class])
+        }
+    }
+        
+    # Sometimes, the histograms match in the way that everything becomes 0, so it's impossible to scale everything.
+    # In cases like that, restore original values.
+    ZeroRows = apply(HMPredictions, 1, function(x)all(x==0))
+    HMPredictions[ZeroRows,] = predicted[ZeroRows,]
+    # Scale
+    HMPredictions = HMPredictions / rowSums(HMPredictions) * 100
+    
+    return(HMPredictions)
 }
