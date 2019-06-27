@@ -70,7 +70,8 @@ PlotHex = function(predicted, observed, main="")
 {
     hp = ggplot(data.frame(Prediction=unlist(predicted), Truth=unlist(observed)), aes(Truth, Prediction)) +
         geom_hex() +# xlim(0, 100) + ylim(0, 100) +
-        scale_fill_distiller(palette="Spectral", trans="log") + #log scale, 7 was the oranges
+        scale_fill_gradient2(high="red", mid=muted("red"), low="grey90", midpoint=log(1000), trans="log") +
+        #scale_fill_distiller(palette="Spectral", trans="log") + #log scale, 7 was the oranges
         geom_abline(slope=1, intercept=0) + ggtitle(main)
     return(hp)
 }

@@ -290,8 +290,9 @@ cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.6
 
 # Holdout validation
 PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.3%, MAE 9.1%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 68%±4, kappa 0.60
+PredictionResult = PredictionUnscaled / rowSums(PredictionUnscaled) * 100
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.4%, MAE 8.9%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 69%±4, kappa 0.61±0.06
 NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.68
 
 # Holdout with the ~100 uncorrelated covars
@@ -328,11 +329,19 @@ ncol(rast) <- 100
 nrow(rast) <- 100
 PR.ras = rasterize(PR.sp[Classes], rast, fun=max)
 plot(PR.ras)
+Val.ras = rasterize(Val.sp[Classes], rast, fun=max)
+plot(Val.ras)
+
+plotRGB(Val.ras, "shrub", "tree", "grassland", stretch="lin")
+plotRGB(PR.ras, "shrub", "tree", "grassland", stretch="lin")
+writeRaster(PR.ras, "../rf-2m-raster.tif")
+writeRaster(Val.ras, "../validation-raster.tif")
+
 # Histogram matching
 HMPredictions = HistMatchPredictions(PredictionUnscaled[,Classes], Data.df[,Classes])
-AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 17.2%, MAE 7.6%, better on average but bigger outliers, ME is collapsed and then increased due to linear scale
-SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 73%±2, kappa 0.65, this is much better
-NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.64
+AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 22.0%, MAE 9.7%, awful, but ME is collapsed
+SCM(HMPredictions/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 66%±2, kappa 0.58±0.03
+NSE(unlist(HMPredictions/100), unlist(Truth[,Classes]/100)) # 0.43
 NSE(HMPredictions/100, Truth[,Classes]/100) # All decent but quite a bit lower in comparison
 PlotHex(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched")
 PlotBox(HMPredictions, Truth[,Classes], main="RF, single model, uncorrelated covariates, histogram matched")
@@ -354,8 +363,8 @@ cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.6
 # Holdout and uncorrelated two-step
 PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-uncorrelated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE, covars=GetUncorrelatedPixelCovars())
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.3%, MAE 8.0%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 72±2%, kappa 0.63 - this is slightly better
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.8%, MAE 8.0%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 72±2%, kappa 0.65±0.03 - this is slightly better
 NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.59
 NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100) # shrubs are negative!
 PlotHex(PredictionResult[,"shrub"], Truth[,"shrub"], "RF shrubs, two models, zeroes truncated, uncorrelated covariates")
@@ -371,7 +380,12 @@ NSE(HMPredictions/100, Truth[,Classes]/100) # Very bad ones got better, but good
 PlotHex(HMPredictions, Truth[,Classes], "RF, two models, zeroes truncated, uncorrelated covariates, histogram matched")
 PlotBox(HMPredictions, Truth[,Classes], main="RF, two models, zeroes truncated, uncorrelated covariates, histogram matched")
 OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, two models, zeroes truncated, uncorrelated covariates, histogram matched") # Worse across the board
-
+svg("../rf-2m-mae.svg", width=9, height=3)
+barplot(as.matrix(AccuracyStatTable(PredictionResult[,Classes], Truth[,Classes]))[,"MAE"], main="Mean Absolute Error")
+dev.off()
+svg("../rf-2m-me.svg", width=9, height=3)
+barplot(as.matrix(AccuracyStatTable(PredictionResult[,Classes], Truth[,Classes]))[,"ME"], main="Mean Error (bias)")
+dev.off()
 
 PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-threestep-truncated-allcovars-10folds.csv", InflationAdjustment = 2, TruncateZeroes = TRUE)
 PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
@@ -419,6 +433,7 @@ cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.6
 NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.59
 NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100)
 PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, three models, uncorrelated covariates")
+# ggsave("../2019-05-09-rf-3m-uncor-hex.pdf", width=5, height=4)
 PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, three models, uncorrelated covariates")
 OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, three models, uncorrelated covariates")
 ResidualBubblePlot(PredictionResult[,Classes], Truth[,Classes], Val.sp[["geometry"]])

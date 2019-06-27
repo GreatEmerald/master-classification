@@ -7,10 +7,13 @@ source("pixel-based/utils/covariate-names.r")
 source("pixel-based/utils/crossvalidation.r")
 
 Data.df = LoadTrainingAndCovariates()
-class(Data.df) = "data.frame"
+Data.df[is.na(Data.df)] = -9999
+Data.df = as.data.frame(Data.df)
+Data.df = AddZeroValueColumns(Data.df)
 Data.df = TidyData(Data.df)
 
 Data.val = LoadValidationAndCovariates()
+Data.val[is.na(Data.val)] = -9999
 class(Data.val) = "data.frame"
 Data.val = TidyData(Data.val)
 
@@ -130,7 +133,9 @@ plot_heatmap = function(Importances)
 
 RawImportancesRMSE = GetPermutationImportance()
 AdjustedImportancesRMSE = t(t(RawImportancesRMSE) / sapply(CovarGroups, length))
+svg("../rf-importances-rmse.svg", width = 12)
 plot_heatmap(RawImportancesRMSE)
+dev.off()
 plot_heatmap(AdjustedImportancesRMSE)
 RawImportancesMAE = GetPermutationImportance("MAE")
 AdjustedImportancesMAE = t(t(RawImportancesMAE) / sapply(CovarGroups, length))
