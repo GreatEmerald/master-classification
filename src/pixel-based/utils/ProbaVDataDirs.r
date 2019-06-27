@@ -27,8 +27,14 @@ ProbaVValidDirs = function(RequiredFiles = c("RADIOMETRY", "NDVI", "SM"), Requir
             CollectionFiles = list.files(CollectionDir, pattern=SearchPattern)
             if (length(CollectionFiles) == length(RequiredFiles) * length(RequiredTiles))
                 ValidCollectionDir = CollectionDir
-            else
+            else {
                 print(paste("Collection directory", CollectionDir, "does not contain required files, skipping."))
+                for (Tile in RequiredTiles)
+                {
+                    if (!any(grep(Tile, CollectionFiles)))
+                        print(paste("Tile not found:", Tile))
+                }
+            }
         }
         if (length(ValidCollectionDir) > 0)
             ValidDirs = c(ValidDirs, ValidCollectionDir)

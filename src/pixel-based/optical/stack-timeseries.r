@@ -11,10 +11,11 @@ source("pixel-based/utils/ProbaVDataDirs.r")
 DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M"
 OutputDir = "../data/pixel-based/raster"
 
-SamplePoints = LoadGlobalValidationData()
+SamplePoints = LoadGlobalRasterPoints()
 
 # Tiles to process
 TileList = levels(SamplePoints$Tile)#GetTileList(SamplePoints)
+TileList = TileList[!TileList %in% c("X00Y08", "X00Y09", "X00Y11", "X01Y05", "X02Y07", "X02Y08", "X02Y09", "X03Y08", "X03Y09", "X04Y08", "X06Y05", "X08Y07", "X10Y10", "X10Y13", "X11Y13", "X13Y01", "X14Y03", "X14Y09", "X14Y12", "X15Y13", "X23Y07", "X23Y08", "X23Y09", "X23Y12", "X24Y12", "X25Y12", "X29Y07", "X31Y06", "X32Y06", "X33Y06", "X34Y08", "X35Y07")] # Remove incomplete tiles
 
 # Generate a list of directories to read from.
 # This list is semi-static: we don't read in more files when they arrive. Else the lengths would differ.
@@ -64,7 +65,7 @@ registerDoParallel(cores=4)
 foreach(Tile=iter(TileList), .inorder=FALSE, .multicombine=TRUE, .verbose=TRUE) %dopar%
 {
     PointsInTile = SamplePoints[SamplePoints$Tile == Tile,]
-    TileFiles = list.files(DataDirs, pattern=glob2rx(paste0("PROBAV_S5_TOC_", Tile, "*", VI, ".tif")), full.names=TRUE)
+    TileFiles = list.files(DataDirs, pattern=glob2rx(paste0("PROBAV_S5_TOC_", Tile, "*", "SM", ".tif")), full.names=TRUE)
     if (nrow(PointsInTile) < 1) {
         print(paste("Skipping tile", Tile, "because there are no samples here"))
     } else if (length(TileFiles) == 0) {
