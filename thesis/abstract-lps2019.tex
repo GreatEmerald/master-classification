@@ -1,0 +1,47 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8]{inputenc}
+
+%opening
+\title{Fractional land cover mapping of Africa using machine learning techniques on Proba-V image time series}
+\author{Dainius Masiliūnas, Nandin-Erdene Tsendbazar, Martin Herold, Jan Verbesselt}
+
+\begin{document}
+
+\maketitle
+
+% 300-1500 words
+\begin{abstract}
+% Innovation
+% - Fuzzy method
+% - Continental with application for global upscaling
+
+The current common practice for producing global land cover maps is to represent land cover classes as discrete units, e.g. a pixel may be labelled as grassland, tree cover, or open water. However, in reality, the area covered by the pixel is hardly ever homogeneous, it may be e.g. trees surrounded by grass next to water. This mismatch between the reality and its representation in maps causes a loss in precision, as only the dominant land cover class can be represented in such ``hard'' classification maps. This problem is worse for coarse resolution land cover maps. A common workaround to this issue is to define mosaic classes, i.e. land cover classes that are combinations of other land cover classes, such as open forest (combination of grassland and tree cover). However, this approach leads to increasingly complex map legends and confusion about the definitions.
+
+Our proposed solution to this issue is to employ fractional land cover mapping: for each pixel, define the proportion of the pixel that each considered land cover class occupies. This allows expressing an open forest as e.g. 40\% grassland, 60\% tree cover, and 0\% of the rest of the land cover classes. This ``fuzzy'' classification not only allows to more precisely express the land cover that exists in reality, but also gives users the flexibility to derive their own maps with a customised legend. For instance, if a user defines open forest as one that has less than 50\% tree cover and at least 30\% of grassland, they can generate a map with this definition from land cover fraction data, rather than relying on the definition that the mapmakers provide.
+Exhaustive land cover fraction data is desired by a number of user communities, but to date there is no single global nor continental scale map that would provide fractions of each common land cover class.
+% Potentially also SVMs
+%Fractional land cover mapping has been attempted in the past, but so far its application has been limited to small scale (i.e. city-scale) areas, and/or individual land cover classes (such as tree cover), rather than taking all the classes into account simultaneously. In addition, there is a multitude of regression algorithms that can be used to derive fractional information, but only a few of them have been compared at a time so far. The covariates that help to predict the land cover fractions are also an important consideration.
+
+In this paper, we tested the application of fractional land cover mapping over the continent of Africa. We compared the performance of four very different machine learning algorithms: random forest regression, multilayer perceptron neural networks, partial least squares regression, fuzzy nearest prototype classification and logistic regression. In order to allow the algorithms to make good predictions about land cover fractions, six types of covariates were used: spectral bands and vegetation indices derived from the Proba-V 100 m TOC reflectance data; temporal features derived from the full time series of said imagery; terrestrial features from a digital elevation model; soil properties and climate data from global models, and location. We compared the contribution of each of the covariate types to improving the accuracy of the model predictions.
+
+One challenge when dealing with fractional data is the data imbalance: in most locations, only a single or a few classes dominate a pixel, with the rest taking up 0\% of the pixel. Values at the extremes (0\% and 100\%, i.e. pure pixels) are difficult for machine learning algorithms to estimate. We propose a new solution to this problem by combining three models: two classification models and one regression model. The first classification model determines whether a pixel is pure, and if so, it is processed using a classification model, otherwise it is processed with a regression model.
+
+% Validation
+% - 28k points
+% - Independent training and validation sets
+
+The models were trained on 26668 training points throughout Africa. The training points, collected as part of the Copernicus Global Land System: Dynamic Land Cover (CGLS-LC100) project, describe the fraction that each land cover class (bare soil, crops, grassland, shrubs, trees, urban/built-up, water and wetlands) occupies within a 100×100 m area, which is aligned to the grid used for Proba-V 100 m products. After the models were trained, their land cover class fraction predictions were compared with an independent validation set of 3617 points, which are likewise aligned to the Proba-V grid. Overall as well as per-class RMSE, MAE, and ME statistics were used to compare the models. In addition, the subpixel confusion-uncertainty matrix was used to analyse which classes were the most difficult to separate for each model, as well as to derive overall, users' and producers' accuracies and the kappa statistic. The models were compared with each other, as well as against a control intercept-only model.
+
+Preliminary results show that the three-model approach increases the overall accuracy of the predictions by more accurately modelling the extreme values. From the machine learning models that were compared, random forest regression reaches the highest overall accuracy of 71\%. This is comparable to the reported accuracies of the current ``hard'' global land cover maps.
+%while providing a more precise representation of the land surface and providing users with the flexibility of customising the legend of their maps.
+Covariate importance analysis shows that spectral covariates are the most important for predicting land cover fractions, followed by the location, terrestrial and temporal covariates.
+
+% Application
+% - User-specific legends
+% - More precise representation
+
+The application of the method on data gathered throughout Africa shows the applicability of the method to a variety of land cover conditions, ranging from highly heterogeneous agricultural landscapes to homogeneous bodies of water. Given enough reference data from other parts of the world and enough computational power, the method could be applied globally to upscale it to a global fractional land cover map. Such a map would cater to users with different fields of focus. Among other benefits, more precise estimation of land cover allows for 1) improved climate models to help reach Sustainable Development Goals (for which land cover is a key variable), 2) facilitate the making of models for vegetation and urban area dynamics, and 3) help governments and land owners keep better track of relevant land cover and its change. In addition, this work contributes to the operationalisation of the CGLS-LC100 project, which aims to produce exhaustive global land cover fractions as an operational product.
+
+\end{abstract}
+
+\end{document}

@@ -1,1 +1,0 @@
-This directory contains scripts that are optimised for running computations on training/validation pixels only. Instead of processing entire tiles, we process individual pixels out of tiles. The other scripts are for processing entire tiles.
