@@ -41,3 +41,23 @@ ProbaVValidDirs = function(RequiredFiles = c("RADIOMETRY", "NDVI", "SM"), Requir
     }
     return(ValidDirs)
 }
+
+LoadRawDataDirs = function(CacheFile = "../data/DataDirs.csv", CheckValidity=TRUE, ...)
+{
+    
+    if (!file.exists(CacheFile))
+    {
+        if (CheckValidity) {
+            DataDirs = ProbaVValidDirs(...)
+        } else {
+            DataDirs = list.dirs(ProbaVDataDirs(...), recursive=FALSE)
+        }
+        DataDirsDates = data.frame(dir=DataDirs, date=as.Date(basename(dirname(DataDirs)), format="%Y%m%d"))
+        write.csv(DataDirsDates, CacheFile, row.names=FALSE)
+    } else {
+        print(paste("Reusing existing list of data directories from", CacheFile))
+        DataDirsDates = read.csv(CacheFile, stringsAsFactors=FALSE)
+        DataDirsDates$date = as.Date(DataDirsDates$date)
+    }
+    return(DataDirsDates)
+}

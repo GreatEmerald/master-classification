@@ -7,14 +7,7 @@ TileDir = "../work/extract-from"
 DataDir = "/data/MTDA/TIFFDERIVED/PROBAV_L3_S5_TOC_100M"
 VRTDir = "../work/raw-vrts"
 VIs = c("SM", "RADIOMETRY", "NDVI")
-DataDirCache = "../data/DataDirs.csv"
-
-if (!file.exists(DataDirCache))
-{
-    DataDirs = ProbaVDataDirs()
-    DataDirs = data.frame(DataDirs, date=basename(DataDirs))
-    write.csv(DataDirs, DataDirCache, row.names = FALSE)
-} else DataDirs = read.csv(DataDirCache, stringsAsFactors = FALSE)
+DataDirs = LoadRawDataDirs("../data/pixel-based/DataDirs-NG.csv", FALSE) # There was some bug tha caused all VRTs to be from all dates
 
 if (!dir.exists(VRTDir))
     dir.create(VRTDir, recursive = TRUE)

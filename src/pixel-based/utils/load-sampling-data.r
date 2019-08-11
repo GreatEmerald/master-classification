@@ -256,22 +256,6 @@ LoadVIMatrix = function(Tile, VI, Band, DataDir="../data/pixel-based/vegetation-
     return(Result)
 }
 
-LoadRawDataDirs = function(CacheFile = "../data/DataDirs.csv", ...)
-{
-    
-    if (!file.exists(CacheFile))
-    {
-        DataDirs = ProbaVValidDirs(...)
-        DataDirsDates = data.frame(dir=DataDirs, date=as.Date(basename(dirname(DataDirs)), format="%Y%m%d"))
-        write.csv(DataDirsDates, CacheFile, row.names=FALSE)
-    } else {
-        print(paste("Reusing existing list of data directories from", CacheFile))
-        DataDirsDates = read.csv(CacheFile, stringsAsFactors=FALSE)
-        DataDirsDates$date = as.Date(DataDirsDates$date)
-    }
-    return(DataDirsDates)
-}
-
 # Get a list of relevant tiles (tiles with observations over Africa at the moment)
 GetTileList = function(SamplePoints = NULL)
 {
