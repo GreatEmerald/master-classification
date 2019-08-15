@@ -49,7 +49,7 @@ GetSchema = function()
 }
 
 FindDuplicates = function(df) {
-    Distances = abs(CurrentDataset$X-df["X"])+abs(CurrentDataset$Y-df["Y"])
+    Distances = abs(CurrentDataset$X-df[["X"]])+abs(CurrentDataset$Y-df[["Y"]])
     Duplicates = sum(Distances==0) # Adjust fuzz threshold if necessary
     return(Duplicates)
 }
@@ -64,6 +64,28 @@ GetMemUsage = function(...)
     print(sort(sapply(c(ls(.GlobalEnv), ...),function(x){object.size(get(x))}), TRUE)[1:5]/1024/1024) # In MiB
 }
 
+# Make the DF spatial and append to file
+AppendToFile = function(VIDF, filename, layername)
+{
+    if (!is.null(VIDF))
+    {
+        #print(paste("VI", layername, "parsed, converting into format to put into", filename))
+        # Remove duplicates - otherwise we may be biasing the classifier
+        VIDF = VIDF[!duplicated(VIDF[c("X", "Y")]),]
+        
+        # Make spatial
+        VISpatial = st_as_sf(VIDF, coords=c("X", "Y"), dim="XY", remove=FALSE)
+        rm(VIDF)
+        names(VISpatial)[names(VISpatial) == "geometry"] = "geom"
+        st_geometry(VISpatial) = "geom" # rename to match GPKG name
+        st_crs(VISpatial) = 4326
+        
+        # Append
+        st_write(VISpatial, filename, layername, update=TRUE)
+        print(paste("VI", layername, "successfully updated in file", filename))
+    } else print(paste("No changes detected for", layername, "so the input file is not touched."))
+}
+
 #cl = makeCluster(2, outfile="")
 #registerDoSNOW(cl)
 
@@ -72,20 +94,21 @@ GetMemUsage = function(...)
 for (VI in unique(VINames))
 {
     # Will error in case file or layer doesn't exist, set it to NULL then
-    CurrentDataset = tryCatch(st_read(DBFile, VI), error=function(e)NULL)
+    # Read only the coordinates to save a lot of RAM
+    CurrentDataset = tryCatch(st_read(DBFile, VI, query=paste0("SELECT X, Y FROM '", VI, "'")), error=function(e)NULL)
     
     # Progress bar
     pbi = 1
-    #pb = txtProgressBar(min = pbi, max = sum(VINames == VI), style = 3)
-    iterations = sum(VINames == VI)
-    pb = txtProgressBar(max = iterations, style = 3)
-    progress = function(n) setTxtProgressBar(pb, n)
+    pb = txtProgressBar(min = pbi, max = sum(VINames == VI), style = 3)
+    #iterations = sum(VINames == VI)
+    #pb = txtProgressBar(max = iterations, style = 3)
+    #progress = function(n) setTxtProgressBar(pb, n)
     
     # Parse each file
     #VIDF=NULL
-    #for (fileidx in c(229, 235))#rev(which(VINames == VI)))
-    VIDF = foreach (fileidx=which(VINames == VI), .combine=rbind, .multicombine=TRUE,
-                    .options.snow = list(progress = progress), .packages=c("readr", "xml2", "foreach")) %do%
+    for (fileidx in rev(which(VINames == VI)))
+    #VIDF = foreach (fileidx=which(VINames == VI), .combine=rbind, .multicombine=TRUE,
+    #                .options.snow = list(progress = progress), .packages=c("readr", "xml2", "foreach")) %do%
     {
         
         #print(paste("a", fileidx))
@@ -98,7 +121,7 @@ for (VI in unique(VINames))
         if (XMLString == "")
         {
             print(paste("Input file", XMLFile, "is empty. Presuming that it is the one that is currently being extracted, skipping."))
-            return(NULL)
+            next
         }
         ValidXML = paste0('<Tile id="', Tile, '">', XMLString, "</Tile>")
         rm(XMLString)
@@ -118,10 +141,12 @@ for (VI in unique(VINames))
             # Get XY coords
             X = XYTable[pointidx, 1]
             Y = XYTable[pointidx, 2]
-            # If we already have such an entry, skip it
-            #print("e")
-            #GetMemUsage(ls())
             
+            # No Proba-V data above 75th latitude
+            if (Y > 75)
+                return(NULL)
+            
+            # If we already have such an entry, skip it
             if (!is.null(CurrentDataset))
             {
                 Duplicates = FindDuplicates(data.frame(X, Y))
@@ -185,39 +210,21 @@ for (VI in unique(VINames))
         setTxtProgressBar(pb, pbi)
         
         if (is.null(TSDF))
-            return(NULL)
+            next
         #print(paste("d", fileidx))
         Result = cbind.data.frame(Tile=Tile, TSDF)
         rm(TSDF)
         #str(Result)
-        Result
+        #Result
         #VIDF = rbind(VIDF, Result)
+        AppendToFile(Result, DBFile, VI)
+        rm(Result)
     }
     close(pb)
-    
-    if (!is.null(VIDF))
-    {
-        print(paste("VI", VI, "parsed, converting into format to put into", DBFile))
-        # Remove duplicates - otherwise we may be biasing the classifier
-        VIDF = VIDF[!duplicated(VIDF),]
-        
-        # Make spatial
-        VISpatial = st_as_sf(VIDF, coords=c("X", "Y"), dim="XY", remove=FALSE)
-        rm(VIDF)
-        names(VISpatial)[names(VISpatial) == "geometry"] = "geom"
-        st_geometry(VISpatial) = "geom" # rename to match GPKG name
-        st_crs(VISpatial) = 4326
-        
-        # Append
-        VISpatial = rbind(CurrentDataset, VISpatial)
-        st_write(VISpatial, DBFile, VI, layer_options="OVERWRITE=YES")
-        print(paste("VI", VI, "successfully updated in file", DBFile))
-    } else print(paste("No changes detected for", VI, "so the input file is not touched."))
 }
 
 rm(PointObj)
 rm(ValidXML)
-rm(VISpatial)
 rm(CurrentDataset)
 gc()
 
@@ -230,9 +237,8 @@ VINames = sapply(NameParse, function(x){ifelse(length(x)>2, paste0(x[1], "-", x[
 
 for (VI in unique(VINames))
 {
-    if (file.exists(DBFile)) {
-        CurrentDataset = st_read(DBFile, VI)
-    } else CurrentDataset = NULL
+    CurrentDataset = tryCatch(st_read(DBFile, VI, query=paste0("SELECT X, Y FROM '", VI, "'")), error=function(e)NULL)
+    
     # Parse each file
     CSVList = lapply(ImportCSVs[VINames==VI], read.csv)
     CSVList = Reduce(rbind, CSVList) # Make one huge DF (this requires 1 GiB RAM)
@@ -259,7 +265,7 @@ for (VI in unique(VINames))
     if (!is.null(nrow(CSVList)) && nrow(CSVList) > 0)
     {
         # Remove internal duplicates - otherwise we may be biasing the classifier
-        CSVList = CSVList[!duplicated(CSVList),]
+        CSVList = CSVList[!duplicated(CSVList[c("X", "Y")]),]
         
         # Make spatial
         VISpatial = st_as_sf(CSVList, coords=c("X", "Y"), dim="XY", remove=FALSE)
@@ -269,8 +275,8 @@ for (VI in unique(VINames))
         st_crs(VISpatial) = 4326
     
         # Append
-        VISpatial = rbind(CurrentDataset, VISpatial)
-        st_write(VISpatial, DBFile, VI, layer_options="OVERWRITE=YES")
+        #VISpatial = rbind(CurrentDataset, VISpatial)
+        st_write(VISpatial, DBFile, VI)
         rm(VISpatial)
     }
 }
