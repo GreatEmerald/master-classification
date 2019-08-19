@@ -14,6 +14,7 @@ library(doSNOW)
 
 source("pixel-based/utils/ProbaVDataDirs.r")
 source("pixel-based/utils/ProbaVTileID.r")
+source("pixel-based/utils/db-io.r")
 
 # We have the old-style CSVs from the first round to ingest, and also the new-style XMLs.
 # The database can hold also covariate data etc., it's all just a matter of adding more columns.
@@ -48,11 +49,7 @@ GetSchema = function()
     return(CurrentLine[!duplicated(names(CurrentLine))]) # dedup
 }
 
-FindDuplicates = function(df) {
-    Distances = abs(CurrentDataset$X-df[["X"]])+abs(CurrentDataset$Y-df[["Y"]])
-    Duplicates = sum(Distances==0) # Adjust fuzz threshold if necessary
-    return(Duplicates)
-}
+FindDuplicates = function(df) { FindSpatialDuplicates(df, CurrentDataset) }
 
 GetMinDistance = function(df) {
     Distances = abs(CurrentDataset$X-df["X"])+abs(CurrentDataset$Y-df["Y"])
@@ -111,10 +108,10 @@ for (VI in unique(VINames))
     #                .options.snow = list(progress = progress), .packages=c("readr", "xml2", "foreach")) %do%
     {
         
-        #print(paste("a", fileidx))
         Tile = TileNames[fileidx]
         VIName = VINames[fileidx]
         XMLFile = ImportXMLs[fileidx]
+        #print(paste("Processing", XMLFile))
         
         # Fix the XMLs, because it's only valid with a root node
         XMLString = read_file(XMLFile)
@@ -150,7 +147,7 @@ for (VI in unique(VINames))
             if (!is.null(CurrentDataset))
             {
                 Duplicates = FindDuplicates(data.frame(X, Y))
-                if (is.null(Duplicates))
+                if (!is.finite(Duplicates))
                     stop("Duplicates doesn't exist!")
                 if (Duplicates > 0)
                 {

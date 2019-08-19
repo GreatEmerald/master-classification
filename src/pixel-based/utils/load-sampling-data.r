@@ -112,7 +112,7 @@ ReclassifyAndScale = function(df, output.classes=GetCommonClassNames())
 }
 
 # Load the global model training dataset (IIASA).
-LoadGlobalTrainingData = function(filename="../data/pixel-based/raw/training_data_100m_16042018_V2.csv")
+LoadGlobalTrainingData = function(filename="../data/pixel-based/raw-points/training_data_2015_100m_20190402_V4.csv")
 {
     # Read data
     SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
@@ -132,7 +132,7 @@ LoadGlobalTrainingData = function(filename="../data/pixel-based/raw/training_dat
 }
 
 # Load the validation dataset (WUR)
-LoadGlobalValidationData = function(filename="../data/pixel-based/raw/data_dainius.csv")
+LoadGlobalValidationData = function(filename="../data/pixel-based/raw-points/refdata_world_africa_included_locations_data20190709.csv")
 {
     SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=sample_x", "Y_POSSIBLE_NAMES=sample_y"), stringsAsFactors = FALSE)
     st_crs(SamplePoints) = 4326
@@ -143,7 +143,7 @@ LoadGlobalValidationData = function(filename="../data/pixel-based/raw/data_daini
 }
 
 # Load points for a wall-to-wall global map
-LoadGlobalRasterPoints = function(filename="../data/pixel-based/global-point-grid-02deg.csv")
+LoadGlobalRasterPoints = function(filename="../data/pixel-based/raw-points/global-point-grid-02deg.csv")
 {
     SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=X", "Y_POSSIBLE_NAMES=Y"))
     st_crs(SamplePoints) = 4326
