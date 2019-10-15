@@ -31,16 +31,17 @@ model = keras_model_sequential() %>%
   layer_dense(units = 256, activation = 'relu', input_shape = c(313)) %>% 
   #layer_dropout(rate = 0.5) %>% 
   layer_batch_normalization() %>%
-  layer_dense(units = 256, activation = 'relu') %>% 
+  layer_dense(units = 128, activation = 'relu') %>% 
   layer_batch_normalization() %>%
   layer_dropout(rate = 0.5) %>% 
-  layer_dense(units = 256, activation = 'relu') %>% 
+  layer_dense(units = 64, activation = 'relu') %>% 
   layer_batch_normalization() %>%
   layer_dropout(rate = 0.5) %>% 
   layer_dense(units = 7, activation = 'sigmoid') %>% 
   compile(
     loss = 'mean_absolute_error',
-    optimizer = optimizer_adam(lr = 0.0001, decay = 1e-5), #optimizer_sgd(lr = 0.01, decay = 1e-4, momentum = 0.9, nesterov = TRUE),
+    optimizer = optimizer_adam(lr = 0.0001, decay = 1e-5),
+    #optimizer = optimizer_sgd(lr = 0.01, decay = 1e-4, momentum = 0.9, nesterov = TRUE),
     metrics = c('accuracy')     
   )
 
@@ -67,7 +68,7 @@ schedule = function(epoch, lr)
 }
 
 
-history = fit(model, CovarMatrix, TargetMatrix, epochs = 300, batch_size = 256, validation_split=0.3)
+history = fit(model, CovarMatrix, TargetMatrix, epochs = 100, batch_size = 256, validation_split=0.3)
               # callbacks=list(callback_learning_rate_scheduler(schedule),callback_reduce_lr_on_plateau(monitor = "val_loss", factor = 0.1,patience = 10)))
 plot(history)
 
@@ -75,8 +76,9 @@ plot(history)
 #score <- model %>% evaluate(x_test, y_test, batch_size = 128)
 #score
 
-ValidMatrix = as.matrix(ValidationData)
-preds = predict(model, CovarMatrix)
+ValidMatrix = as.matrix(ValidationData[,colnames(CovarMatrix)])
+TruthMatrix = as.matrix(ValidationData[,GetCommonClassNames()])
+preds = predict(model, ValidMatrix)
 colnames(preds) = colnames(TargetMatrix)
 head(preds)
 rowSums(preds)
@@ -86,11 +88,13 @@ round(head(preds), 2)
 
 library(ggplot2)
 
-ggplot(data.frame(Prediction=c(preds), Truth=c(TargetMatrix)), aes(Prediction, Truth)) +
+NormPreds = preds * 1/rowSums(preds)
+
+ggplot(data.frame(Prediction=c(NormPreds), Truth=c(TargetMatrix)), aes(Prediction, Truth)) +
     geom_hex() +
     scale_fill_distiller(palette=7, trans="log") + #log scale
     geom_abline(slope=1, intercept=0) + ggtitle("Neural Networks, full model")
 
-AccuracyStatisticsPlots(as.data.frame(preds), as.data.frame(TargetMatrix)) # 19.5% RMSE
-SCM(as.data.frame(preds), as.data.frame(TargetMatrix), plot=TRUE, totals=TRUE, scale = TRUE)
+AccuracyStatisticsPlots(as.data.frame(NormPreds), as.data.frame(TruthMatrix/100)) # 19.5% RMSE
+SCM(NormPreds, as.data.frame(TruthMatrix/100), plot=TRUE, totals=TRUE, scale = TRUE)
 
