@@ -182,3 +182,7 @@ TSWLatexianTemp*
 
 # packrat
 src/packrat/src/
+
+# Ignore the working directory for script-generated data
+work
+data/pixel-based/raw-points

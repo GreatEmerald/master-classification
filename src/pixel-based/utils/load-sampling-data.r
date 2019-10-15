@@ -112,7 +112,7 @@ ReclassifyAndScale = function(df, output.classes=GetCommonClassNames())
 }
 
 # Load the global model training dataset (IIASA).
-LoadGlobalTrainingData = function(filename="../data/pixel-based/raw/training_data_100m_16042018_V2.csv")
+LoadGlobalTrainingData = function(filename="../data/pixel-based/raw-points/training_data_2015_100m_20190402_V4.csv")
 {
     # Read data
     SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
@@ -132,18 +132,18 @@ LoadGlobalTrainingData = function(filename="../data/pixel-based/raw/training_dat
 }
 
 # Load the validation dataset (WUR)
-LoadGlobalValidationData = function(filename="../data/pixel-based/raw/data_dainius.csv")
+LoadGlobalValidationData = function(filename="../data/pixel-based/raw-points/refdata_world_africa_included_locations_data20190709.csv")
 {
-    SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=sample_x", "Y_POSSIBLE_NAMES=sample_y"), stringsAsFactors = FALSE)
+    SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=sample_x,subpix_mean_x", "Y_POSSIBLE_NAMES=sample_y,subpix_mean_y"), stringsAsFactors = FALSE)
     st_crs(SamplePoints) = 4326
-    names(SamplePoints)[names(SamplePoints) == "sample_x"] = "x"
-    names(SamplePoints)[names(SamplePoints) == "sample_y"] = "y"
+    names(SamplePoints)[names(SamplePoints) == "sample_x" | names(SamplePoints) == "subpix_mean_x"] = "x"
+    names(SamplePoints)[names(SamplePoints) == "sample_y" | names(SamplePoints) == "subpix_mean_y"] = "y"
     SamplePoints$Tile = as.factor(ProbaVTileID(SamplePoints))
     return(SamplePoints)
 }
 
 # Load points for a wall-to-wall global map
-LoadGlobalRasterPoints = function(filename="../data/pixel-based/global-point-grid-02deg.csv")
+LoadGlobalRasterPoints = function(filename="../data/pixel-based/raw-points/global-point-grid-02deg.csv")
 {
     SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=X", "Y_POSSIBLE_NAMES=Y"))
     st_crs(SamplePoints) = 4326
@@ -254,22 +254,6 @@ LoadVIMatrix = function(Tile, VI, Band, DataDir="../data/pixel-based/vegetation-
     if (length(Result) > 0 && is.null(dim(Result)))
         Result = t(as.matrix(Result))
     return(Result)
-}
-
-LoadRawDataDirs = function(CacheFile = "../data/DataDirs.csv", ...)
-{
-    
-    if (!file.exists(CacheFile))
-    {
-        DataDirs = ProbaVValidDirs(...)
-        DataDirsDates = data.frame(dir=DataDirs, date=as.Date(basename(dirname(DataDirs)), format="%Y%m%d"))
-        write.csv(DataDirsDates, CacheFile, row.names=FALSE)
-    } else {
-        print(paste("Reusing existing list of data directories from", CacheFile))
-        DataDirsDates = read.csv(CacheFile, stringsAsFactors=FALSE)
-        DataDirsDates$date = as.Date(DataDirsDates$date)
-    }
-    return(DataDirsDates)
 }
 
 # Get a list of relevant tiles (tiles with observations over Africa at the moment)
