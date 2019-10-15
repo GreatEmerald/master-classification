@@ -18,8 +18,18 @@ SGURL = function(points)
 # ulproperty is the field in the response to unlist, "properties" for SG and "response" for LG
 GetSGMatrix = function(url, ulproperty="properties")
 {
-    print(paste("Downloading data from URL:", url))
-    SGData = rjson::fromJSON(RCurl::getURL(url))
+    SGData = NULL
+    while (is.null(SGData))
+    {
+        print(paste("Downloading data from URL:", url))
+        SGData = try(rjson::fromJSON(RCurl::getURL(url)))
+        if (class(SGData) == "try-error")
+        {
+            print("Could not download the data, retrying in 30s.")
+            SGData = NULL
+            Sys.sleep(30)
+        }
+    }
     QR = unlist(SGData[[ulproperty]])
     RRow = as.numeric(QR)
     return(matrix(RRow, ncol=length(RRow), dimnames=list(NULL, names(QR))))

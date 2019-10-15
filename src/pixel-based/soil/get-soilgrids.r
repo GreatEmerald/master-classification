@@ -5,7 +5,8 @@ source("pixel-based/utils/db-io.r")
 
 DataDir = "../data/pixel-based/soil"
 OutFile = file.path(DataDir, "soilgrids-raw.gpkg")
-PointsToExtract = LoadGlobalTrainingData()
+OutName = "Training"#"Validation"
+PointsToExtract = LoadGlobalTrainingData()#LoadGlobalValidationData()
 
 if (!dir.exists(DataDir))
     dir.create(DataDir)
@@ -16,23 +17,30 @@ if (!dir.exists(DataDir))
 #AllPoints = read.csv(file.path(DataDir, "covariates", "soil-merged.csv"))
 #nrow(AllPoints) # 35581 points
 
-CurrentDataset = tryCatch(st_read(OutFile, query=paste0("SELECT X, Y FROM 'soilgrids-raw'")), error=function(e)NULL)
+CurrentDataset = tryCatch(st_read(OutFile, OutName, query=paste0("SELECT X, Y FROM '", OutName, "'")), error=function(e)NULL)
 
 # Input: a row of the input DF.
 # Output: TRUE on a successful write to a database.
-ReadWriteDB = function(df, outfile = OutFile, curdata = CurrentDataset)
+ReadWriteDB = function(df, outfile = OutFile, outname=OutName, curdata = CurrentDataset)
 {
+    stopifnot(!is.null(df$x) && !is.null(df$y))
     IsDuplicated = FindSpatialDuplicates(data.frame(X=df$x, Y=df$y), CurrentDataset)
     if (IsDuplicated > 0) # Skip, already exists
         return()
     
     PointData = GetSGMatrix(SGURL(df))
     SPD = DFtoSF(data.frame(X=df$x, Y=df$y, PointData))
-    st_write(SPD, outfile)
+    st_write(SPD, outfile, outname)
     return(TRUE)
 }
 
 apply(PointsToExtract, 1, ReadWriteDB)
+
+# For some reason, some responses are shorter (fewer covariates returned).
+# Used ALTER TABLE to add those missing columns.
+# "ALUM3S.M.xd2" "EALKCL.M.xd2" "ECAX.M.xd2"   "EMGX.M.xd2"   "ENAX.M.xd2"   "EXKX.M.xd2" "NTO.M.xd2"
+# "ALUM3S.M.xd1"          "DRAINFAO.M.DRAINFAO_M" "EALKCL.M.xd1"          "ECAX.M.xd1"           
+# "EMGX.M.xd1"            "ENAX.M.xd1"            "EXKX.M.xd1"            "NTO.M.xd1"
 
 # urls = SGURL(PointsToExtract) # Get all URLs
 # 

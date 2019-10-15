@@ -11,6 +11,7 @@ library(readr) # To put a root node over XMLs
 library(xml2) # New-style XMLs
 library(foreach)
 library(doSNOW)
+library(pryr)
 
 source("pixel-based/utils/ProbaVDataDirs.r")
 source("pixel-based/utils/ProbaVTileID.r")
@@ -24,7 +25,8 @@ source("pixel-based/utils/db-io.r")
 # If they do, check if we can fill in any of NAs.
 
 SourceCoordDir = "../work/extract-from/"
-ImportXMLDir = "../work/extracted-points/"
+ImportXMLDir = "../../userdata/master-classification/work/extracted-points/"
+ProcessedXMLDir = file.path(ImportXMLDir, "processed")
 OutDir = "../data/pixel-based/timeseries/"
 DBFile = file.path(OutDir, "timeseries.gpkg")
 
@@ -37,6 +39,8 @@ VINames = sapply(NameParse, function(x){sub(".xml", "", paste(x[-1], collapse = 
 
 if (!dir.exists(OutDir))
     dir.create(OutDir)
+if (!dir.exists(ProcessedXMLDir))
+    dir.create(ProcessedXMLDir)
 
 options(stringsAsFactors=FALSE, warn = 1)
 
@@ -83,8 +87,8 @@ AppendToFile = function(VIDF, filename, layername)
     } else print(paste("No changes detected for", layername, "so the input file is not touched."))
 }
 
-#cl = makeCluster(2, outfile="")
-#registerDoSNOW(cl)
+cl = makeCluster(2, outfile="")
+registerDoSNOW(cl)
 
 # Read in XML files
 # Go VI-by-VI
@@ -107,6 +111,9 @@ for (VI in unique(VINames))
     #VIDF = foreach (fileidx=which(VINames == VI), .combine=rbind, .multicombine=TRUE,
     #                .options.snow = list(progress = progress), .packages=c("readr", "xml2", "foreach")) %do%
     {
+        gc()
+        print(mem_used())
+	print(fileidx)
         
         Tile = TileNames[fileidx]
         VIName = VINames[fileidx]
@@ -130,6 +137,7 @@ for (VI in unique(VINames))
         if (length(PointObj) != nrow(XYTable))
             stop(paste("Points extracted:", length(PointObj), "Points in the CSV file:", nrow(XYTable), "CSV file:", XYCSVFile, "XML file:", XMLFile))
         
+        print(mem_used())
         #print(paste("b", fileidx))
         #TSDF=NULL
         #for (pointidx in 1:nrow(XYTable))
@@ -205,6 +213,7 @@ for (VI in unique(VINames))
         #print(paste("c", fileidx))
         pbi = pbi+1
         setTxtProgressBar(pb, pbi)
+	file.rename(XMLFile, file.path(ProcessedXMLDir, basename(XMLFile)))
         
         if (is.null(TSDF))
             next
@@ -225,6 +234,7 @@ rm(ValidXML)
 rm(CurrentDataset)
 gc()
 
+if (FALSE) { # disable
 # Also read in old-style CSVs
 OldDir = "../work/old-style/"
 
@@ -277,5 +287,6 @@ for (VI in unique(VINames))
         rm(VISpatial)
     }
 }
+} # end disable
 
-#stopCluster(cl)
+stopCluster(cl)

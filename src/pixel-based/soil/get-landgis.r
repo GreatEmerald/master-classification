@@ -6,24 +6,26 @@ source("pixel-based/utils/db-io.r")
 
 DataDir = "../data/pixel-based/soil"
 OutFile = file.path(DataDir, "landgis-raw.gpkg")
-PointsToExtract = LoadGlobalTrainingData()
+OutName = "Prediction"
+PointsToExtract = LoadGlobalRasterPoints()
 
 if (!dir.exists(DataDir))
     dir.create(DataDir)
 
-CurrentDataset = tryCatch(st_read(OutFile, query=paste0("SELECT X, Y FROM 'soilgrids-raw'")), error=function(e)NULL)
+CurrentDataset = tryCatch(st_read(OutFile, OutName, query=paste0("SELECT X, Y FROM '", OutName, "'")), error=function(e)NULL)
 
 # Input: a row of the input DF.
 # Output: TRUE on a successful write to a database.
-ReadWriteDB = function(df, outfile = OutFile, curdata = CurrentDataset)
+ReadWriteDB = function(df, outfile = OutFile, outname=OutName, curdata = CurrentDataset)
 {
+    stopifnot(!is.null(df$x) && !is.null(df$y))
     IsDuplicated = FindSpatialDuplicates(data.frame(X=df$x, Y=df$y), CurrentDataset)
     if (IsDuplicated > 0) # Skip, already exists
         return()
     
     PointData = GetSGMatrix(LGURL(df), ulproperty="response")
     SPD = DFtoSF(data.frame(X=df$x, Y=df$y, PointData))
-    st_write(SPD, outfile)
+    st_write(SPD, outfile, outname)
     return(TRUE)
 }
 

@@ -4,7 +4,7 @@ indir="/userdata2/master-classification/dem/aster-covars"
 outdir=$indir
 
 # Mosaic all
-gdalbuildvrt ${outdir}/elevation.vrt ${indir}/*.tif || exit 1
+#gdalbuildvrt ${outdir}/elevation.vrt ${indir}/*.tif || exit 1
 
 # Calc DEM params
 gdaldem slope ${outdir}/elevation.vrt ${outdir}/slope.tif -s 111120 \

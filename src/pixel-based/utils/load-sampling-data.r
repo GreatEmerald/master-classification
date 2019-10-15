@@ -134,10 +134,10 @@ LoadGlobalTrainingData = function(filename="../data/pixel-based/raw-points/train
 # Load the validation dataset (WUR)
 LoadGlobalValidationData = function(filename="../data/pixel-based/raw-points/refdata_world_africa_included_locations_data20190709.csv")
 {
-    SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=sample_x", "Y_POSSIBLE_NAMES=sample_y"), stringsAsFactors = FALSE)
+    SamplePoints = st_read(filename, options=c("X_POSSIBLE_NAMES=sample_x,subpix_mean_x", "Y_POSSIBLE_NAMES=sample_y,subpix_mean_y"), stringsAsFactors = FALSE)
     st_crs(SamplePoints) = 4326
-    names(SamplePoints)[names(SamplePoints) == "sample_x"] = "x"
-    names(SamplePoints)[names(SamplePoints) == "sample_y"] = "y"
+    names(SamplePoints)[names(SamplePoints) == "sample_x" | names(SamplePoints) == "subpix_mean_x"] = "x"
+    names(SamplePoints)[names(SamplePoints) == "sample_y" | names(SamplePoints) == "subpix_mean_y"] = "y"
     SamplePoints$Tile = as.factor(ProbaVTileID(SamplePoints))
     return(SamplePoints)
 }

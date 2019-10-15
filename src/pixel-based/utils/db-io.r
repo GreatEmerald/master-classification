@@ -19,9 +19,11 @@ FindSpatialDuplicates = function(df, CurrentDataset, threshold = 0) {
 }
 
 # Get a GPKG-compatible SF object from a data.frame with X and Y attributes
-DFtoSF = function(VIDF)
+DFtoSF = function(VIDF, coords=c("X", "Y"))
 {
-    VISpatial = st_as_sf(VIDF, coords=c("X", "Y"), dim="XY", remove=FALSE)
+    if (!is.data.frame(VIDF))
+        VIDF = as.data.frame(VIDF)
+    VISpatial = st_as_sf(VIDF, coords=coords, dim="XY", remove=FALSE)
     rm(VIDF)
     names(VISpatial)[names(VISpatial) == "geometry"] = "geom"
     st_geometry(VISpatial) = "geom" # rename to match GPKG name
