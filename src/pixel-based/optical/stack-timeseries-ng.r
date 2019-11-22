@@ -113,12 +113,11 @@ for (VI in unique(VINames))
     {
         gc()
         print(mem_used())
-	print(fileidx)
         
         Tile = TileNames[fileidx]
         VIName = VINames[fileidx]
         XMLFile = ImportXMLs[fileidx]
-        #print(paste("Processing", XMLFile))
+        print(paste("Processing", XMLFile))
         
         # Fix the XMLs, because it's only valid with a root node
         XMLString = read_file(XMLFile)
@@ -132,6 +131,7 @@ for (VI in unique(VINames))
         XMLObj = read_xml(ValidXML)
         
         XYCSVFile = SourceCoordFiles[which(basename(SourceCoordFiles) == paste0(Tile, ".csv"))]
+        print(XYCSVFile)
         XYTable = read.table(XYCSVFile, sep=" ")
         PointObj = xml_find_all(XMLObj, "//Report")
         if (length(PointObj) != nrow(XYTable))
@@ -146,6 +146,7 @@ for (VI in unique(VINames))
             # Get XY coords
             X = XYTable[pointidx, 1]
             Y = XYTable[pointidx, 2]
+            print(summary(Y))
             
             # No Proba-V data above 75th latitude
             if (Y > 75)

@@ -222,15 +222,16 @@ PostprocessCovars = function(df)
     return(df)
 }
 
-LoadVIMatrix = function(Tile, VI, Band, DataDir="../data/pixel-based/vegetation-indices")
+LoadVIMatrix = function(Tile = "%", VI, Band = NULL, DBFile="../data/pixel-based/timeseries/timeseries.gpkg")
 {
-    CSVFile = file.path(DataDir, paste0(paste(Tile, VI, Band, sep="-"), ".csv"))
-    if (!file.exists(CSVFile))
+    # Band is deprecated, part of VI now
+    # Tile is optional, just to reduce the number of points in memory
+    if (!file.exists(DBFile))
     {
-        warning(paste("Requested to load VI matrix from a non-existing file:", CSVFile))
+        warning(paste("Requested to load VI matrix from a non-existing file:", DBFile))
         return()
     }
-    Result = as.matrix(read.csv(CSVFile, row.names=1))
+    Result = as.matrix(st_read(DBFile, VI, query=paste0("SELECT * FROM ", VI, " WHERE Tile LIKE '", Tile, "'")))
     # There are cases where elements of the time series are missing (perhaps it's over sea etc.)
     # So we need to make new columns filled with NAs
     Dates = as.character(LoadRawDataDirs()$date)

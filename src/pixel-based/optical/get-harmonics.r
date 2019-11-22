@@ -32,8 +32,8 @@ amplituder = function(co, si)
 GlobalNDVIHarmonics = foreach(Tile=iter(TileList), .combine="rbind") %do%
 {
     # Load time series of blue (for reference) and NDVI (we use that after masking clouds)
-    BlueTS = LoadVIMatrix(Tile, "RADIOMETRY", 3, DataDir = DataDir)
-    NDVITS = LoadVIMatrix(Tile, "NDVI", 1, DataDir = DataDir)
+    BlueTS = LoadVIMatrix(Tile, "RADIOMETRY-3")
+    NDVITS = LoadVIMatrix(Tile, "NDVI")
     
     NDVIFiltered = foreach(i=1:nrow(BlueTS), .combine="rbind", .inorder=TRUE) %do%
     {
