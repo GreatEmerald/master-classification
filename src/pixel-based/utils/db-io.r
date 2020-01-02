@@ -1,4 +1,5 @@
 library(sf)
+library(pbapply)
 
 # Find whether a given point (df, with X and Y attributes) is already in the dataset (CurrentDataset)
 FindSpatialDuplicates = function(df, CurrentDataset, threshold = 0) {
@@ -30,3 +31,16 @@ DFtoSF = function(VIDF, coords=c("X", "Y"))
     st_crs(VISpatial) = 4326
     return(VISpatial)
 }
+
+# Run a specificed function on the time series of input SF and return a compatible SF
+RunSFFunction = function(sfo, fx, subset=TRUE, keepcols=c("X", "Y"), ...)
+{
+    cbind(sfo[subset, keepcols], fx(as.matrix(subset(as.data.frame(sfo), subset=subset, ...))))
+}
+
+# Apply a function to each row of the sf and return the result as a matrix
+ApplySF = function(sfo, fx, subset=TRUE, select=TRUE, cl=NULL, ...)
+{
+    t(pbapply(as.matrix(subset(as.data.frame(sfo), subset=subset, select=select)), 1, fx, ..., cl=cl))
+}
+

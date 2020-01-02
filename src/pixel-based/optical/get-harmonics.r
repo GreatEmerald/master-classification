@@ -1,22 +1,18 @@
 # Script for filtering temporal outliers and extracting harmonic metrics
 
 library(probaV)
-library(foreach)
+library(pbapply)
+#library(foreach)
+library(sf)
 source("pixel-based/utils/load-sampling-data.r")
+source("pixel-based/utils/ProbaVDataDirs.r")
 
-MaskedOutputDir = "../data/pixel-based/masked-ndvi/"
-HarmonicsOutputDir = "../data/pixel-based/covariates/"
-DataDir = "../data/pixel-based/validation/"
+HarmonicsOutputDB = "../data/pixel-based/timeseries/harmonics.gpkg"
+InputDB = "../data/pixel-based/timeseries/timeseries-cloudfree.gpkg"
 
-TileList = GetTileList(LoadGlobalRasterPoints())
+#TileList = GetTileList(LoadGlobalRasterPoints())
 Dates = LoadRawDataDirs()$date
-
-TemporalFilter = function(TimeSeriesToMask, TimeSeriesBlue, Dates, span=0.3, threshold=c(-30, Inf), ...)
-{
-    CloudMask = smoothLoess(TimeSeriesBlue, dates=Dates, res_type="QA", span=span, threshold=threshold, ...)
-    TimeSeriesToMask[CloudMask != 1] = NA
-    return(TimeSeriesToMask)
-}
+ColDates = paste0("X", gsub("-", "", Dates))
 
 # TODO: move to utils
 phaser = function(co, si)
@@ -29,44 +25,28 @@ amplituder = function(co, si)
     return(sqrt(co^2 + si^2))
 }
 
-GlobalNDVIHarmonics = foreach(Tile=iter(TileList), .combine="rbind") %do%
+NDVISF = st_read(InputDB, "NDVI")
+
+
+GetHarmonics = function(TS)
 {
-    # Load time series of blue (for reference) and NDVI (we use that after masking clouds)
-    BlueTS = LoadVIMatrix(Tile, "RADIOMETRY-3")
-    NDVITS = LoadVIMatrix(Tile, "NDVI")
-    
-    NDVIFiltered = foreach(i=1:nrow(BlueTS), .combine="rbind", .inorder=TRUE) %do%
+    if (all(is.na(TS)))
     {
-        if (sum(!is.na(BlueTS[i,])) < 7)
-        {
-            NA
-        } else {
-            TemporalFilter(NDVITS[i,], BlueTS[i,], Dates)
-        }
+        c(min=NA, max=NA, intercept=NA, co=NA, si=NA, co2=NA, si2=NA, trend=NA,
+                    phase1=NA, amplitude1=NA, phase2=NA, amplitude2=NA)
+    } else {
+        HarmCoefs = getHarmMetrics(TS, dates=Dates, order=2)
+        p1 = phaser(HarmCoefs["co"], HarmCoefs["si"])
+        p2 = phaser(HarmCoefs["co2"], HarmCoefs["si2"])
+        a1 = amplituder(HarmCoefs["co"], HarmCoefs["si"])
+        a2 = amplituder(HarmCoefs["co2"], HarmCoefs["si2"])
+        c(HarmCoefs, phase1=p1, amplitude1=a1, phase2=p2, amplitude2=a2)
     }
-    if (length(NDVIFiltered) > 0 && is.null(dim(NDVIFiltered)))
-        NDVIFiltered = t(as.matrix(NDVIFiltered))
-    rownames(NDVIFiltered) = rownames(NDVITS)
-    write.csv(NDVIFiltered, paste0(MaskedOutputDir, Tile, ".csv"))
-    
-    NDVIHarmonics = foreach(i=1:nrow(NDVIFiltered), .combine="rbind", .inorder = TRUE) %do%
-    {
-        if (all(is.na(NDVIFiltered[i,])))
-        {
-            data.frame(min=NA, max=NA, intercept=NA, co=NA, si=NA, co2=NA, si2=NA, trend=NA,
-                       phase1=NA, amplitude1=NA, phase2=NA, amplitude2=NA)
-        } else {
-            HarmCoefs = getHarmMetrics(NDVIFiltered[i,], dates=Dates, order=2)
-            p1 = phaser(HarmCoefs["co"], HarmCoefs["si"])
-            p2 = phaser(HarmCoefs["co2"], HarmCoefs["si2"])
-            a1 = amplituder(HarmCoefs["co"], HarmCoefs["si"])
-            a2 = amplituder(HarmCoefs["co2"], HarmCoefs["si2"])
-            data.frame(t(HarmCoefs), phase1=p1, amplitude1=a1, phase2=p2, amplitude2=a2)
-        }
-    }
-    rownames(NDVIHarmonics) = rownames(NDVITS)
-    NDVIHarmonics
 }
 
-write.csv(GlobalNDVIHarmonics, paste0(HarmonicsOutputDir, "harmonics-raster.csv"))
+HarmMetrics = t(pbapply(as.matrix(as.data.frame(NDVISF)[,ColDates]), 1, GetHarmonics))
+HarmMetrics = cbind(NDVISF[, c("X", "Y")], HarmMetrics)
+names(HarmMetrics)[3:(length(HarmMetrics)-1)] = c(
+    "min", "max", "intercept", "co", "si", "co2", "si2", "trend", "phase1", "amplitude1", "phase2", "amplitude2")
 
+st_write(HarmMetrics, HarmonicsOutputDB)

@@ -153,74 +153,73 @@ LoadGlobalRasterPoints = function(filename="../data/pixel-based/raw-points/globa
     return(SamplePoints)
 }
 
-LoadTrainingAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-based/covariates/all.csv")
+LoadTrainingAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-based/covariates.gpkg")
 {
-    AllData = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
-    st_crs(AllData) = 4326
-    AllData$field_1 = NULL # Remove duplicate ID
-    AllData = suppressWarnings(CorrectSFDataTypes(AllData))
-    AllData = PostprocessCovars(AllData) # Outlier removal
+    TrainPoints = LoadGlobalTrainingData()
+    AllData = st_read(filename)
+    
+    AllData = merge(TrainPoints, as.data.frame(AllData)[names(AllData) != "geom"], by.x=c("x", "y"), by.y=c("X", "Y"))
     
     if (zerovalues)
         AllData = AddZeroValueColumns(AllData)
     return(AllData)
 }
 
-LoadValidationAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-based/covariates/all-validation.csv")
+LoadValidationAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-based/covariates.gpkg")
 {
-    AllData = st_read(filename, options=c("X_POSSIBLE_NAMES=x", "Y_POSSIBLE_NAMES=y"), stringsAsFactors = FALSE)
-    st_crs(AllData) = 4326
-    AllData$field_1 = NULL # Remove duplicate ID
-    AllData = suppressWarnings(CorrectSFDataTypes(AllData))
-    AllData = PostprocessCovars(AllData) # Outlier removal
+    ValidationPoints = LoadGlobalValidationData()
+    AllData = st_read(filename)
     
     # Unify class names
-    names(AllData)[names(AllData) == "trees"] = "tree"
-    names(AllData)[names(AllData) == "grass"] = "grassland"
-    names(AllData)[names(AllData) == "urban"] = "urban_built_up"
-    names(AllData)[names(AllData) == "wetland"] = "wetland_herbaceous"
+    names(ValidationPoints)[names(ValidationPoints) == "trees"] = "tree"
+    names(ValidationPoints)[names(ValidationPoints) == "grass"] = "grassland"
+    names(ValidationPoints)[names(ValidationPoints) == "urban"] = "urban_built_up"
+    names(ValidationPoints)[names(ValidationPoints) == "wetland"] = "wetland_herbaceous"
+    
+    AllData = merge(ValidationPoints, as.data.frame(AllData)[names(AllData) != "geom"], by.x=c("x", "y"), by.y=c("X", "Y"))
     
     if (zerovalues)
         AllData = AddZeroValueColumns(AllData)
     return(AllData)
 }
 
-PostprocessCovars = function(df)
-{
-    df$amplitude1 = log(df$amplitude1+0.01)
-    df$amplitude2 = log(df$amplitude2+0.001)
-    # Outlier sine/cosine values; very conservative
-    df$co[df$co > 1000 | df$co < -1000] = NA
-    df$si[df$si > 1000 | df$si < -1000] = NA
-    df$co2[df$co2 > 1000 | df$co2 < -1000] = NA
-    df$si2[df$si2 > 1000 | df$si2 < -1000] = NA
-    # All bioclimatic ones from 12
-    df$bio12 = log(df$bio12+1)
-    df$bio13 = log(df$bio13+1)
-    df$bio14 = log(df$bio14+1)
-    df$bio16 = log(df$bio16+1)
-    df$bio17 = log(df$bio17+1)
-    df$bio18 = log(df$bio18+1)
-    df$bio19 = log(df$bio19+1)
-    df$ORCDRC.M.sl7 = log(df$ORCDRC.M.sl7+1)
-    df$ORCDRC.M.sl6 = log(df$ORCDRC.M.sl6+1)
-    df$ORCDRC.M.sl5 = log(df$ORCDRC.M.sl5+1)
-    df$ORCDRC.M.sl4 = log(df$ORCDRC.M.sl4+1)
-    df$ORCDRC.M.sl3 = log(df$ORCDRC.M.sl3+1)
-    df$ORCDRC.M.sl2 = log(df$ORCDRC.M.sl2+1)
-    df$ORCDRC.M.sl1 = log(df$ORCDRC.M.sl1+1)
-    df$OCSTHA.M.sd1 = log(df$OCSTHA.M.sd1+1)
-    df$OCSTHA.M.sd2 = log(df$OCSTHA.M.sd2+1)
-    df$OCSTHA.M.sd3 = log(df$OCSTHA.M.sd3+1)
-    df$OCSTHA.M.sd4 = log(df$OCSTHA.M.sd4+1)
-    df$OCSTHA.M.sd5 = log(df$OCSTHA.M.sd5+1)
-    df$OCSTHA.M.sd6 = log(df$OCSTHA.M.sd6+1)
-    df$tri = log(df$tri+0.1)
-    df$roughness = log(df$roughness+1)
-    df$slope = log(df$slope+0.1)
-    
-    return(df)
-}
+# No longer doing that on the fly, see merge-databases.r
+# PostprocessCovars = function(df)
+# {
+#     df$amplitude1 = log(df$amplitude1+0.01)
+#     df$amplitude2 = log(df$amplitude2+0.001)
+#     # Outlier sine/cosine values; very conservative
+#     df$co[df$co > 1000 | df$co < -1000] = NA
+#     df$si[df$si > 1000 | df$si < -1000] = NA
+#     df$co2[df$co2 > 1000 | df$co2 < -1000] = NA
+#     df$si2[df$si2 > 1000 | df$si2 < -1000] = NA
+#     # All bioclimatic ones from 12
+#     df$bio12 = log(df$bio12+1)
+#     df$bio13 = log(df$bio13+1)
+#     df$bio14 = log(df$bio14+1)
+#     df$bio16 = log(df$bio16+1)
+#     df$bio17 = log(df$bio17+1)
+#     df$bio18 = log(df$bio18+1)
+#     df$bio19 = log(df$bio19+1)
+#     df$ORCDRC.M.sl7 = log(df$ORCDRC.M.sl7+1)
+#     df$ORCDRC.M.sl6 = log(df$ORCDRC.M.sl6+1)
+#     df$ORCDRC.M.sl5 = log(df$ORCDRC.M.sl5+1)
+#     df$ORCDRC.M.sl4 = log(df$ORCDRC.M.sl4+1)
+#     df$ORCDRC.M.sl3 = log(df$ORCDRC.M.sl3+1)
+#     df$ORCDRC.M.sl2 = log(df$ORCDRC.M.sl2+1)
+#     df$ORCDRC.M.sl1 = log(df$ORCDRC.M.sl1+1)
+#     df$OCSTHA.M.sd1 = log(df$OCSTHA.M.sd1+1)
+#     df$OCSTHA.M.sd2 = log(df$OCSTHA.M.sd2+1)
+#     df$OCSTHA.M.sd3 = log(df$OCSTHA.M.sd3+1)
+#     df$OCSTHA.M.sd4 = log(df$OCSTHA.M.sd4+1)
+#     df$OCSTHA.M.sd5 = log(df$OCSTHA.M.sd5+1)
+#     df$OCSTHA.M.sd6 = log(df$OCSTHA.M.sd6+1)
+#     df$tri = log(df$tri+0.1)
+#     df$roughness = log(df$roughness+1)
+#     df$slope = log(df$slope+0.1)
+#     
+#     return(df)
+# }
 
 LoadVIMatrix = function(Tile = "%", VI, Band = NULL, DBFile="../data/pixel-based/timeseries/timeseries.gpkg")
 {

@@ -1,7 +1,7 @@
 # Script for filtering temporal outliers
 
 #library(probaV)
-library(foreach)
+#library(foreach)
 library(sf)
 library(pbapply)
 source("pixel-based/utils/load-sampling-data.r")
