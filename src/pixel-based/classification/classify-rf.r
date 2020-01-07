@@ -4,6 +4,8 @@ library(ranger)
 library(hydroGOF)
 library(histmatch) # devtools::install_github("krlmlr/histmatch")
 #library(caret)
+library(future)
+plan("multiprocess")
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
 source("pixel-based/utils/crossvalidation.r")
@@ -13,9 +15,9 @@ source("utils/accuracy-statistics.r")
 Data.df = LoadTrainingAndCovariates()
 Data.df[is.na(Data.df)] = -9999
 #Data.sp = Data.df
-Data.df = as.data.frame(Data.df)
+Data.df = st_set_geometry(Data.df, NULL)
 Data.df = AddZeroValueColumns(Data.df)
-Data.df = TidyData(Data.df)
+Data.df = TidyData(Data.df, drop.cols=NULL)
 #Data.sp = Data.sp[rownames(Data.df),]
 
 # Make sure there are no NAs left
@@ -25,8 +27,8 @@ apply(Data.df[,GetAllPixelCovars()], 2, function(x){sum(is.na(x))}) / nrow(Data.
 Data.val = LoadValidationAndCovariates()
 Data.val[is.na(Data.val)] = -9999
 Val.sp = Data.val
-class(Data.val) = "data.frame"
-Data.val = TidyData(Data.val) # Drops around 450 # Now drops ~800!
+Data.val = st_set_geometry(Data.val, NULL)
+Data.val = TidyData(Data.val, drop.cols=NULL) # Drops around 1050
 Val.sp = Val.sp[rownames(Data.val),]
 
 apply(Data.val, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
@@ -42,6 +44,13 @@ Truth = Data.val[,Classes]
 # Add column for purity
 #Data.df$pure = apply(Data.df[,Classes], 1, max) > 95 # At 95%, half of our data is pure
 #Data.val$pure = apply(Data.val[,Classes], 1, max) > 95 # At 95%, 42% of our validation is pure
+
+# Load ecozone clusters
+EClusters = st_read("../data/pixel-based/biomes/ProbaV_UTM_LC100_biome_clusters_V3_global.gpkg")
+
+PointTotal = numeric()
+for (cid in 1:nrow(EClusters))
+    PointTotal = c(PointTotal, nrow(st_intersection(Val.sp, EClusters[cid,])))
 
 # We have zero- and 100-inflation in the data.
 # If we adjust for the zero inflation and use zero-truncated data for the second model, it tends to just predict 100.
@@ -135,12 +144,28 @@ RFCV = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE,
     return(PredictionsPerFold)
 }
 
+ScalePredictions = function(Predictions)
+{
+    Predictions = as.matrix(Predictions)
+        Predictions = Predictions / rowSums(Predictions) * 100
+        # There is a possibility that all classes have been predicted as 0, so we can't normalise.
+        # In that case we just keep them as 0%. It won't add up to 100%. Alternatively we can set it to 1/nclass.
+        Predictions[is.nan(Predictions)] = 0
+        return(as.data.frame(Predictions))
+}
+
 # No CV
 RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE, scale=TRUE, covars=GetAllPixelCovars(), overwrite=FALSE, ...)
 {
+    if (!dir.exists(outdir))
+        dir.create(outdir)
     OutputFile = file.path(outdir, paste0("predictions-", filename))
     if (!overwrite && file.exists(OutputFile))
-        return(read.csv(OutputFile))
+    {
+        Predictions = read.csv(OutputFile)
+        if (scale) Predictions = ScalePredictions(Predictions)
+        return(Predictions)
+    }
     
     Covariates = covars
     FullFormula = paste0("~", paste(Covariates, collapse = "+"))
@@ -218,13 +243,7 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
     
     write.csv(Predictions, OutputFile, row.names=FALSE)
     
-    if (scale)
-    {
-        Predictions = Predictions / rowSums(Predictions) * 100
-        # There is a possibility that all classes have been predicted as 0, so we can't normalise.
-        # In that case we just keep them as 0%. It won't add up to 100%. Alternatively we can set it to 1/nclass.
-        Predictions[is.nan(Predictions)] = 0
-    }
+    if (scale) Predictions = ScalePredictions(Predictions)
     
     return(as.data.frame(Predictions))
 }
@@ -234,7 +253,11 @@ RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, covars=Ge
 {
     OutputFile = file.path(outdir, paste0("predictions-threestep-", filename))
     if (!overwrite && file.exists(OutputFile))
-        return(read.csv(OutputFile))
+    {
+        Predictions = read.csv(OutputFile)
+        if (scale) Predictions = ScalePredictions(Predictions)
+        return(Predictions)
+    }
         
     Covariates = covars
     FullFormula = paste0("~", paste(Covariates, collapse = "+"))
@@ -275,8 +298,8 @@ RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, covars=Ge
     
     write.csv(Predictions, OutputFile, row.names=FALSE)
     
-    if (scale)
-        Predictions = Predictions / rowSums(Predictions) * 100
+    if (scale) Predictions = ScalePredictions(Predictions)
+    
     return(as.data.frame(Predictions))
 }
 
@@ -290,10 +313,10 @@ cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.6
 
 # Holdout validation
 PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)
-PredictionResult = PredictionUnscaled / rowSums(PredictionUnscaled) * 100
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16.4%, MAE 8.9%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 69%±4, kappa 0.61±0.06
-NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.68
+#PredictionResult = PredictionUnscaled / rowSums(PredictionUnscaled) * 100
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17.3%, MAE 9.4%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 67%±4, kappa 0.57±0.05
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.66
 
 # Holdout with the ~100 uncorrelated covars
 PredictionUnscaled = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-validation.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars(), scale=FALSE)
@@ -337,6 +360,14 @@ plotRGB(PR.ras, "shrub", "tree", "grassland", stretch="lin")
 writeRaster(PR.ras, "../rf-2m-raster.tif")
 writeRaster(Val.ras, "../validation-raster.tif")
 
+# Try more variables
+PredictionResult <- RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-mtry16.csv", InflationAdjustment = 0, mtry=16)
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17.3%, MAE 9.4%
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 67%±4, kappa 0.58±0.05
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.67
+# Just slightly better
+
+
 # Histogram matching
 HMPredictions = HistMatchPredictions(PredictionUnscaled[,Classes], Data.df[,Classes])
 AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 22.0%, MAE 9.7%, awful, but ME is collapsed
@@ -354,23 +385,17 @@ SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE,
 cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.60
 
 # Holdout
-PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
-PredictionResult[rowSums(PredictionResult) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.3%, MAE 7.6%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 73±2%, kappa 0.66 - this is much better
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.64
-
-# Holdout and uncorrelated two-step
-PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-uncorrelated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE, covars=GetUncorrelatedPixelCovars())
-PredictionResult[rowSums(PredictionResult) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.8%, MAE 8.0%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 72±2%, kappa 0.65±0.03 - this is slightly better
-NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.59
-NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100) # shrubs are negative!
-PlotHex(PredictionResult[,"shrub"], Truth[,"shrub"], "RF shrubs, two models, zeroes truncated, uncorrelated covariates")
-PlotHex(PredictionResult[,"tree"], Truth[,"tree"], "RF trees, two models, zeroes truncated, uncorrelated covariates")
-PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, two models, zeroes truncated, uncorrelated covariates")
-PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, two models, zeroes truncated, uncorrelated covariates")
+PredictionResult2S <- RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
+PredictionResult2S[rowSums(PredictionResult2S) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
+AccuracyStatisticsPlots(PredictionResult2S[,Classes]/100, Truth[,Classes]/100) # RMSE 19.9%, MAE 8.2%
+SCM(PredictionResult2S[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±2%, kappa 0.62 - this is much better
+cor(unlist(PredictionResult2S[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.60
+NSE(unlist(PredictionResult2S[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.56
+NSE(PredictionResult2S[,Classes]/100, Truth[,Classes]/100)
+PlotHex(PredictionResult2S[,"shrub"], Truth[,"shrub"], "RF shrubs, two models, zeroes truncated, uncorrelated covariates")
+PlotHex(PredictionResult2S[,"tree"], Truth[,"tree"], "RF trees, two models, zeroes truncated, uncorrelated covariates")
+PlotHex(PredictionResult2S[,Classes], Truth[,Classes], "RF, two models, zeroes truncated, uncorrelated covariates")
+PlotBox(PredictionResult2S[,Classes], Truth[,Classes], main="RF, two models, zeroes truncated, uncorrelated covariates")
 OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, two models, zeroes truncated, uncorrelated covariates")
 HMPredictions = HistMatchPredictions(PredictionResult[,Classes], Data.df[,Classes])
 AccuracyStatisticsPlots(HMPredictions/100, Truth[,Classes]/100) # RMSE 18.8%, MAE 8.0%
@@ -407,10 +432,7 @@ SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE)
 cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.59
 
 # Three-model approach
-PredictionResult = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-allcovars-validation.csv")
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.1%, MAE 8.0%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 72±3%, kappa 0.65 - little difference from two-step model, slightly worse
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.63
+
 
 # Higher purity
 PredictionResult = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-p99-allcovars-validation.csv", purity_threshold=99)
@@ -425,12 +447,11 @@ SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE,
 cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.65
 
 # Three-model approach with uncorrelated covars
-PredictionUnscaled = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-uncorrelated-unscaled-validation.csv", scale=FALSE, covars=GetUncorrelatedPixelCovars())
-PredictionResult = PredictionUnscaled / rowSums(PredictionUnscaled) * 100
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 18.6%, MAE 8.2%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±4%, kappa 0.64
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.61
-NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.59
+PredictionResult = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-validation.csv")
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 19.4%, MAE 8.4% - lower RMSE, higher MAE
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±3%, kappa 0.62±0.04 - little difference from two-step model
+cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.63
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.58 - slightly better than 2S
 NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100)
 PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, three models, uncorrelated covariates")
 # ggsave("../2019-05-09-rf-3m-uncor-hex.pdf", width=5, height=4)

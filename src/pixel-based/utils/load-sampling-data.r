@@ -63,9 +63,9 @@ TidyData = function(df, classes = GetCommonClassNames(), drop.cols=GetUncorrelat
     # NA in evi means that we didn't have an image from the summer of year 2016. That's a lot of points to remove; but the alternative is dropping those covars altogether.
     # NA in soil or climate covars means it's over water.
 
+    Before = nrow(df)
     if (is.character(drop.cols))
     {
-        Before = nrow(df)
         DropRows = apply(df[,drop.cols], 1, function(x){any(!is.finite(x))})
         #DropRows = apply(df[,GetAllPixelCovars()], 1, function(x){any(is.na(x))})
         df = df[!DropRows,]
@@ -78,8 +78,8 @@ TidyData = function(df, classes = GetCommonClassNames(), drop.cols=GetUncorrelat
 
     # Recalculate dominant classes based on all classes
     df = UpdateDominantLC(df, GetIIASAClassNames(FALSE))
-    # Drop those dominated by "not_sure" and "snow_and_ice"
-    df = df[df$dominant_lc != "not_sure" & df$dominant_lc != "snow_and_ice",]
+    # Drop those dominated by "not_sure"
+    df = df[df$dominant_lc != "not_sure",]
     
     # Reclassify rare classes to common ones
     df = ReclassifyAndScale(df)
@@ -96,7 +96,7 @@ TidyData = function(df, classes = GetCommonClassNames(), drop.cols=GetUncorrelat
 ReclassifyAndScale = function(df, output.classes=GetCommonClassNames())
 {
     # Some classes map to other classes. Put the values there
-    ClassMap = c(burnt="grassland", fallow_shifting_cultivation="crops", wetland_herbaceous="grassland", lichen_and_moss="grassland")
+    ClassMap = c(burnt="grassland", fallow_shifting_cultivation="crops", wetland_herbaceous="grassland", lichen_and_moss="grassland", snow_and_ice="bare")
     
     for (class in 1:length(ClassMap))
     {
@@ -105,8 +105,18 @@ ReclassifyAndScale = function(df, output.classes=GetCommonClassNames())
     }
     
     # Scale relevant classes to 100%; that way we get rid of influences from not_sure and snow_and_ice
-    RelevantClasses = df[,output.classes]
-    df[,output.classes] = RelevantClasses / (rowSums(RelevantClasses) / 100)
+    RelevantClasses = df[, output.classes]
+    ClassSums = rowSums(RelevantClasses)
+    ZeroRows = ClassSums == 0
+    if (any(ZeroRows))
+    {
+        print(paste("Dropping", sum(ZeroRows), "samples because all their relevant fractions are zero"))
+        RelevantClasses = RelevantClasses[!ZeroRows,]
+        df = df[!ZeroRows,]
+        ClassSums = ClassSums[!ZeroRows]
+    }
+    
+    df[,output.classes] = RelevantClasses / (ClassSums / 100)
     stopifnot(all(round(rowSums(df[,output.classes])) == 100))
     return(df)
 }
@@ -138,6 +148,7 @@ LoadGlobalValidationData = function(filename="../data/pixel-based/raw-points/ref
     st_crs(SamplePoints) = 4326
     names(SamplePoints)[names(SamplePoints) == "sample_x" | names(SamplePoints) == "subpix_mean_x"] = "x"
     names(SamplePoints)[names(SamplePoints) == "sample_y" | names(SamplePoints) == "subpix_mean_y"] = "y"
+    SamplePoints = CorrectSFDataTypes(SamplePoints)
     SamplePoints$Tile = as.factor(ProbaVTileID(SamplePoints))
     return(SamplePoints)
 }
@@ -159,6 +170,8 @@ LoadTrainingAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-b
     AllData = st_read(filename)
     
     AllData = merge(TrainPoints, as.data.frame(AllData)[names(AllData) != "geom"], by.x=c("x", "y"), by.y=c("X", "Y"))
+    AllData$yabs = abs(AllData$y)
+    AllData = AddClusterColumns(AllData)
     
     if (zerovalues)
         AllData = AddZeroValueColumns(AllData)
@@ -177,6 +190,8 @@ LoadValidationAndCovariates = function(zerovalues=FALSE, filename="../data/pixel
     names(ValidationPoints)[names(ValidationPoints) == "wetland"] = "wetland_herbaceous"
     
     AllData = merge(ValidationPoints, as.data.frame(AllData)[names(AllData) != "geom"], by.x=c("x", "y"), by.y=c("X", "Y"))
+    AllData$yabs = abs(AllData$y)
+    AllData = AddClusterColumns(AllData)
     
     if (zerovalues)
         AllData = AddZeroValueColumns(AllData)
@@ -281,3 +296,12 @@ AddZeroValueColumns = function(df)
     }
     return(df)
 }
+
+AddClusterColumns = function(df, filename="../data/pixel-based/biomes/ProbaV_UTM_LC100_biome_clusters_V3_global.gpkg")
+{
+    EClusters = st_read(filename)
+    EClusters = EClusters[,"bc_id"]
+    Result = st_join(df, EClusters)
+    return(Result)
+}
+

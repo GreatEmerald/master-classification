@@ -106,10 +106,10 @@ SCM = function(predicted, observed, agreement=min, disagreement="SCM", scale=FAL
     r_nl = observed
     
     # Sanity checks: the input must be 0-1 range and add up to 100%
-    stopifnot(all(r_nl >= 0))
-    stopifnot(all(r_nl <= 1))
-    stopifnot(all(s_nk >= 0))
-    stopifnot(all(s_nk <= 1))
+    stopifnot(all(r_nl >= 0-options()$ts.eps))
+    stopifnot(all(r_nl <= 1+options()$ts.eps))
+    stopifnot(all(s_nk >= 0-options()$ts.eps))
+    stopifnot(all(s_nk <= 1+options()$ts.eps))
     if (is.vector(s_nk))
         stopifnot(all(round(sum(s_nk), 6) == 1))
     else

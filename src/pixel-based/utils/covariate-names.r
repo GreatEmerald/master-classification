@@ -9,11 +9,11 @@ GetUncorrelatedPixelCovars = function()
 GetAllPixelCovars = function(grouped=FALSE)
 {
     AllCovars = list(location=c("x", "y", "yabs"),
-        spectral=c("min", "max", "mean.ndvi", "ndvi.25", "ndvi.75", "ndvi.iqr", "red", "nir", "blue", "swir", "ndvi", "ndmi", "osavi", "evi"),
-        harmonic=c("intercept", "co", "si", "co2", "si2", "trend", "phase1", "amplitude1", "phase2", "amplitude2"),
-        terrain=c("elevation", "slope", "aspect", "tpi", "tri", "roughness"),
+        spectral=c("min", "max", "NDMI.year.median", "NDMI.year.IQR", "NDMI.spring.IQR", "NDMI.summer.IQR", "NDMI.autumn.IQR", "NDMI.winter.IQR", "OSAVI.spring.IQR", "OSAVI.summer.IQR", "OSAVI.autumn.IQR", "OSAVI.winter.IQR", "EVI.spring.IQR", "EVI.summer.IQR", "EVI.autumn.IQR", "EVI.winter.IQR", "NIRv.year.median", "NIRv.year.IQR", "NIRv.spring.IQR", "NIRv.summer.IQR", "NIRv.autumn.IQR", "NIRv.winter.IQR"),
+        harmonic=c("co", "si", "co2", "si2", "trend", "phase1", "amplitude1", "phase2", "amplitude2"),
+        terrain=c("elevation", "slope.log", "aspect", "tpi"),
         climate=GetClimateCovars(),
-        soillandgis=GetLandGISCovars(),
+        #soillandgis=GetLandGISCovars(),
         soilgrids=GetSoilGridsCovars())#,
         #soilgridstaxo=GetSoilGridsClasses()) #paste0("bio", 1:19)
     if (!grouped)
@@ -30,13 +30,15 @@ GetCovarNames = function(type)
 
 GetClimateCovars = function()
 {
-    Months = sprintf("%02d", 01:12)
-    WCDS = c("tmin", "tmax", "tavg", "prec", "srad", "wind", "vapr")
-    MDS = expand.grid(WCDS, Months)
-    nonbio = c("srad", "wind", "vapr")
-    nbstats = c("min", "max", "mean")
-    NBS = expand.grid(nbstats, nonbio)
-    return(c(paste("wc2.0_30s", MDS[,1], MDS[,2], sep="_"), paste0("bio", 1:19), paste0(NBS[,1], ".", NBS[,2])))
+    # Months = sprintf("%02d", 01:12)
+    # WCDS = c("tmin", "tmax", "tavg", "prec", "srad", "wind", "vapr")
+    # MDS = expand.grid(WCDS, Months)
+    # nonbio = c("srad", "wind", "vapr")
+    # nbstats = c("min", "max", "mean")
+    # NBS = expand.grid(nbstats, nonbio)
+    # return(c(paste("wc2.0_30s", MDS[,1], MDS[,2], sep="_"), paste0("bio", 1:19), paste0(NBS[,1], ".", NBS[,2])))
+    
+    return(c("jan.prec.log", "apr.prec.log", "jul.prec.log", "oct.prec.log", "jan.srad", "jul.srad", "mean.tavg", "tavg.monthly.range", "isothermality", "tavg.annual.range", "annual.prec.log", "prec.seasonality", "min.srad", "max.srad", "mean.srad", "mean.wind", "mean.vapr", "cold.prec.log", "warm.prec.log", "wet.srad", "dry.srad"))
 }
 
 GetLandGISCovars = function()
@@ -54,24 +56,26 @@ GetSoilGridsCovars = function()
     #XDVars = c("ALUM3S", "EALKCL", "ECAX", "EMGX", "ENAX", "EXKX", "NTO")
     #XDDepth = expand.grid(XDVars, 1:2)
     #XDVarNames = paste0(XDDepth[,1], ".M.xd", XDDepth[,2]) # Too many missing values in XDs
-    SLVars = c("CLYPPT", "CRFVOL", "PHIHOX", "PHIKCL", "SLTPPT", "SNDPPT",
-        "AWCh1", "AWCh2", "AWCh3", "AWCtS", "BLDFIE", "CECSOL", "ORCDRC", "TEXMHT", "WWP")
-    SDVars = c("OCSTHA")
-    SDDepth = expand.grid(SDVars, 1:6)
-    SDVarNames = paste0(SDDepth[,1], ".M.sd", SDDepth[,2])
-    SLDepth = expand.grid(SLVars, 1:7)
-    SLVarNames = paste0(SLDepth[,1], ".M.sl", SLDepth[,2])
-    MonthVars = c("PREMRG")#, "TMDMOD_2001", "TMDMOD_2011", "TMNMOD_2001", "TMNMOD_2011")
-    Months = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-    MonthVN = expand.grid(MonthVars, Months)
-    MonthVarNames = paste0(MonthVN[,1], ".M.", MonthVN[,2])
-    SingleVars = c("BDRICM.M.BDRICM_M", "BDRLOG.M.BDRLOG_M", "BDTICM.M.BDTICM_M",
-        #"DRAINFAO.M.DRAINFAO_M", "GLC100m.M.GLC2010") # Disable GLC and also too little data for DRAINFAO
-        "TMDMOD_2001.M.Feb", "TMDMOD_2001.M.Mar", "TMDMOD_2001.M.Apr", "TMDMOD_2001.M.May", "TMDMOD_2001.M.Nov",
-        "TMDMOD_2011.M.Jan", "TMDMOD_2011.M.Feb", "TMDMOD_2011.M.Mar", "TMDMOD_2011.M.May", "TMDMOD_2011.M.Nov",
-        "TMNMOD_2011.M.May", "TMNMOD_2011.M.Jul") # Not enough obs for some months, add manually
     
-    return(c(SDVarNames, SLVarNames, MonthVarNames, SingleVars))
+    # SLVars = c("CLYPPT", "CRFVOL", "PHIHOX", "PHIKCL", "SLTPPT", "SNDPPT",
+    #     "AWCh1", "AWCh2", "AWCh3", "AWCtS", "BLDFIE", "CECSOL", "ORCDRC", "TEXMHT", "WWP")
+    # SDVars = c("OCSTHA")
+    # SDDepth = expand.grid(SDVars, 1:6)
+    # SDVarNames = paste0(SDDepth[,1], ".M.sd", SDDepth[,2])
+    # SLDepth = expand.grid(SLVars, 1:7)
+    # SLVarNames = paste0(SLDepth[,1], ".M.sl", SLDepth[,2])
+    # MonthVars = c("PREMRG")#, "TMDMOD_2001", "TMDMOD_2011", "TMNMOD_2001", "TMNMOD_2011")
+    # Months = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    # MonthVN = expand.grid(MonthVars, Months)
+    # MonthVarNames = paste0(MonthVN[,1], ".M.", MonthVN[,2])
+    # SingleVars = c("BDRICM.M.BDRICM_M", "BDRLOG.M.BDRLOG_M", "BDTICM.M.BDTICM_M",
+    #     #"DRAINFAO.M.DRAINFAO_M", "GLC100m.M.GLC2010") # Disable GLC and also too little data for DRAINFAO
+    #     "TMDMOD_2001.M.Feb", "TMDMOD_2001.M.Mar", "TMDMOD_2001.M.Apr", "TMDMOD_2001.M.May", "TMDMOD_2001.M.Nov",
+    #     "TMDMOD_2011.M.Jan", "TMDMOD_2011.M.Feb", "TMDMOD_2011.M.Mar", "TMDMOD_2011.M.May", "TMDMOD_2011.M.Nov",
+    #     "TMNMOD_2011.M.May", "TMNMOD_2011.M.Jul") # Not enough obs for some months, add manually
+    #return(c(SDVarNames, SLVarNames, MonthVarNames, SingleVars))
+    
+    return(c("soil.av.water", "soil.bulkdens", "soil.log.cation", "soil.clay.pct", "soil.log.coarfrag", "soil.ph", "soil.sand.pct", "soil.wilt.wat"))
 }
 
 # Not used, these are derived from covariates above

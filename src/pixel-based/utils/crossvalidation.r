@@ -4,6 +4,7 @@ library(foreach)
 library(doParallel)
 library(ggplot2)
 library(reshape2)
+library(scales)
 source("utils/accuracy-statistics.r")
 
 # Pass in the function that takes as input a data.frame and produces a cross-validated data.frame in return
