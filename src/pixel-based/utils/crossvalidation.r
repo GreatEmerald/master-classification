@@ -5,7 +5,9 @@ library(doParallel)
 library(ggplot2)
 library(reshape2)
 library(scales)
+library(pbapply)
 source("utils/accuracy-statistics.r")
+source("pixel-based/utils/load-sampling-data.r")
 
 # Pass in the function that takes as input a data.frame and produces a cross-validated data.frame in return
 CrossValidate = function(formula, data, train_function, predict_function, folds=10, fold_column=data[,"dominant_lc"],
@@ -14,7 +16,7 @@ CrossValidate = function(formula, data, train_function, predict_function, folds=
     set.seed(cv_seed)
     folds = createFolds(fold_column, folds)
     
-    Predictions = NULL
+    #Predictions = NULL
     #for (i in 1:length(folds))
     Predictions = foreach(fold=iter(folds), .combine=rbind, .multicombine=TRUE, .inorder=TRUE, .packages=packages) %dopar%
     {
@@ -32,6 +34,37 @@ CrossValidate = function(formula, data, train_function, predict_function, folds=
     }
     Predictions = Predictions[order(unlist(folds)),]
     return(Predictions)
+}
+
+# Train on and predict over ecozone clusters.
+ClusterTrain = function(formula, data, train_function, val_data, predict_function=predict, cv_seed=0xfedbeef, include_neighbours=FALSE, cluster_col="bc_id", ...)
+{
+    set.seed(cv_seed)
+    
+    TrainClusters = if (include_neighbours) ClusterNeighbours() else {
+        UniqueECs = unique(data[[cluster_col]])
+        UniqueECs = as.character(UniqueECs[!is.na(UniqueECs)])
+        ECList = as.list(UniqueECs)
+        names(ECList) = UniqueECs
+        ECList
+    }
+    # Remove validation that does not belong to any cluster
+    val_data = val_data[!is.na(val_data[[cluster_col]]),]
+    
+    Prediction = pblapply(TrainClusters, function(x) {
+        model = train_function(formula=formula, ..., data=data[data[[cluster_col]] %in% x,]) # Train on zone plus (optionally) neighbours
+        ClusterRows = val_data[[cluster_col]]==x[[1]]
+        ResultMat = predict_function(model, ..., newdata=val_data[ClusterRows,]) # Predict on zone only
+        if (!is.matrix(ResultMat))
+            ResultMat = as.matrix(ResultMat)
+        cbind(ResultMat, order=which(ClusterRows))
+    })
+    ResultOrder = do.call(rbind, Prediction)
+    stopifnot(all(!duplicated(ResultOrder[,"order"]))) # No point should be in two zones
+    ResultInOrder = ResultOrder[order(ResultOrder[,"order"]),]
+    ResultInOrder = ResultInOrder[,!colnames(ResultInOrder) %in% "order"] # Remove order column
+    
+    return(ResultInOrder)
 }
 
 # Validation metrics and plots

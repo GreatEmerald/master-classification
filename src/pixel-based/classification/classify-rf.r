@@ -46,11 +46,14 @@ Truth = Data.val[,Classes]
 #Data.val$pure = apply(Data.val[,Classes], 1, max) > 95 # At 95%, 42% of our validation is pure
 
 # Load ecozone clusters
-EClusters = st_read("../data/pixel-based/biomes/ProbaV_UTM_LC100_biome_clusters_V3_global.gpkg")
+#EClusters = st_read("../data/pixel-based/biomes/ProbaV_UTM_LC100_biome_clusters_V3_global.gpkg")
+# Buffer in QGIS because sf is too slow
+#EClusters = st_read("../data/pixel-based/biomes/ProbaV_UTM_LC100_biome_clusters_buffered.gpkg")
+#res = st_intersects(EClusters)
 
-PointTotal = numeric()
-for (cid in 1:nrow(EClusters))
-    PointTotal = c(PointTotal, nrow(st_intersection(Val.sp, EClusters[cid,])))
+#PointTotal = numeric()
+#for (cid in 1:nrow(EClusters))
+#    PointTotal = c(PointTotal, nrow(st_intersection(Val.sp, EClusters[cid,])))
 
 # We have zero- and 100-inflation in the data.
 # If we adjust for the zero inflation and use zero-truncated data for the second model, it tends to just predict 100.
@@ -155,7 +158,8 @@ ScalePredictions = function(Predictions)
 }
 
 # No CV
-RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE, scale=TRUE, covars=GetAllPixelCovars(), overwrite=FALSE, ...)
+RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE, scale=TRUE,
+    covars=GetAllPixelCovars(), overwrite=FALSE, PredictType="response", PredictQuantiles=0.5, ...)
 {
     if (!dir.exists(outdir))
         dir.create(outdir)
@@ -166,6 +170,7 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
         if (scale) Predictions = ScalePredictions(Predictions)
         return(Predictions)
     }
+    quantreg = ifelse(PredictType=="response", FALSE, TRUE)
     
     Covariates = covars
     FullFormula = paste0("~", paste(Covariates, collapse = "+"))
@@ -225,17 +230,17 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
                 if (TruncateZeroes)
                 {
                     if (InflationAdjustment == 1)
-                        NonzeroModel = ranger(Formula, TrainingSet[TrainingSet[,Class] > 0,], seed = 0xbadcafe, ...)
+                        NonzeroModel = ranger(Formula, TrainingSet[TrainingSet[,Class] > 0,], seed = 0xbadcafe, quantreg=quantreg, ...)
                     else if (InflationAdjustment == 2)
-                        NonzeroModel = ranger(Formula, TrainingSet[TrainingSet[,Class] > 0 & TrainingSet[,Class] < 100,], seed = 0xbadcafe, ...)
+                        NonzeroModel = ranger(Formula, TrainingSet[TrainingSet[,Class] > 0 & TrainingSet[,Class] < 100,], seed = 0xbadcafe, quantreg=quantreg, ...)
                 } else
-                    NonzeroModel = ranger(Formula, TrainingSet, seed = 0xbadcafe, ...)
-                ClassPredictions[NonZeroes] = predict(NonzeroModel, ValidationSet[NonZeroes,])$prediction
+                    NonzeroModel = ranger(Formula, TrainingSet, seed = 0xbadcafe, quantreg=quantreg, ...)
+                ClassPredictions[NonZeroes] = predict(NonzeroModel, ValidationSet[NonZeroes,], type=PredictType, quantiles=PredictQuantiles)$prediction
             } else print("Everything was predicted to be zero!")
         } else {
             # Predict all
-            rfmodel = ranger(Formula, TrainingSet, seed = 0xbadcafe, ...)
-            ClassPredictions = predict(rfmodel, ValidationSet)$prediction
+            rfmodel = ranger(Formula, TrainingSet, seed = 0xbadcafe, quantreg=quantreg, ...)
+            ClassPredictions = predict(rfmodel, ValidationSet, type=PredictType, quantiles=PredictQuantiles)$prediction
         }
             
         Predictions[,Class] = ClassPredictions
@@ -249,7 +254,8 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
 }
 
 # Three-step classification. More complex and doesn't share much code with the other approach, hence separate function.
-RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, covars=GetAllPixelCovars(), overwrite=FALSE, ...)
+RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, covars=GetAllPixelCovars(),
+    overwrite=FALSE, PredictType="response", PredictQuantiles=0.5, ...)
 {
     OutputFile = file.path(outdir, paste0("predictions-threestep-", filename))
     if (!overwrite && file.exists(OutputFile))
@@ -291,9 +297,52 @@ RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, covars=Ge
         print(Class)
         Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
         
-        RegressionModel = ranger(Formula, TrainingSet[!TrainingSet$pure,], seed = 0xbadcafe, ...)
-        RegPredictions = predict(RegressionModel, ValidationSet[!PureValPredictions,])
+        RegressionModel = ranger(Formula, TrainingSet[!TrainingSet$pure,], seed = 0xbadcafe, quantreg=PredictType!="response", ...)
+        RegPredictions = predict(RegressionModel, ValidationSet[!PureValPredictions,], type=PredictType, quantiles=PredictQuantiles)
         Predictions[!PureValPredictions, Class] = RegPredictions$predictions
+    }
+    
+    write.csv(Predictions, OutputFile, row.names=FALSE)
+    
+    if (scale) Predictions = ScalePredictions(Predictions)
+    
+    return(as.data.frame(Predictions))
+}
+
+## Training per cluster
+
+RFClusterTrain = function(outdir, filename, scale=TRUE, covars=GetAllPixelCovars(), overwrite=FALSE, PredictType="response", PredictQuantiles=0.5, ...)
+{
+    if (!dir.exists(outdir))
+        dir.create(outdir)
+    OutputFile = file.path(outdir, paste0("predictions-", filename))
+    if (!overwrite && file.exists(OutputFile))
+    {
+        Predictions = read.csv(OutputFile)
+        if (scale) Predictions = ScalePredictions(Predictions)
+        return(Predictions)
+    }
+    quantreg = ifelse(PredictType=="response", FALSE, TRUE)
+    
+    Covariates = covars
+    FullFormula = paste0("~", paste(Covariates, collapse = "+"))
+    TrainingSet = Data.df
+    ValidationSet = Data.val[!is.na(Data.val$bc_id),]
+        
+    Predictions = matrix(ncol=length(Classes), nrow=nrow(ValidationSet), dimnames=list(list(), Classes))
+    for (Class in Classes)
+    {
+        print(Class)
+        
+        RelevantRows = TrainingSet[[Class]] > 0 # Could also just look at dominant
+        RemainingCovars = !apply(TrainingSet[RelevantRows, Covariates], 2, function(x){any(!is.finite(x))})
+        RemainingNames = names(RemainingCovars)[RemainingCovars]
+        
+        Formula =  formula(paste0(Class, "~", paste(RemainingNames, collapse = "+")))
+        
+        # Predict all
+        ClassPredictions = ClusterTrain(Formula, TrainingSet, function(...) ranger(..., quantreg=quantreg), ValidationSet, function(x, newdata) predict(x, data=newdata, type=PredictType, quantiles=PredictQuantiles)$prediction, ...)
+        Predictions[,Class] = ClassPredictions
     }
     
     write.csv(Predictions, OutputFile, row.names=FALSE)
@@ -668,4 +717,30 @@ PlotHex(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariat
 PlotBox(HMPredictions, Truth[,Classes], main="RF, single model, uncorrelated covariates, histogram matched except extremes, quantiles")
 OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched except extremes, quantiles") # 0 and 100 accuracy skyrockets, but the middle plummets
 
+## Training per cluster
 
+PredictionResult = RFClusterTrain("../data/pixel-based/predictions/", "randomforest-onestep-onecluster-validation.csv")
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17.7%, MAE 9.5%, very slightly worse
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 67%±3, kappa 0.58±0.05
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.65
+
+PredictionResult = RFClusterTrain("../data/pixel-based/predictions/", "randomforest-onestep-neighbourcluster-validation.csv", include_neighbours=TRUE)
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17.5%, MAE 9.3%, almost the same
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 67%±3, kappa 0.58±0.05
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.66
+
+## Median forest
+
+PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-median-validation.csv", InflationAdjustment = 0, PredictType="quantiles")
+PredictionResult[rowSums(PredictionResult) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 20.7%, MAE 7.9%, much better MAE and much worse RMSE, even stronger than 2/3-step
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 72%±1, kappa 0.63±0.01, much better
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.52, much worse
+PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, single model, median")
+PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, single model, median")
+
+# Two-step median
+PredictionResult <- RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-median.csv", InflationAdjustment = 1, TruncateZeroes = TRUE, PredictType="quantiles")
+PredictionResult[rowSums(PredictionResult2S) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
+AccuracyStatisticsPlots(PredictionResult2S[,Classes]/100, Truth[,Classes]/100) # RMSE 19.9%, MAE 8.2%
+SCM(PredictionResult2S[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±2%, kappa 0.62 - this is much better

@@ -302,6 +302,26 @@ AddClusterColumns = function(df, filename="../data/pixel-based/biomes/ProbaV_UTM
     EClusters = st_read(filename)
     EClusters = EClusters[,"bc_id"]
     Result = st_join(df, EClusters)
+    NoCluster = is.na(Result$bc_id)
+    ClosestZones = st_nearest_feature(Result[NoCluster,], EClusters)
+    Result[NoCluster,]$bc_id = EClusters$bc_id[ClosestZones]
     return(Result)
 }
 
+# Get a list of neighbouring clusters for each cluster.
+# This was made by buffering the ecozones by 0.2 degrees (due to missing topology for st_touches() in QGIS.
+# The result is a list where each element has a name of a zone and the entries are names of the neighbours.
+ClusterNeighbours = function(filename="../data/pixel-based/biomes/ProbaV_UTM_LC100_biome_clusters_buffered.gpkg")
+{
+    EClusters = st_read(filename, quiet=TRUE)
+    ECNeighbours = st_intersects(EClusters)
+    names(ECNeighbours) = EClusters[["bc_id"]]
+    ECNCodes = lapply(ECNeighbours, function(x)as.character(EClusters[["bc_id"]][x]))
+    # Reorder so that the zone itself is always first
+    ECNCOrdered = lapply(1:length(ECNCodes), function(x) {
+        idx = ECNCodes[[x]]==names(ECNCodes)[x]
+        c(ECNCodes[[x]][idx], ECNCodes[[x]][!idx])
+    })
+    names(ECNCOrdered) = names(ECNCodes)
+    return(ECNCOrdered)
+}
