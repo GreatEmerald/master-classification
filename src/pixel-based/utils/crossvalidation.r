@@ -67,6 +67,38 @@ ClusterTrain = function(formula, data, train_function, val_data, predict_functio
     return(ResultInOrder)
 }
 
+# Run binary relevance, i.e. one model per class.
+# Formula should be empty on LHS, i.e. paste0("~", paste(Covariates, collapse = "+"))
+BinaryRelevance = function(formula, data, train_function, val_data, predict_function=predict, seed=0xfedbeef, classes=GetCommonClassNames(), scale=TRUE, ...)
+{
+    Predictions = matrix(ncol=length(classes), nrow=nrow(val_data), dimnames=list(list(), classes))
+    
+    for (Class in classes)
+    {
+        print(Class)
+        ClassFormula = update.formula(formula, paste0(Class, " ~ ."))
+        set.seed(seed)
+        Model = train_function(ClassFormula, data=data, ...)
+        RegPredictions = predict_function(Model, newdata=val_data, ...)
+        Predictions[, Class] = RegPredictions
+    }
+    
+    if (scale) Predictions = ScalePredictions(Predictions)
+    
+    return(as.data.frame(Predictions))
+}
+
+# Rescale predictions so that htey add up to 100%
+ScalePredictions = function(Predictions, LeaveZeroes = TRUE)
+{
+    Predictions = as.matrix(Predictions)
+        Predictions = Predictions / rowSums(Predictions) * 100
+        # There is a possibility that all classes have been predicted as 0, so we can't normalise.
+        # In that case we just keep them as 0%. It won't add up to 100%. Alternatively we can set it to 1/nclass.
+        Predictions[is.nan(Predictions)] = if (LeaveZeroes) 0 else 100/ncol(Predictions)
+        return(as.data.frame(Predictions))
+}
+
 # Validation metrics and plots
 AccuracyStatisticsPlots = function(predicted, observed, ...)
 {
@@ -119,6 +151,28 @@ PlotBox = function(predicted, observed, ...)
     boxplot(Predicted~TruthBins, ValidationDF, xlab="Truth", ylab="Predicted", ...)
     OneToOne = data.frame(Predicted=seq(0, 100, 10), Bins=1:11)
     lines(Predicted~Bins, OneToOne)
+}
+
+# Boxplot comparison between different methods
+# predicted_list is a list with the prediction table, with the name being the name of the model
+ggplotBox = function(predicted_list, observed, main = "", ...)
+{
+    ModelData = NULL
+    for (i in 1:length(predicted_list))
+    {
+        predicted = predicted_list[[i]]
+        ModelName = names(predicted_list)[i]
+        DiffDF = predicted - observed
+        DiffMelt = melt(abs(DiffDF), variable.name="Class", value.name="AE", measure.vars=1:length(DiffDF))
+        DiffMelt$Model = ModelName
+        # Duplicate to add an "overall" class
+        DiffAll = DiffMelt
+        DiffAll$Class = "Overall"
+        DiffMelt = rbind(DiffAll, DiffMelt)
+        ModelData = rbind(ModelData, DiffMelt)
+    }
+    
+    ggplot(ModelData, aes(x=Model, y=AE, fill=Class)) + geom_boxplot(...) + ggtitle(main)
 }
 
 # Additional statistics per class: how well we predict 0, 100, 0<x<50, 50<x<100

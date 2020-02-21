@@ -147,16 +147,6 @@ RFCV = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE,
     return(PredictionsPerFold)
 }
 
-ScalePredictions = function(Predictions)
-{
-    Predictions = as.matrix(Predictions)
-        Predictions = Predictions / rowSums(Predictions) * 100
-        # There is a possibility that all classes have been predicted as 0, so we can't normalise.
-        # In that case we just keep them as 0%. It won't add up to 100%. Alternatively we can set it to 1/nclass.
-        Predictions[is.nan(Predictions)] = 0
-        return(as.data.frame(Predictions))
-}
-
 # No CV
 RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE, scale=TRUE,
     covars=GetAllPixelCovars(), overwrite=FALSE, PredictType="response", PredictQuantiles=0.5, ...)
@@ -186,7 +176,9 @@ RFTrain = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FAL
         
         # Dynamic feature selection: drop any covariates that have any NA values for this particular class
         RelevantRows = TrainingSet[[Class]] > 0 # Could also just look at dominant
-        RemainingCovars = !apply(TrainingSet[RelevantRows, Covariates], 2, function(x){any(!is.finite(x))})
+        # For some reason is.finite() in a loop fails...
+        #RemainingCovars = !apply(TrainingSet[RelevantRows, Covariates], 2, function(x){any(!is.finite(x))})
+        RemainingCovars = apply(TrainingSet[RelevantRows, Covariates], 2, function(x){all(!is.infinite(x) & !is.na(x) & !is.nan(x))})
         RemainingNames = names(RemainingCovars)[RemainingCovars]
         print(paste("Covars with no NA values:", toString(RemainingNames)))
         # TODO: finish implementing
@@ -729,6 +721,12 @@ AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # R
 SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 67%±3, kappa 0.58±0.05
 NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.66
 
+# Training with cluster as covar
+PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-clustercovar-validation.csv", InflationAdjustment = 0, covars=c(GetAllPixelCovars(), "bc_id"))
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17.4%, MAE 9.5%, slightly worse
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 67%±4, kappa 0.58±0.05, also slightly worse
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.66
+
 ## Median forest
 
 PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-median-validation.csv", InflationAdjustment = 0, PredictType="quantiles")
@@ -741,6 +739,47 @@ PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, single model, med
 
 # Two-step median
 PredictionResult <- RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-median.csv", InflationAdjustment = 1, TruncateZeroes = TRUE, PredictType="quantiles")
-PredictionResult[rowSums(PredictionResult2S) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
-AccuracyStatisticsPlots(PredictionResult2S[,Classes]/100, Truth[,Classes]/100) # RMSE 19.9%, MAE 8.2%
-SCM(PredictionResult2S[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±2%, kappa 0.62 - this is much better
+PredictionResult[rowSums(PredictionResult) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 20.0%, MAE 8.1%, slightly better
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 72±1%, kappa 0.63±0.02, the same as mean
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.54
+PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, two-step model, median")
+PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, two-step model, median")
+
+# Three-step median
+PredictionResult = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-median.csv", PredictType="quantiles")
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 20.2%, MAE 7.9% - overall better than 1-step
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 72±2%, kappa 0.64±0.02 - also better than mean forest
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.54
+NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100)
+PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, three-step model, median")
+PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, three-step model, median")
+
+## Only RS params
+RSCovars = GetAllPixelCovars(TRUE)
+RSCovars = c(RSCovars$location, RSCovars$spectral, RSCovars$harmonic)
+PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-rscovars-validation.csv", InflationAdjustment = 0, covars=RSCovars)
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17.9%, MAE 9.9%, pretty good in general, everything is just around 2% worse
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 65%±4, kappa 0.56±0.05, also slightly worse
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.64
+
+## Display a comparison between all models
+
+InterceptModel = Truth[,Classes]
+InterceptModel[] = 1/length(Classes)
+
+AccuracyStatisticsPlots(InterceptModel, Truth[,Classes]/100) # RMSE 29.9%, MAE 21.4%
+SCM(InterceptModel, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 26±5%, kappa 0.13±0.07
+NSE(unlist(InterceptModel), unlist(Truth[,Classes]/100)) # 0
+PlotBox(InterceptModel*100, Truth[,Classes], main="Intercept model") # It is a line
+
+ggplotBox(list(
+    RFSingle = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)[,Classes]/100,
+    RFTwoStep = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)[,Classes], FALSE)/100,
+    RFThreeStep = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-validation.csv")[,Classes]/100,
+    RFSingleMedian = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-median-validation.csv", InflationAdjustment = 0, PredictType="quantiles")[,Classes], FALSE)/100,
+    RFTwoStepMedian = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-median.csv", InflationAdjustment = 1, TruncateZeroes = TRUE, PredictType="quantiles")[,Classes], FALSE)/100,
+    RFThreeStepMedian = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-median.csv", PredictType="quantiles")[,Classes]/100,
+    RFOnlyRS = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-rscovars-validation.csv", InflationAdjustment = 0, covars=RSCovars)[,Classes]/100,
+    Intercept = InterceptModel
+    ), Truth[,Classes]/100, main="Random forest model comparison", outlier.shape=NA)
