@@ -93,6 +93,29 @@ TidyData = function(df, classes = GetCommonClassNames(), drop.cols=GetUncorrelat
     return(df)
 }
 
+# Replace NAs with means
+NAToMean = function(df, cols=names(df))
+{
+    #NumData = as.matrix(df[,cols])
+    CM = colMeans(df[,cols], na.rm=TRUE)
+    for (col in cols)
+    {
+        ColWithNA = df[[col]]
+        ColWithNA[is.na(ColWithNA)] = CM[col]
+        df[[col]] = ColWithNA
+    }
+    return(df)
+}
+
+# Rescale a data.frame based on the distribution from another
+RescaleBasedOn = function(what, template, cols=intersect(names(what), names(template)))
+{
+    for (col in cols) {
+        what[,col] = (what[,col] - mean(template[,col], na.rm=TRUE)) / sd(template[,col], na.rm=TRUE)
+    }
+    return(what)
+}
+
 ReclassifyAndScale = function(df, output.classes=GetCommonClassNames())
 {
     # Some classes map to other classes. Put the values there
@@ -190,6 +213,20 @@ LoadValidationAndCovariates = function(zerovalues=FALSE, filename="../data/pixel
     names(ValidationPoints)[names(ValidationPoints) == "wetland"] = "wetland_herbaceous"
     
     AllData = merge(ValidationPoints, as.data.frame(AllData)[names(AllData) != "geom"], by.x=c("x", "y"), by.y=c("X", "Y"))
+    AllData$yabs = abs(AllData$y)
+    AllData = AddClusterColumns(AllData)
+    
+    if (zerovalues)
+        AllData = AddZeroValueColumns(AllData)
+    return(AllData)
+}
+
+LoadPredictionAndCovariates = function(zerovalues=FALSE, filename="../data/pixel-based/covariates.gpkg")
+{
+    PredPoints = LoadGlobalRasterPoints()
+    AllData = st_read(filename)
+    
+    AllData = merge(PredPoints, as.data.frame(AllData)[names(AllData) != "geom"], by.x=c("x", "y"), by.y=c("X", "Y"))
     AllData$yabs = abs(AllData$y)
     AllData = AddClusterColumns(AllData)
     

@@ -69,8 +69,16 @@ ClusterTrain = function(formula, data, train_function, val_data, predict_functio
 
 # Run binary relevance, i.e. one model per class.
 # Formula should be empty on LHS, i.e. paste0("~", paste(Covariates, collapse = "+"))
-BinaryRelevance = function(formula, data, train_function, val_data, predict_function=predict, seed=0xfedbeef, classes=GetCommonClassNames(), scale=TRUE, ...)
+BinaryRelevance = function(formula, data, train_function, val_data, predict_function=predict,
+    seed=0xfedbeef, classes=GetCommonClassNames(), scale=TRUE, filename=NULL, overwrite=FALSE, LeaveZeroes = FALSE, ...)
 {
+    if (!is.null(filename) && !overwrite && file.exists(filename))
+    {
+        Predictions = read.csv(filename)
+        if (scale) Predictions = ScalePredictions(Predictions, LeaveZeroes)
+        return(Predictions)
+    }
+
     Predictions = matrix(ncol=length(classes), nrow=nrow(val_data), dimnames=list(list(), classes))
     
     for (Class in classes)
@@ -83,7 +91,15 @@ BinaryRelevance = function(formula, data, train_function, val_data, predict_func
         Predictions[, Class] = RegPredictions
     }
     
-    if (scale) Predictions = ScalePredictions(Predictions)
+    if (!is.null(filename))
+    {
+        OutDir = dirname(filename)
+        if (!dir.exists(OutDir))
+            dir.create(OutDir)
+        write.csv(Predictions, filename, row.names=FALSE)
+    }
+    
+    if (scale) Predictions = ScalePredictions(Predictions, LeaveZeroes)
     
     return(as.data.frame(Predictions))
 }
@@ -143,14 +159,22 @@ PlotHex = function(predicted, observed, main="")
 }
 
 # Plot 1:1 boxplot
-PlotBox = function(predicted, observed, ...)
+PlotBox = function(predicted, observed, binpredicted=FALSE, ...)
 {
-    TruthBins = unlist(observed)
-    TruthBins = round(TruthBins, -1)
-    ValidationDF = data.frame(Truth=unlist(observed), Bins=as.factor(TruthBins), Predicted=unlist(predicted))
-    boxplot(Predicted~TruthBins, ValidationDF, xlab="Truth", ylab="Predicted", ...)
     OneToOne = data.frame(Predicted=seq(0, 100, 10), Bins=1:11)
-    lines(Predicted~Bins, OneToOne)
+    if (!binpredicted) {
+        TruthBins = unlist(observed)
+        TruthBins = round(TruthBins, -1)
+        ValidationDF = data.frame(Truth=unlist(observed), Bins=as.factor(TruthBins), Predicted=unlist(predicted))
+        boxplot(Predicted~Bins, ValidationDF, xlab="Truth", ylab="Predicted", ...)
+        lines(Predicted~Bins, OneToOne)
+    } else {
+        PredBins = unlist(predicted)
+        PredBins = round(PredBins, -1)
+        ValidationDF = data.frame(Truth=unlist(observed), Bins=as.factor(PredBins), Predicted=unlist(predicted))
+        boxplot(Truth~Bins, ValidationDF, xlab="Truth", ylab="Predicted", horizontal=TRUE, ...)
+        lines(Bins~Predicted, OneToOne)
+    }
 }
 
 # Boxplot comparison between different methods

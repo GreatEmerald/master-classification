@@ -8,24 +8,21 @@ source("pixel-based/utils/crossvalidation.r")
 
 Data.df = LoadTrainingAndCovariates()
 Data.df[is.na(Data.df)] = -9999
-Data.df = as.data.frame(Data.df)
+#Data.sp = Data.df
+Data.df = st_set_geometry(Data.df, NULL)
 Data.df = AddZeroValueColumns(Data.df)
-Data.df = TidyData(Data.df)
+Data.df = TidyData(Data.df, drop.cols=NULL)
+#Data.sp = Data.sp[rownames(Data.df),]
 
+# Validation data
 Data.val = LoadValidationAndCovariates()
 Data.val[is.na(Data.val)] = -9999
-class(Data.val) = "data.frame"
-Data.val = TidyData(Data.val)
+Val.sp = Data.val
+Data.val = st_set_geometry(Data.val, NULL)
+Data.val = TidyData(Data.val, drop.cols=NULL) # Drops around 1050
+Val.sp = Val.sp[rownames(Data.val),]
 
-ClassNames = GetCommonClassNames()
-CovarGroups = GetAllPixelCovars(TRUE)
-Truth = Data.val[,ClassNames]
-
-set.seed(0xbadcafe)
-folds = createFolds(Data.df$location_id, 4)
-
-
-UncorrelatedCovars = GetUncorrelatedPixelCovars()
+Truth = Data.val[,GetCommonClassNames()]
 
 # Get and plot variable importance
 FullFormula = paste0("~", paste(UncorrelatedCovars, collapse = "+"))
@@ -83,7 +80,7 @@ PermuteMe = function(CovarsInGroup, Model, Class, RealPrediction, statistic="RMS
     AccuracyStats(Permutation$predictions, Truth[[Class]])[[statistic]] - AccuracyStats(RealPrediction$predictions, Truth[[Class]])[[statistic]]
 }
 
-GetPermutationImportance = function(statistic="RMSE", AdjustPerNumCovars = FALSE)
+GetPermutationImportance = function(statistic="RMSE", AdjustPerNumCovars = FALSE, ClassNames=GetCommonClassNames(), CovarGroups=GetAllPixelCovars(TRUE))
 {
     FullFormula = paste0("~", paste(GetAllPixelCovars(), collapse = "+"))
     Importances = NULL
@@ -132,7 +129,7 @@ plot_heatmap = function(Importances)
 }
 
 RawImportancesRMSE = GetPermutationImportance()
-AdjustedImportancesRMSE = t(t(RawImportancesRMSE) / sapply(CovarGroups, length))
+AdjustedImportancesRMSE = t(t(RawImportancesRMSE) / sapply(GetAllPixelCovars(TRUE), length))
 svg("../rf-importances-rmse.svg", width = 12)
 plot_heatmap(RawImportancesRMSE)
 dev.off()

@@ -6,21 +6,52 @@ source("utils/accuracy-statistics.r")
 source("pixel-based/utils/crossvalidation.r")
 source("pixel-based/utils/subpixel-confusion-matrix.r")
 
-Data.df = LoadTrainingAndCovariates()
-class(Data.df) = "data.frame"
-Data.df = AddZeroValueColumns(Data.df)
-Data.df = TidyData(Data.df)
+Data.df.orig = LoadTrainingAndCovariates()
+Data.df.orig = st_set_geometry(Data.df.orig, NULL)
+# Manually rescale
+Data.df = Data.df.orig
+#Data.df = RescaleBasedOn(Data.df.orig, Data.df.orig, GetAllPixelCovars())
+#Data.df = NAToMean(Data.df, GetAllPixelCovars())
+Data.df[is.na(Data.df)] = -9999
+#Data.df[is.na(Data.df)] = 0
+Data.df = TidyData(Data.df, drop.cols=NULL)
 
-FullFormula = paste(paste0("cbind(", paste(GetLargeClassNames(Data.df), collapse=","), ")"), paste0(GetAllPixelCovars(), collapse="+"), sep="~")
+# Validation data
+Data.val = LoadValidationAndCovariates()
+Data.val = st_set_geometry(Data.val, NULL)
+#Data.val = RescaleBasedOn(Data.val, Data.df.orig, GetAllPixelCovars())
+#Data.val = NAToMean(Data.val, GetAllPixelCovars())
+Data.val[is.na(Data.val)] = -9999
+#Data.val[is.na(Data.val)] = 0
+Data.val = TidyData(Data.val, drop.cols=NULL) # Drops around 1050
+
+AllCovars = GetAllPixelCovars()
+Classes = GetCommonClassNames()
+Truth = Data.val[,Classes]
+
+FullFormula = paste(paste0("cbind(", paste(Classes, collapse=","), ")"), paste0(GetAllPixelCovars(), collapse="+"), sep="~")
 
 pm = plsr(FullFormula, data=Data.df)
-pm_pred = predict(pm, Data.df, comps=pm$ncomp)
-AccuracyStatisticsPlots(pm_pred[,,1], Data.df[,dimnames(pm_pred)[[2]]]) # 24 RMSE, that's almost as bad as intercept
-AccuracyStatisticsPlots(pm_pred[,,32], Data.df[,dimnames(pm_pred)[[2]]]) # 18 RMSE, now that's nice
+pm_pred = predict(pm, Data.val, comps=2)
+pm_pred[pm_pred < 0] = 0
+pm_pred = ScalePredictions(pm_pred, FALSE)
+AccuracyStatisticsPlots(pm_pred[,Classes], Data.val[,Classes]) # RMSE 27.2, MAE 17.8, not useful
+SCM(pm_pred[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 38±0.04 kappa 0.21±0.06
+NSE(unlist(as.data.frame(pm_pred[,Classes]))/100, unlist(Truth[,Classes]/100)) # 0.17
+PlotHex(as.data.frame(pm_pred[,Classes]), Truth[,Classes], "PLS regression, 2 components")
+PlotBox(as.data.frame(pm_pred[,Classes]), Truth[,Classes], main="PLS regression, 2 components", binpredicted=TRUE)
 
-for (i in 1:32) # The more the better
-    print(AccuracyStats(pm_pred[,,i], Data.df[,dimnames(pm_pred)[[2]]]))
+AccuracyStatisticsPlots(pm_pred[,,32], Data.df[,dimnames(pm_pred)[[2]]]) # 18 RMSE, now that used to be nice, but can't reproduce on the current version
 
+for (i in 1:pm$ncomp) # All very bad, 1 is best
+{
+    pm_pred = predict(pm, Data.val, comps=i)[,Classes]
+    pm_pred[pm_pred < 0] = 0
+    pm_pred = ScalePredictions(pm_pred, FALSE)
+    print(AccuracyStats(pm_pred, Data.val[,Classes]))
+}
+pm = plsr(FullFormula, data=Data.df, center=FALSE) # This is even more terrible
+    
 pm_scaled = ScaleNNPrediction(pm_pred[,,32])
 SCM(pm_scaled, Data.df[,dimnames(pm_pred)[[2]]]/100, plot=TRUE, totals=TRUE, scale=TRUE) # Kappa 0.36±0.07, OA 47±5%, pretty bad
 AccuracyStatisticsPlots(pm_scaled, Data.df[,dimnames(pm_pred)[[2]]]/100) # 19 RMSE when scaled

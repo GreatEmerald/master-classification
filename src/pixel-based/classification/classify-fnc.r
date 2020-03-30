@@ -1,4 +1,5 @@
-library(GSIF)
+library(GSIF) # From devtools::install_github("GreatEmerald/GSIF")
+library(hydroGOF)
 library(doParallel)
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
@@ -7,10 +8,26 @@ source("utils/accuracy-statistics.r")
 source("pixel-based/utils/crossvalidation.r")
 source("utils/fnc-centroids.r")
 
-Data.df = LoadTrainingAndCovariates()
-class(Data.df) = "data.frame"
-Data.df = AddZeroValueColumns(Data.df)
-Data.df = TidyData(Data.df)
+Data.orig = LoadTrainingAndCovariates()
+Data.orig = st_set_geometry(Data.orig, NULL)
+Data.df = Data.orig
+# Manually rescale
+Data.df = RescaleBasedOn(Data.df, Data.orig, GetAllPixelCovars())
+Data.df[is.na(Data.df)] = 0
+#Data.df[,GetAllPixelCovars()] = as.matrix(apply(Data.df[,GetAllPixelCovars()], 2, scale))
+#Data.df[is.na(Data.df)] = -9999
+Data.df = TidyData(Data.df, drop.cols=NULL)
+
+# Validation data
+Data.val = LoadValidationAndCovariates()
+Data.val = st_set_geometry(Data.val, NULL)
+Data.val = RescaleBasedOn(Data.val, Data.orig, GetAllPixelCovars())
+#Data.val[,GetAllPixelCovars()] = as.matrix(apply(Data.val[,GetAllPixelCovars()], 2, scale))
+Data.val[is.na(Data.val)] = 0
+Data.val = TidyData(Data.val, drop.cols=NULL) # Drops around 1050
+
+Classes = GetCommonClassNames()
+Truth = Data.val[,Classes]
 
 FullFormula = paste("dominant_lc", paste0(GetAllPixelCovars(), collapse="+"), sep="~")
 FullFormula = formula(FullFormula)
@@ -81,6 +98,8 @@ AccuracyStatisticsPlots(fnc_wm_cv, Data.df[, colnames(fnc_wm_cv)]/100) # RMSE of
 SCM(fnc_wm_cv, as.matrix(Data.df[, colnames(fnc_wm_cv)]/100), plot=TRUE, totals=TRUE, scale=TRUE) # 47% accuracy, kappa 0.38: no difference
 
 # What is the difference between centroids derived from logistic regression and weighted average
+CompleteRows = apply(as.matrix(Data.df[,GetAllPixelCovars()]), 1, function(x)any(is.na(x)))
+
 LogCentroids = spmultinom(formulaString=FullFormula, Data.df["dominant_lc"], Data.df[,GetAllPixelCovars()], class.stats=TRUE, predict.probs=FALSE)
 LogCentroids$class.c
 SimpleCentroids = GetClassMeans(FullFormula, Data.df)
@@ -92,12 +111,52 @@ SimpleCentroidSDs = GetClassSDs(FullFormula, Data.df)
 SDDifferences = LogCentroids$class.sd - SimpleCentroidSDs
 AccuracyStats(LogCentroids$class.sd, SimpleCentroidSDs)
 
+# try log centroids
+LCModel = spfkm(FullFormula, Data.val["dominant_lc"], Data.val[,GetAllPixelCovars()],
+    class.c=LogCentroids$class.c, class.sd=LogCentroids$class.sd)
+AccuracyStatisticsPlots(LCModel@mu[,Classes], Truth[,Classes]/100) # RMSE 28.8, MAE 15.4, better than intercept
+SCM(LCModel@mu[,Classes], Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 46%±4, kappa 0.34±0.05
+NSE(unlist(LCModel@mu[,Classes]), unlist(Truth[,Classes]/100)) # 0.07, barely better than intercept
+PlotHex(as.data.frame(LCModel@mu[,Classes]*100), Truth[,Classes], "Fuzzy nearest centroid, centroids from logistic regression")
+PlotBox(as.data.frame(LCModel@mu[,Classes]*100), Truth[,Classes], main="Fuzzy nearest centroid, centroids from logistic regression", binpredicted=TRUE)
+
 # How good is it to use weighted means
-WMModel = spfkm(FullFormula, Data.df["dominant_lc"], Data.df[,GetAllPixelCovars()],
+WMModel = spfkm(FullFormula, Data.val["dominant_lc"], Data.val[,GetAllPixelCovars()],
     class.c=GetClassMeans(FullFormula, Data.df), class.sd=GetClassSDs(FullFormula, Data.df))
 
-AccuracyStatisticsPlots(WMModel@mu, Data.df[, colnames(WMModel@mu)]/100) # RMSE of 22%
-SCM(WMModel@mu, as.matrix(Data.df[, colnames(WMModel@mu)]/100), plot=TRUE, totals=TRUE, scale=TRUE) # 49% accuracy, kappa 0.41: pretty poor still but a bit better (and much faster)
+# Scaled to original and also set NA to 0
+write.csv(WMModel@mu[,Classes], "../data/pixel-based/predictions/fnc-na0-scaled.csv", row.names=FALSE)
+AccuracyStatisticsPlots(WMModel@mu[,Classes], Truth[,Classes]/100) # RMSE 24.1, MAE 13.7, slightly better
+SCM(WMModel@mu[,Classes], Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 52%±4, kappa 0.41±0.06
+NSE(unlist(WMModel@mu[,Classes]), unlist(Truth[,Classes]/100)) # 0.35
+PlotHex(as.data.frame(WMModel@mu[,Classes]*100), Truth[,Classes], "Fuzzy nearest centroid, weighted means")
+PlotBox(as.data.frame(WMModel@mu[,Classes]*100), Truth[,Classes], main="Fuzzy nearest centroid, weighted means", binpredicted=TRUE)
+
+# What if we replace NAs with means instead
+Data.val = LoadValidationAndCovariates()
+Data.val = st_set_geometry(Data.val, NULL)
+#Data.val[is.na(Data.val)] = -9999
+Data.val = NAToMean(Data.val, GetAllPixelCovars())
+Data.val = TidyData(Data.val, drop.cols=NULL)
+
+# Log
+LCModel = spfkm(FullFormula, Data.val["dominant_lc"], Data.val[,GetAllPixelCovars()],
+    class.c=LogCentroids$class.c, class.sd=LogCentroids$class.sd)
+AccuracyStatisticsPlots(LCModel@mu[,Classes], Truth[,Classes]/100) # RMSE 27.7, MAE 14.7, improved
+SCM(LCModel@mu[,Classes], Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 49%±3, kappa 0.36±0.05
+NSE(unlist(LCModel@mu[,Classes]), unlist(Truth[,Classes]/100)) # 0.14, slightly better than intercept
+PlotHex(as.data.frame(LCModel@mu[,Classes]*100), Truth[,Classes], "Fuzzy nearest centroid, centroids from logistic regression, NA set to mean")
+PlotBox(as.data.frame(LCModel@mu[,Classes]*100), Truth[,Classes], main="Fuzzy nearest centroid, centroids from logistic regression, NA set to mean", binpredicted=TRUE)
+
+# How good is it to use weighted means
+WMModel = spfkm(FullFormula, Data.val["dominant_lc"], Data.val[,GetAllPixelCovars()],
+    class.c=GetClassMeans(FullFormula, Data.df), class.sd=GetClassSDs(FullFormula, Data.df))
+
+AccuracyStatisticsPlots(WMModel@mu[,Classes], Truth[,Classes]/100) # RMSE 25.1, MAE 14.2, improved
+SCM(WMModel@mu[,Classes], Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 51%±5, kappa 0.40±0.06
+NSE(unlist(WMModel@mu[,Classes]), unlist(Truth[,Classes]/100)) # 0.30
+PlotHex(as.data.frame(WMModel@mu[,Classes]*100), Truth[,Classes], "Fuzzy nearest centroid, weighted means, NA set to mean")
+PlotBox(as.data.frame(WMModel@mu[,Classes]*100), Truth[,Classes], main="Fuzzy nearest centroid, weighted means, NA set to mean", binpredicted=TRUE)
 
 # What if fuzziness is increased
 FuzzierLogModel = spfkm(FullFormula, Data.df["dominant_lc"], Data.df[,GetAllPixelCovars()], fuzzy.e=1.5)
