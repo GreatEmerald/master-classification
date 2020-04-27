@@ -37,8 +37,12 @@ CrossValidate = function(formula, data, train_function, predict_function, folds=
 }
 
 # Train on and predict over ecozone clusters.
-ClusterTrain = function(formula, data, train_function, val_data, predict_function=predict, cv_seed=0xfedbeef, include_neighbours=FALSE, cluster_col="bc_id", ...)
+ClusterTrain = function(formula, data, train_function=NULL, val_data, predict_function=predict,
+                        cv_seed=0xfedbeef, include_neighbours=FALSE, cluster_col="bc_id",
+                        trainpredict_function=NULL, ...)
 {
+    if (is.null(train_function) && is.null(trainpredict_function))
+        stop("Pass either the trainfunction or the trainpredict_function")
     set.seed(cv_seed)
     
     TrainClusters = if (include_neighbours) ClusterNeighbours() else {
@@ -52,9 +56,14 @@ ClusterTrain = function(formula, data, train_function, val_data, predict_functio
     val_data = val_data[!is.na(val_data[[cluster_col]]),]
     
     Prediction = pblapply(TrainClusters, function(x) {
-        model = train_function(formula=formula, ..., data=data[data[[cluster_col]] %in% x,]) # Train on zone plus (optionally) neighbours
         ClusterRows = val_data[[cluster_col]]==x[[1]]
-        ResultMat = predict_function(model, ..., newdata=val_data[ClusterRows,]) # Predict on zone only
+        if (!is.null(train_function))
+        {
+            model = train_function(formula=formula, ..., data=data[data[[cluster_col]] %in% x,]) # Train on zone plus (optionally) neighbours
+            ResultMat = predict_function(model, ..., newdata=val_data[ClusterRows,]) # Predict on zone only
+        } else {
+            ResultMat = trainpredict_function(formula=formula, data=data[data[[cluster_col]] %in% x,], newdata=val_data[ClusterRows,], ...)
+        }
         if (!is.matrix(ResultMat))
             ResultMat = as.matrix(ResultMat)
         cbind(ResultMat, order=which(ClusterRows))

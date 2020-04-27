@@ -65,7 +65,7 @@ SfToRaster = function(sfo, xsamplingrate=0.2, ysamplingrate=0.2, layers=GetCommo
 
 OneStepRaster = SfToRaster(SpatialPredictions)
 writeRaster(OneStepRaster, "../data/pixel-based/predictions/randomforest-onestep-walltowall.tif", datatype="INT1U", options=c("COMPRESS=DEFLATE"), overwrite=TRUE)
-TIFFtoBMP = function(tifffile)
+TIFFtoBMP = function(tifffile, layers=c(5,2,8), prefix="ctw")
 {
     # BMPs at native resolution (because raster doesn't support PNGs)
     # Set 1: Red: crops, green: trees, blue: water
@@ -73,19 +73,14 @@ TIFFtoBMP = function(tifffile)
     # Set 3: Red: urban
     InputRaster = brick(tifffile)
     OutputFile = strtrim(tifffile, nchar(tifffile)-4)
-    Set1 = InputRaster[[c(5, 2, 8)]]
-    Set1 = Set1 / 100 * 255
-    writeRaster(Set1, paste0(OutputFile, "-ctw.bmp"), datatype="INT1U", overwrite=TRUE)
-    Set2 = InputRaster[[c(7, 4, 3)]]
-    Set2 = Set2 / 100 * 255
-    writeRaster(Set2, paste0(OutputFile, "-bgs.bmp"), datatype="INT1U", overwrite=TRUE)
-    Urban = InputRaster[[c(6, 6, 6)]]
-    Urban[[2]][!is.na(Urban[[2]])] = 0
-    Urban[[3]][!is.na(Urban[[3]])] = 0
-    Urban = Urban / 100 * 255
-    writeRaster(Urban, paste0(OutputFile, "-urban.bmp"), datatype="INT1U", overwrite=TRUE)
+    Set = InputRaster[[layers]]
+    Set = Set / 100 * 255
+    writeRaster(Set, paste0(OutputFile, "-", prefix, ".bmp"), datatype="INT1U", overwrite=TRUE)
 }
 TIFFtoBMP("../data/pixel-based/predictions/randomforest-onestep-walltowall.tif")
+TIFFtoBMP("../data/pixel-based/predictions/randomforest-onestep-walltowall.tif", c(7,4,3), "bgs")
+TIFFtoBMP("../data/pixel-based/predictions/randomforest-onestep-walltowall.tif", c(6,6,6), "urban")
+TIFFtoBMP("../data/pixel-based/predictions/randomforest-onestep-walltowall.tif", c(3,2,4), "stg")
 plotRGB(OneStepRaster, "shrub", "tree", "grassland", stretch="lin")
 
 ## Second, 3-step median forest (lowest MAE)
@@ -100,11 +95,13 @@ writeRaster(Med3Raster, "../data/pixel-based/predictions/randomforest-median-thr
 plotRGB(Med3Raster, "shrub", "tree", "grassland", stretch="lin")
 
 TIFFtoBMP("../data/pixel-based/predictions/randomforest-median-threestep-walltowall.tif")
+TIFFtoBMP("../data/pixel-based/predictions/randomforest-median-threestep-walltowall.tif", c(3,2,4), "stg")
 
-BMPs = list.files("../data/pixel-based/predictions/", pattern=glob2rx("*.bmp"), full.names=TRUE)
-library(gdalUtils)
-lapply(BMPs, function(BMP) {gdal_translate(BMP, paste0(strtrim(BMP, nchar(BMP)-4), ".png"), options=c("ZLEVEL=9", "NBITS=1"))})
-
+# Can convert to PNGs
+#BMPs = list.files("../data/pixel-based/predictions/", pattern=glob2rx("*.bmp"), full.names=TRUE)
+#library(gdalUtils)
+#lapply(BMPs, function(BMP) {gdal_translate(BMP, paste0(strtrim(BMP, nchar(BMP)-4), ".png"), options=c("ZLEVEL=9", "NBITS=1"))})
+# Actually they are even larger, so never mind
 
 ## Comparison between non-RF models
 InterceptModel = Truth
