@@ -257,9 +257,107 @@ preds = predict(model, ValidMatrix)
 colnames(preds) = colnames(TargetMatrix)
 Predictions = as.data.frame(preds*100)
 AccuracyStatisticsPlots(Predictions, Data.val[,GetCommonClassNames()]) # 23.8% RMSE, 10.0 MAE, a slight bit better again
+# On GPU with NA -9999 it's 23.4 RMSE, 9.6 MAE; back on CPU with NA -9999 it's 24.1 RMSE 9.9 MAE
 SCM(Predictions/100, Data.val[,GetCommonClassNames()]/100, plot=TRUE, totals=TRUE) # OA 65±2 kappa 0.54±0.02
-NSE(unlist(Predictions)/100, unlist(Data.val[,GetCommonClassNames()]/100)) # 0.37
+# GPU OA 66±1 kappa 0.56±0.02
+NSE(unlist(Predictions)/100, unlist(Data.val[,GetCommonClassNames()]/100)) # 0.37 / GPU 0.39
 PlotHex(Predictions, Data.val[,GetCommonClassNames()], "Neural networks, 3 hidden layers (128&64&32), softmax, adam, NA to 0, no dropout")
 PlotBox(Predictions, Data.val[,GetCommonClassNames()], main="Neural networks, 3 hidden layers (128&64&32), softmax, adam, NA to 0, no dropout", binpredicted=TRUE)
+write.csv(Predictions, "../data/pixel-based/predictions/nn-3layers-softmax-adam-9999na-nodropout.csv")
 write.csv(Predictions, "../data/pixel-based/predictions/nn-3layers-softmax-adam-0na-nodropout.csv")
 
+# Smaller batches to train for longer
+fit(model, CovarMatrix, TargetMatrix, epochs = 100, batch_size = 32, validation_split=0.3, use_multiprocessing=TRUE, workers=12, shuffle = TRUE)
+
+# Try nadam optimiser
+model = keras_model_sequential() %>% 
+  layer_dense(units = 128, activation = 'relu', input_shape = c(67)) %>% 
+  #layer_dropout(rate = 0.5) %>% 
+  layer_batch_normalization() %>%
+  layer_dense(units = 64, activation = 'relu') %>% 
+  #layer_batch_normalization() %>%
+  #layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 32, activation = 'relu') %>% 
+  layer_batch_normalization() %>%
+  #layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 7, activation = 'softmax') %>% 
+  compile(
+    loss = 'mean_absolute_error',
+    optimizer = optimizer_nadam(),
+    metrics = c('accuracy')     
+  )
+fit(model, CovarMatrix, TargetMatrix, epochs = 100, batch_size = 32, validation_split=0.3, shuffle = TRUE)
+
+preds = predict(model, ValidMatrix)
+colnames(preds) = colnames(TargetMatrix)
+Predictions = as.data.frame(preds*100)
+AccuracyStatisticsPlots(Predictions, Data.val[,GetCommonClassNames()]) # 22.9% RMSE, 9.28 MAE, a slight bit better again
+SCM(Predictions/100, Data.val[,GetCommonClassNames()]/100, plot=TRUE, totals=TRUE) # OA 68±2 kappa 0.57±0.02
+NSE(unlist(Predictions)/100, unlist(Data.val[,GetCommonClassNames()]/100)) # 0.41
+
+# Try with dropout
+model = keras_model_sequential() %>% 
+  layer_dense(units = 128, activation = 'relu', input_shape = c(67)) %>% 
+  #layer_dropout(rate = 0.5) %>% 
+  layer_batch_normalization() %>%
+  layer_dense(units = 64, activation = 'relu') %>% 
+  #layer_batch_normalization() %>%
+  layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 32, activation = 'relu') %>% 
+  layer_batch_normalization() %>%
+  #layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 7, activation = 'softmax') %>% 
+  compile(
+    loss = 'mean_absolute_error',
+    optimizer = optimizer_nadam(),
+    metrics = c('accuracy')     
+  )
+fit(model, CovarMatrix, TargetMatrix, epochs = 100, batch_size = 32, validation_split=0.3, shuffle = TRUE)
+# Not any better
+
+# normalisation only
+model = keras_model_sequential() %>% 
+  layer_dense(units = 128, activation = 'relu', input_shape = c(67)) %>% 
+  #layer_dropout(rate = 0.5) %>% 
+  layer_batch_normalization() %>%
+  layer_dense(units = 64, activation = 'relu') %>% 
+  layer_batch_normalization() %>%
+  #layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 32, activation = 'relu') %>% 
+  layer_batch_normalization() %>%
+  #layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 7, activation = 'softmax') %>% 
+  compile(
+    loss = 'mean_absolute_error',
+    optimizer = optimizer_nadam(),
+    metrics = c('accuracy')     
+  )
+fit(model, CovarMatrix, TargetMatrix, epochs = 100, batch_size = 32, validation_split=0.3, shuffle = TRUE)
+
+preds = predict(model, ValidMatrix)
+colnames(preds) = colnames(TargetMatrix)
+Predictions = as.data.frame(preds*100)
+AccuracyStatisticsPlots(Predictions, Data.val[,GetCommonClassNames()]) # 22.1%/22.7 RMSE, 9.00/9.19 MAE, a slight bit better again
+SCM(Predictions/100, Data.val[,GetCommonClassNames()]/100, plot=TRUE, totals=TRUE) # OA 69±2/68±1 kappa 0.59±0.02/0.57±0.02
+NSE(unlist(Predictions)/100, unlist(Data.val[,GetCommonClassNames()]/100)) # 0.46/0.43
+write.csv(Predictions, "../data/pixel-based/predictions/nn-3layers-softmax-nadam-9999na-nodropout.csv")
+
+# Same but with all input data
+model = keras_model_sequential() %>% 
+  layer_dense(units = 128, activation = 'relu', input_shape = c(67)) %>% 
+  #layer_dropout(rate = 0.5) %>% 
+  layer_batch_normalization() %>%
+  layer_dense(units = 64, activation = 'relu') %>% 
+  layer_batch_normalization() %>%
+  #layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 32, activation = 'relu') %>% 
+  layer_batch_normalization() %>%
+  #layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 7, activation = 'softmax') %>% 
+  compile(
+    loss = 'mean_absolute_error',
+    optimizer = optimizer_nadam(),
+    metrics = c('accuracy')     
+  )
+fit(model, CovarMatrix, TargetMatrix, epochs = 100, batch_size = 32, shuffle = TRUE)
+# It is much worse?! It seems that the validation is actually pretty useful to guide the optimiser

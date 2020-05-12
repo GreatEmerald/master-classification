@@ -53,6 +53,7 @@ SCM(Predictions[,Classes], Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 58%
 NSE(unlist(as.data.frame(Predictions[,Classes])), unlist(Truth[,Classes]/100)) # 0.48
 PlotHex(as.data.frame(Predictions[,Classes]*100), Truth[,Classes], "Logistic regression, all covariates, 200 iterations")
 PlotBox(as.data.frame(Predictions[,Classes]*100), Truth[,Classes], main="Logistic regression, all covariates, 200 iterations", binpredicted=TRUE)
+write.csv(Predictions[,Classes]*100, "../data/pixel-based/predictions/logistic-na0.csv", row.names=FALSE)
 
 ReducedModel = step(FullModel) # This takes forever as it rebuilds the model for each covariate
 

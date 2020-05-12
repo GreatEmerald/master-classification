@@ -204,8 +204,36 @@ ggplotBox = function(predicted_list, observed, main = "", ...)
         DiffMelt = rbind(DiffAll, DiffMelt)
         ModelData = rbind(ModelData, DiffMelt)
     }
+    ModelData$Model = factor(ModelData$Model, levels=names(predicted_list), ordered=TRUE)
     
-    ggplot(ModelData, aes(x=Model, y=AE, fill=Class)) + geom_boxplot(...) + ggtitle(main)
+    ggplot(ModelData, aes(x=Model, y=AE, fill=Class)) + geom_boxplot(...) + ggtitle(main) + 
+        stat_summary(fun = mean, geom = "errorbar", 
+                     aes(ymax = ..y.., ymin = ..y.., group = Class),
+                     width = 0.75, linetype = "dotted", position = position_dodge())
+}
+
+ggplotBoxLines = function(predicted_list, observed, main = "", ...)
+{
+    ModelData = NULL
+    for (i in 1:length(predicted_list))
+    {
+        predicted = predicted_list[[i]]
+        ModelName = names(predicted_list)[i]
+        DiffDF = predicted - observed
+        DiffMelt = melt(abs(DiffDF), variable.name="Class", value.name="AE", measure.vars=1:length(DiffDF))
+        DiffMelt$Model = ModelName
+        # Duplicate to add an "overall" class
+        DiffAll = DiffMelt
+        DiffAll$Class = "Overall"
+        DiffMelt = rbind(DiffAll, DiffMelt)
+        ModelData = rbind(ModelData, DiffMelt)
+    }
+    ModelData$Model = factor(ModelData$Model, levels=names(predicted_list), ordered=TRUE)
+    
+    ggplot(ModelData, aes(x=Model, y=AE, fill=Class)) + ggtitle(main) + 
+        stat_summary(fun = mean, geom = "errorbar", 
+                     aes(ymax = ..y.., ymin = ..y.., group = Class, colour = Class),
+                     width = 0.75)
 }
 
 # Additional statistics per class: how well we predict 0, 100, 0<x<50, 50<x<100

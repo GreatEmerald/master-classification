@@ -170,32 +170,39 @@ ggsave("../output/2020-04-21-varimp-top15.pdf", VIP, width=1272/100, height=634/
 ## Complex heatmaps
 library(ComplexHeatmap) # This is a bioconductor package, use BiocManager::install("ComplexHeatmap")
 
-VarCats = as.factor(GetAllPixelCovars())
+KeepTop = 15
+ImportanceStats = colSums(PermAll)
+Perm15 = PermAll[,order(ImportanceStats, decreasing = TRUE)[1:KeepTop]]
+
+VarCats = as.factor(colnames(Perm15))
 levels(VarCats) = GetAllPixelCovars(TRUE)
 VarCatCols = rainbow(length(levels(VarCats)))
 names(VarCatCols) = levels(VarCats)
 
 # Everything in one
-
-
-emf("../output/2020-04-21-varimp-heatmap-all.emf", width=1272/100, height=634/100)
-Heatmap(PermAll, name="RMSE", column_title = "Variable", row_title = "Class", column_names_gp = gpar(fontsize = 7),
+emf("../output/2020-04-27-varimp-heatmap-all.emf", width=1272/100, height=634/100)
+Heatmap(Perm15, name="RMSE", column_title = "Variable", row_title = "Class", #column_names_gp = gpar(fontsize = 7),
         top_annotation = HeatmapAnnotation(Category=VarCats, col=list(Category=VarCatCols)))
 dev.off()
 
 # By category
-emf("../output/2020-04-21-varimp-heatmap-categorised.emf", width=1272/100, height=634/100)
-Heatmap(PermAll, name="RMSE", row_title = "Class", show_column_dend = FALSE, show_row_dend = FALSE,
-        column_names_gp = gpar(fontsize = 7), column_title_gp = gpar(fontsize = 11), column_names_rot = 45,
+emf("../output/2020-04-27-varimp-heatmap-categorised.emf", width=1272/100, height=634/100)
+Heatmap(Perm15, name="RMSE", row_title = "Class", show_column_dend = FALSE, show_row_dend = FALSE,
+        #column_names_gp = gpar(fontsize = 7),
+        column_title_gp = gpar(fontsize = 11), column_names_rot = 45,
         column_split = VarCats)
 dev.off()
 
 # Horizontal and with values
-emf("../output/2020-04-21-varimp-heatmap-values.emf", width=1272/100, height=634/100)
-Heatmap(t(PermAll), name="RMSE", column_title = "Class", show_column_dend = FALSE, show_row_dend = FALSE,
-        row_names_gp = gpar(fontsize = 7), row_title_gp = gpar(fontsize = 11), column_names_rot = 0, row_title_rot = 0,
+emf("../output/2020-04-27-varimp-heatmap-values.emf", width=1272/100, height=634/100)
+Heatmap(t(Perm15), name="RMSE", column_title = "Class", show_column_dend = FALSE, show_row_dend = FALSE,
+        #row_names_gp = gpar(fontsize = 7), row_title_gp = gpar(fontsize = 11),
+        column_names_rot = 45, row_title_rot = 0,
         row_split = VarCats, col=circlize::colorRamp2(c(6, 0, -1), c("forestgreen", "lightyellow", "red")),
         cell_fun = function(j, i, x, y, w, h, col) {
-            grid.text(round(t(PermAll)[i, j], 2), x, y, gp=gpar(fontsize = 6))
+            grid.text(round(t(Perm15)[i, j], 2), x, y, gp=gpar(fontsize = 12))
         })
 dev.off()
+
+# Top 15 per category
+

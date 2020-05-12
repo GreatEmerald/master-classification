@@ -16,8 +16,8 @@ Data.df.orig = st_set_geometry(Data.df.orig, NULL)
 Data.df = Data.df.orig
 #Data.df = RescaleBasedOn(Data.df.orig, Data.df.orig, GetAllPixelCovars())
 #Data.df = NAToMean(Data.df, GetAllPixelCovars())
-Data.df[is.na(Data.df)] = -9999
-#Data.df[is.na(Data.df)] = 0
+#Data.df[is.na(Data.df)] = -9999
+Data.df[is.na(Data.df)] = 0
 Data.df = TidyData(Data.df, drop.cols=NULL)
 
 # Validation data
@@ -25,8 +25,8 @@ Data.val = LoadValidationAndCovariates()
 Data.val = st_set_geometry(Data.val, NULL)
 #Data.val = RescaleBasedOn(Data.val, Data.df.orig, GetAllPixelCovars())
 #Data.val = NAToMean(Data.val, GetAllPixelCovars())
-Data.val[is.na(Data.val)] = -9999
-#Data.val[is.na(Data.val)] = 0
+#Data.val[is.na(Data.val)] = -9999
+Data.val[is.na(Data.val)] = 0
 Data.val = TidyData(Data.val, drop.cols=NULL) # Drops around 1050
 
 AllCovars = GetAllPixelCovars()
@@ -38,10 +38,33 @@ CovarMatrix = as.matrix(Data.df[,AllCovars])
 
 singlelasso = glmnet(CovarMatrix, TargetMatrix, family="mgaussian")
 plot(singlelasso, label=TRUE, xvar="dev")
-which(coef(singlelasso)$tree[,95] != 0) # Remaining covars
-GetAllPixelCovars()[!(GetAllPixelCovars() %in% names(which(coef(singlelasso)$tree[,95] != 0)))] # Discarded covars
+which(coef(singlelasso)$tree[,90] != 0) # Remaining covars
+GetAllPixelCovars()[!(GetAllPixelCovars() %in% names(which(coef(singlelasso)$tree[,90] != 0)))] # Discarded covars
 which(coef(singlelasso)$water[,50] != 0) # Remaining covars
 GetAllPixelCovars()[!(GetAllPixelCovars() %in% names(which(coef(singlelasso)$water[,50] != 0)))] # Discarded covars
+Predictions = predict(singlelasso, as.matrix(Data.val[,GetAllPixelCovars()]), type="response")
+PredictionsClipped = Predictions
+PredictionsClipped[PredictionsClipped < 0] = 0
+PredictionsScaledA = apply(PredictionsClipped, 3, ScalePredictions, LeaveZeroes=FALSE)
+PredictionsClipped[PredictionsClipped > 1] = 1
+PredictionsScaledB = apply(PredictionsClipped, 3, ScalePredictions, LeaveZeroes=FALSE)
+# There is almost no difference between A and B, A is just slightly better
+AccChange = do.call(rbind, lapply(PredictionsScaledA, function(mat){AccuracyStats(mat[,Classes], Truth[,Classes])}))
+plot(AccChange$RMSE, type="l")
+plot(AccChange$MAE, type="l")
+plot(AccChange$ME, type="l")
+which.min(AccChange$RMSE) # 72
+which.min(AccChange$MAE) # 90
+# At 57 it seems nothing is dropped, coefficients are just shrunk
+# What did we drop at 48?
+for (i in 1:length(coef(singlelasso)))
+    print(which(coef(singlelasso)[[i]][,48] == 0))
+# jul.srad and mean.srad
+# Since 90 is just OLS, let's use 72 (lambda=0.000401)
+write.csv(PredictionsScaledA[[72]][,Classes], "../data/pixel-based/predictions/lasso-lambda0000401.csv", row.names=FALSE)
+AccuracyStatisticsPlots(PredictionsScaledA[[72]][,Classes], Truth) # 21.4% RMSE, 12.6 MAE
+SCM(PredictionsScaledA[[72]][,Classes]/100, Truth/100, plot=TRUE, totals=TRUE) # OA 56±0.04 kappa 0.43±0.05
+NSE(unlist(PredictionsScaledA[[72]][,Classes])/100, unlist(Truth[,Classes]/100)) # 0.49
 
 lambdas = cv.glmnet(CovarMatrix, TargetMatrix, family="mgaussian", parallel=TRUE)
 lambdas[["lambda.min"]]

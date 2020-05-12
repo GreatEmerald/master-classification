@@ -12,7 +12,7 @@ Data.orig = LoadTrainingAndCovariates()
 Data.orig = st_set_geometry(Data.orig, NULL)
 Data.df = Data.orig
 # Manually rescale
-Data.df = RescaleBasedOn(Data.df, Data.orig, GetAllPixelCovars())
+#Data.df = RescaleBasedOn(Data.df, Data.orig, GetAllPixelCovars())
 Data.df[is.na(Data.df)] = 0
 #Data.df[,GetAllPixelCovars()] = as.matrix(apply(Data.df[,GetAllPixelCovars()], 2, scale))
 #Data.df[is.na(Data.df)] = -9999
@@ -21,7 +21,7 @@ Data.df = TidyData(Data.df, drop.cols=NULL)
 # Validation data
 Data.val = LoadValidationAndCovariates()
 Data.val = st_set_geometry(Data.val, NULL)
-Data.val = RescaleBasedOn(Data.val, Data.orig, GetAllPixelCovars())
+#Data.val = RescaleBasedOn(Data.val, Data.orig, GetAllPixelCovars())
 #Data.val[,GetAllPixelCovars()] = as.matrix(apply(Data.val[,GetAllPixelCovars()], 2, scale))
 Data.val[is.na(Data.val)] = 0
 Data.val = TidyData(Data.val, drop.cols=NULL) # Drops around 1050
@@ -125,12 +125,13 @@ WMModel = spfkm(FullFormula, Data.val["dominant_lc"], Data.val[,GetAllPixelCovar
     class.c=GetClassMeans(FullFormula, Data.df), class.sd=GetClassSDs(FullFormula, Data.df))
 
 # Scaled to original and also set NA to 0
-write.csv(WMModel@mu[,Classes], "../data/pixel-based/predictions/fnc-na0-scaled.csv", row.names=FALSE)
-AccuracyStatisticsPlots(WMModel@mu[,Classes], Truth[,Classes]/100) # RMSE 24.1, MAE 13.7, slightly better
-SCM(WMModel@mu[,Classes], Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 52%±4, kappa 0.41±0.06
-NSE(unlist(WMModel@mu[,Classes]), unlist(Truth[,Classes]/100)) # 0.35
+#write.csv(WMModel@mu[,Classes], "../data/pixel-based/predictions/fnc-na0-scaled.csv", row.names=FALSE)
+AccuracyStatisticsPlots(WMModel@mu[,Classes], Truth[,Classes]/100) # RMSE 24.5, MAE 13.5, slightly better
+SCM(WMModel@mu[,Classes], Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 53%±4, kappa 0.42±0.06
+NSE(unlist(WMModel@mu[,Classes]), unlist(Truth[,Classes]/100)) # 0.33
 PlotHex(as.data.frame(WMModel@mu[,Classes]*100), Truth[,Classes], "Fuzzy nearest centroid, weighted means")
 PlotBox(as.data.frame(WMModel@mu[,Classes]*100), Truth[,Classes], main="Fuzzy nearest centroid, weighted means", binpredicted=TRUE)
+write.csv(WMModel@mu[,Classes], "../data/pixel-based/predictions/fnc-na0.csv", row.names=FALSE)
 
 # What if we replace NAs with means instead
 Data.val = LoadValidationAndCovariates()

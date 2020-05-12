@@ -78,8 +78,28 @@ stopifnot(all(!duplicated(ResultOrder[,"order"]))) # No point should be in two z
 ResultInOrder = ResultOrder[order(ResultOrder[,"order"]),]
 ResultInOrder = ResultInOrder[,!colnames(ResultInOrder) %in% "order"] # Remove order column
 write.csv(ResultInOrder, "../data/pixel-based/predictions/multivarrf-all.csv", row.names=FALSE)
+mrfDF = ResultInOrder
+Truth = Data.val[,Classes]
 
-#Truth = Data.val[ValSamples,Classes]
-#AccuracyStatisticsPlots(mrfDF[,Classes]/100, Truth[,Classes]/100) # RMSE 16%
-#SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 66%, kappa 0.57
-#cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.65
+# Uh oh, something went wrong and we have cases with < 100:
+which(rowSums(mrfDF[,Classes]) < 99.99)
+# Fill with largest class that is now set to zero
+# Look at bc_id
+ClassStats = aggregate(Data.df[,Classes], list(Data.df[,"bc_id"]), sum) # I don't know why this works and not colSums
+# Indices of the zero columns for each row
+ZeroMask = mrfDF==0
+ZeroIdx = apply(ZeroMask, 1, which)
+FilledDF = lapply(1:nrow(Data.val), function(x){
+  Result = names(which.max(ClassStats[ClassStats$Group.1==Data.val[x,"bc_id"],ZeroIdx[[x]]+1, drop=FALSE]))
+  if (!is.null(Result))
+    mrfDF[x,Result] = 100-sum(mrfDF[x,])
+  mrfDF[x,]
+  })
+FilledDF = do.call(rbind, FilledDF)
+rowSums(FilledDF) # Fixed
+write.csv(FilledDF, "../data/pixel-based/predictions/multivarrf-all-fixed.csv", row.names=FALSE)
+
+AccuracyStatisticsPlots(FilledDF[,Classes]/100, Truth[,Classes]/100) # RMSE 18.7%, MAE 10.0%
+SCM(FilledDF[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 65%, kappa 0.55
+cor(unlist(FilledDF[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.61
+hydroGOF::NSE(unlist(FilledDF[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.61

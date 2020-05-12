@@ -63,9 +63,9 @@ SfToRaster = function(sfo, xsamplingrate=0.2, ysamplingrate=0.2, layers=GetCommo
     return(PR.ras)
 }
 
-OneStepRaster = SfToRaster(SpatialPredictions)
+OneStepRaster = SfToRaster(SpatialPredictions) # Note: first layer is id, can be ignored
 writeRaster(OneStepRaster, "../data/pixel-based/predictions/randomforest-onestep-walltowall.tif", datatype="INT1U", options=c("COMPRESS=DEFLATE"), overwrite=TRUE)
-TIFFtoBMP = function(tifffile, layers=c(5,2,8), prefix="ctw")
+TIFFtoBMP = function(tifffile, layers=c(5,2,8), prefix="ctw", nas=3)
 {
     # BMPs at native resolution (because raster doesn't support PNGs)
     # Set 1: Red: crops, green: trees, blue: water
@@ -75,6 +75,8 @@ TIFFtoBMP = function(tifffile, layers=c(5,2,8), prefix="ctw")
     OutputFile = strtrim(tifffile, nchar(tifffile)-4)
     Set = InputRaster[[layers]]
     Set = Set / 100 * 255
+    Set[[nas]][is.na(Set[[nas]])] = 255 # Set specified bands to 255
+    Set[is.na(Set)] = 0 # Set the rest to 0
     writeRaster(Set, paste0(OutputFile, "-", prefix, ".bmp"), datatype="INT1U", overwrite=TRUE)
 }
 TIFFtoBMP("../data/pixel-based/predictions/randomforest-onestep-walltowall.tif")
@@ -96,6 +98,22 @@ plotRGB(Med3Raster, "shrub", "tree", "grassland", stretch="lin")
 
 TIFFtoBMP("../data/pixel-based/predictions/randomforest-median-threestep-walltowall.tif")
 TIFFtoBMP("../data/pixel-based/predictions/randomforest-median-threestep-walltowall.tif", c(3,2,4), "stg")
+
+TIFFtoBMP("../data/pixel-based/predictions/randomforest-median-threestep-walltowall.tif", c(3,2,4), "stg")
+
+# Produce individual images for each class
+for (layeridx in 2:nlayers(OneStepRaster))
+{
+    Class = GetCommonClassNames()[layeridx-1]
+    TIFFtoBMP("../data/pixel-based/predictions/randomforest-onestep-walltowall.tif",
+              c(layeridx,layeridx,layeridx), Class)
+}
+for (layeridx in 2:nlayers(OneStepRaster))
+{
+    Class = GetCommonClassNames()[layeridx-1]
+    TIFFtoBMP("../data/pixel-based/predictions/randomforest-median-threestep-walltowall.tif",
+              c(layeridx,layeridx,layeridx), Class)
+}
 
 # Can convert to PNGs
 #BMPs = list.files("../data/pixel-based/predictions/", pattern=glob2rx("*.bmp"), full.names=TRUE)
@@ -119,12 +137,28 @@ ggplotBox(list(Intercept = InterceptModel,
 ## Spatial errors
 
 # Points
+RFSingle = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)
+
 plot(Val.sp["shrub"])
-PR.sp = st_set_geometry(PredictionResult, Val.sp[["geometry"]])
+PR.sp = st_set_geometry(RFSingle, Val.sp[["geometry"]])
 plot(PR.sp["shrub"])
 
+# Errors
+RFSingleErr = RFSingle - Data.val[,Classes]
+Err.sp = st_set_geometry(RFSingleErr, Val.sp[["geometry"]])
+plot(Err.sp["shrub"])
+AbsErr.sp = Err.sp
+AbsErr.sp = abs(st_set_geometry(AbsErr.sp, NULL))
+AbsErr.sp = st_set_geometry(AbsErr.sp, Err.sp[["geometry"]])
+plot(AbsErr.sp["shrub"])
+st_write(AbsErr.sp, "../output/2020-04-28-rf1-AE.gpkg")
 
+EClusters = st_read("../data/pixel-based/biomes/ProbaV_UTM_LC100_biome_clusters_V3_global.gpkg")
+MAE.sp = aggregate(AbsErr.sp, EClusters["bc_id"], mean)
+plot(MAE.sp)
+st_write(MAE.sp, "../output/2020-04-28-rf1-EC-MAE.gpkg")
 
+# Raster
 plot(PR.ras)
 Val.ras = rasterize(Val.sp[Classes], rast, fun=max)
 plot(Val.ras)
@@ -133,4 +167,48 @@ plotRGB(Val.ras, "shrub", "tree", "grassland", stretch="lin")
 plotRGB(PR.ras, "shrub", "tree", "grassland", stretch="lin")
 writeRaster(PR.ras, "../rf-2m-raster.tif")
 writeRaster(Val.ras, "../validation-raster.tif")
+
+## Model comparison plot
+
+# Load all the model data we cached
+
+# Intercept
+InterceptModel = Truth[,Classes]
+InterceptModel[] = 1/length(Classes)*100
+
+LM = read.csv("../data/pixel-based/predictions/lm-all-na0.csv")
+PLSR = read.csv("../data/pixel-based/predictions/plsr-55c.csv") # With 55 components instead of all 67; optimal is to use all
+Lasso = read.csv("../data/pixel-based/predictions/lasso-lambda0000401.csv") # With a slightly higher lambda than 0
+Logistic = read.csv("../data/pixel-based/predictions/logistic-na0.csv")
+FNC = read.csv("../data/pixel-based/predictions/fnc-na0.csv")
+NN = read.csv("../data/pixel-based/predictions/nn-3layers-softmax-nadam-9999na-nodropout.csv", row.names="X")
+Cubist = read.csv("../data/pixel-based/predictions/cubist-committees10.csv")
+SVM = read.csv("../data/pixel-based/predictions/svm-median.csv")
+MRF = read.csv("../data/pixel-based/predictions/multivarrf-all-fixed.csv")
+RFSingle = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)[,Classes]
+RFThreeStepMedian = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-median.csv", PredictType="quantiles")[,Classes]
+
+devEMF::emf("../output/2020-05-08-model-comparison-bar.emf", width=1272/100, height=634/100)
+ggplotBox(list(Intercept = InterceptModel, FNC=FNC, LinearLassoPLSR=LM, Logistic=Logistic, 
+               MultivariateRF = MRF,  RFSingle = RFSingle, NN=NN, SVM=SVM, Cubist=Cubist, RF3SMedian=RFThreeStepMedian),
+          Truth[,Classes], main="Model comparison", outlier.shape=NA)
+dev.off()
+
+devEMF::emf("../output/2020-05-08-model-comparison-line.emf", width=1272/100, height=634/100)
+ggplotBoxLines(list(Intercept = InterceptModel, FNC=FNC, LinearLassoPLSR=LM, Logistic=Logistic, 
+                    MultivariateRF = MRF,  RFSingle = RFSingle, NN=NN, SVM=SVM, Cubist=Cubist, RF3SMedian=RFThreeStepMedian),
+               Truth[,Classes], main="Model comparison")
+dev.off()
+
+ggplotBox(list(
+    RFSingle = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)[,Classes]/100,
+    RFTwoStep = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)[,Classes], FALSE)/100,
+    RFThreeStep = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-validation.csv")[,Classes]/100,
+    RFSingleMedian = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-median-validation.csv", InflationAdjustment = 0, PredictType="quantiles")[,Classes], FALSE)/100,
+    RFTwoStepMedian = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-median.csv", InflationAdjustment = 1, TruncateZeroes = TRUE, PredictType="quantiles")[,Classes], FALSE)/100,
+    RFThreeStepMedian = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-median.csv", PredictType="quantiles")[,Classes]/100,
+    RFOnlyRS = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-rscovars-validation.csv", InflationAdjustment = 0, covars=RSCovars)[,Classes]/100,
+    Intercept = InterceptModel
+), Truth[,Classes]/100, main="Random forest model comparison", outlier.shape=NA)
+
 
