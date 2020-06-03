@@ -104,6 +104,16 @@ GetCommonClassNames = function()
     return(c("tree", "shrub", "grassland", "crops", "urban_built_up", "bare", "water"))
 }
 
+# For plotting, using colours from CGLOPS
+GetCommonClassColours = function(prettify=FALSE)
+{
+    Result = c(tree="#09cc00", shrub="#ffbb22", grassland="#ffff4c", crops="#f096ff",
+             urban_built_up="#ff0000", bare="#dcdcdc", water="#1919ff", Overall="#000000")
+    if (prettify)
+        names(Result) = PrettifyNames(names(Result))
+    return(Result)
+}
+
 # List of classes with enough observations
 GetLargeClassNames = function(data, threshold=50)
 {
@@ -111,3 +121,100 @@ GetLargeClassNames = function(data, threshold=50)
     Freqs = table(data$dominant_lc)
     return(Result[Freqs > 50])
 }
+
+# Make names human-readable
+PrettifyNames = function(UglyNames)
+{
+    NameMap = function(x)
+    {
+        switch(x,
+        x                 ="longitude",
+        y                 ="latitude",
+        yabs              ="absolute latitude",
+        min               ="minimum NDVI",
+        max               ="maximum NDVI",
+        NDMI.year.median  ="median NDMI",
+        NDMI.year.IQR     ="NDMI yearly IQR",
+        NDMI.spring.IQR   ="NDMI March-May IQR",
+        NDMI.summer.IQR   ="NDMI June-August IQR",
+        NDMI.autumn.IQR   ="NDMI September-November IQR",
+        NDMI.winter.IQR   ="NDMI December-February IQR",
+        OSAVI.year.median ="median OSAVI",
+        OSAVI.year.IQR    ="OSAVI yearly IQR",
+        OSAVI.spring.IQR  ="OSAVI March-May IQR",
+        OSAVI.summer.IQR  ="OSAVI June-August IQR",
+        OSAVI.autumn.IQR  ="OSAVI September-November IQR",
+        OSAVI.winter.IQR  ="OSAVI December-February IQR",
+        EVI.year.median   ="median EVI",
+        EVI.year.IQR      ="EVI yearly IQR",
+        EVI.spring.IQR    ="EVI March-May IQR",
+        EVI.summer.IQR    ="EVI June-August IQR",
+        EVI.autumn.IQR    ="EVI September-November IQR",
+        EVI.winter.IQR    ="EVI December-February IQR",
+        NIRv.year.median  ="median NIRv",
+        NIRv.year.IQR     ="NIRv yearly IQR",
+        NIRv.spring.IQR   ="NIRv March-May IQR",
+        NIRv.summer.IQR   ="NIRv June-August IQR",
+        NIRv.autumn.IQR   ="NIRv September-November IQR",
+        NIRv.winter.IQR   ="NIRv December-February IQR",
+        co                ="NDVI order 1 cosine",
+        si                ="NDVI order 1 sine",
+        co2               ="NDVI order 2 cosine",
+        si2               ="NDVI order 2 sine",
+        trend             ="NDVI trend coefficient",
+        phase1            ="NDVI order 1 phase",
+        amplitude1        ="NDVI order 1 amplitude",
+        phase2            ="NDVI order 2 phase",
+        amplitude2        ="NDVI order 2 amplitude",
+        slope.log         ="slope (log-transformed)",
+        tpi               ="TPI",
+        jan.prec.log      ="January precipitation (log)",
+        apr.prec.log      ="April precipitation (log)",
+        jul.prec.log      ="July precipitation (log)",
+        oct.prec.log      ="October precipitation (log)",
+        jan.srad          ="January solar irradiance",
+        jul.srad          ="July solar irradiance",
+        mean.tavg         ="mean temperature",
+        tavg.monthly.range="temperature monthly range",
+        tavg.annual.range ="temperature annual range",
+        annual.prec.log   ="annual precipitation (log)",
+        prec.seasonality  ="temperature seasonality",
+        min.srad          ="minimum solar irradiance",
+        max.srad          ="maximum solar irradiance",
+        mean.srad         ="mean solar irradiance",
+        mean.wind         ="mean windspeed",
+        mean.vapr         ="mean water vapour pressure",
+        cold.prec.log     ="coldest month precipitation (log)",
+        warm.prec.log     ="warmest month precipitation (log)",
+        wet.srad          ="wettest month solar irradiance",
+        dry.srad          ="driest month solar irradiance",
+        soil.av.water     ="soil available water",
+        soil.bulkdens     ="soil bulk density",
+        soil.log.cation   ="soil cation exchange capacity (log)",
+        soil.clay.pct     ="soil clay fraction",
+        soil.log.coarfrag ="soil coarse fragments (log)",
+        soil.ph           ="soil pH",
+        soil.sand.pct     ="soil sand fraction",
+        soil.wilt.wat     ="soil water wilting point",
+        soilgrids         ="soil",
+        spectral          ="vegetation indices",
+        harmonic          ="temporal metrics",
+        tree              ="Trees",
+        shrub             ="Shrubs",
+        grassland         ="Herbaceous",
+        crops             ="Cropland",
+        urban_built_up    ="Built-up",
+        bare              ="Bare land",
+        water             ="Inland water",
+        x)
+    }
+    if (is.list(UglyNames))
+    {
+        Result = lapply(UglyNames, sapply, NameMap)
+        names(Result) = sapply(names(Result), NameMap)
+    }
+    else
+        Result = sapply(UglyNames, NameMap)
+    return(Result)
+}
+

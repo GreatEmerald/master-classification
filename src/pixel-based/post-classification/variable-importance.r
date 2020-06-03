@@ -1,6 +1,7 @@
 # Script for getting variable importance using Random Forest
 library(ranger)
 library(caret)
+library(ComplexHeatmap) # This is a bioconductor package, use BiocManager::install("ComplexHeatmap")
 
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
@@ -136,6 +137,7 @@ PermAll = GetPermutationImportance(CovarGroups = GetAllPixelCovars())
 colnames(PermAll) = GetAllPixelCovars()
 # Cache it, takes a while to calculate
 write.csv(PermAll, "../data/pixel-based/varimp-rf1step-all.csv", row.names = FALSE)
+rownames(PermAll) = GetCommonClassNames()
 
 ## Simple barplots
 library(ggplot2)
@@ -168,7 +170,6 @@ dev.off()
 ggsave("../output/2020-04-21-varimp-top15.pdf", VIP, width=1272/100, height=634/100)
 
 ## Complex heatmaps
-library(ComplexHeatmap) # This is a bioconductor package, use BiocManager::install("ComplexHeatmap")
 
 KeepTop = 15
 ImportanceStats = colSums(PermAll)
@@ -204,5 +205,62 @@ Heatmap(t(Perm15), name="RMSE", column_title = "Class", show_column_dend = FALSE
         })
 dev.off()
 
-# Top 15 per category
+# Top 10 per category
 
+KeepTop = 10
+PermDF.category = as.factor(colnames(PermAll))
+levels(PermDF.category) = GetAllPixelCovars(TRUE)
+ImportanceStatList = tapply(ImportanceStats, list(PermDF.category), function(x) sort(x, decreasing = TRUE)[1:min(KeepTop, length(x))])
+names(ImportanceStatList) = NULL
+ImportanceStatsCat = sort(unlist(ImportanceStatList), decreasing = TRUE)
+Perm10 = PermAll[,names(ImportanceStatsCat)]
+
+VarCats = as.factor(colnames(Perm10))
+levels(VarCats) = GetAllPixelCovars(TRUE)
+
+devEMF::emf("../output/2020-05-12-varimp-heatmap-top10.emf", height=800/100, width=800/100)
+png("../output/2020-05-12-varimp-heatmap-top10.png", height=800, width=800)
+Heatmap(t(Perm10), name="RMSE", column_title = "Class", show_column_dend = FALSE, show_row_dend = FALSE,
+        #row_names_gp = gpar(fontsize = 7), row_title_gp = gpar(fontsize = 11),
+        column_names_rot = 45, row_title_rot = 0,
+        row_split = VarCats, col=circlize::colorRamp2(c(6, 0.5), c("forestgreen", "white")),
+        cell_fun = function(j, i, x, y, w, h, col) {
+            Value=t(Perm10)[i, j]
+            #if (Value > 0.5)
+                grid.text(round(Value, 2), x, y, gp=gpar(fontsize = 12, alpha=min(max(Value, 0.05), 1)))
+        })
+dev.off()
+
+# Top 5
+
+KeepTop = 5
+PermDF.category = as.factor(colnames(PermAll))
+levels(PermDF.category) = GetAllPixelCovars(TRUE)
+ImportanceStatList = tapply(ImportanceStats, list(PermDF.category), function(x) sort(x, decreasing = TRUE)[1:min(KeepTop, length(x))])
+names(ImportanceStatList) = NULL
+ImportanceStatsCat = sort(unlist(ImportanceStatList), decreasing = TRUE)
+Perm10 = PermAll[,names(ImportanceStatsCat)]
+
+rownames(Perm10) = PrettifyNames(rownames(Perm10))
+colnames(Perm10) = PrettifyNames(colnames(Perm10))
+VarCats = as.factor(PrettifyNames(colnames(Perm10)))
+ImportanceStatsGroup = tapply(ImportanceStats, list(PermDF.category), sum)
+ImportanceStatsGroup = sort(ImportanceStatsGroup, decreasing = TRUE)
+levels(VarCats) = PrettifyNames(GetAllPixelCovars(TRUE))
+VarCats = factor(VarCats, levels=PrettifyNames(names(ImportanceStatsGroup)))
+
+devEMF::emf("../output/2020-05-27-varimp-heatmap-top5.emf", height=500/100, width=800/100)
+png("../output/2020-05-27-varimp-heatmap-top5.png", height=500, width=800)
+pdf("../output/2020-06-02-varimp-heatmap-top5.pdf", height=500/100, width=800/100)
+Heatmap(t(Perm10), name="RMSE", column_title = "Class", show_column_dend = FALSE, show_row_dend = FALSE,
+        row_names_gp = gpar(fontsize = 10),# row_title_gp = gpar(fontsize = 11),
+        column_names_rot = 45, row_title_rot = 0,
+        row_split = VarCats, cluster_row_slices = FALSE,
+        col=circlize::colorRamp2(c(4, 0.2), c("forestgreen", "white")),
+        cell_fun = function(j, i, x, y, w, h, col) {
+            Value=t(Perm10)[i, j]
+            #if (Value > 0.5)
+            grid.text(round(Value, 2), x, y, gp=gpar(fontsize = 10#, alpha=min(max(Value, 0.5), 1)
+                                                     ))
+        })
+dev.off()

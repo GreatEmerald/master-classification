@@ -236,6 +236,26 @@ ggplotBoxLines = function(predicted_list, observed, main = "", ...)
                      width = 0.75)
 }
 
+ggplotBar = function(ModelsToPlot, statistic="RMSE")
+{
+    ModelStats=NULL
+    for (i in 1:length(ModelsToPlot))
+    {
+        LMM = AccuracyStatTable(ModelsToPlot[[i]], Truth[,Classes])[statistic]
+        LMM[[paste0(statistic,"R")]] = round(LMM[[statistic]]) # For printing rounded numbers
+        LMM$Model=names(ModelsToPlot)[i]
+        ClassNames = PrettifyNames(rownames(LMM))
+        LMM$Class=factor(ClassNames, c("Overall", ClassNames[ClassNames != "Overall"]))
+        ModelStats = rbind(ModelStats, LMM)
+    }
+    ModelStats$Model = factor(ModelStats$Model, levels = names(ModelsToPlot))
+    ggplot(ModelStats, aes_string("Model", statistic, fill="Class")) +
+        geom_col(position = "dodge", colour="black") +
+        geom_text(aes_string(label=sprintf("%s", paste0(statistic,"R"))), position=position_dodge(width = 0.9), vjust=-0.1, size=2.5) +
+        scale_fill_manual(name = "Class", values = GetCommonClassColours(TRUE)) +
+        coord_cartesian(clip = 'off')
+}
+
 # Additional statistics per class: how well we predict 0, 100, 0<x<50, 50<x<100
 OneToOneStats = function(predicted, observed, row.name="")
 {
@@ -350,4 +370,22 @@ HistMatchPredictions = function(predicted, training=LoadTrainingAndCovariates(),
     HMPredictions = HMPredictions / rowSums(HMPredictions) * 100
     
     return(HMPredictions)
+}
+
+# Rasterise an SF object
+SfToRaster = function(sfo, xsamplingrate=0.2, ysamplingrate=0.2, layers=GetCommonClassNames(), fun=max, ...)
+{
+    xres = (st_bbox(sfo)["xmax"]-st_bbox(sfo)["xmin"])/xsamplingrate
+    yres = (st_bbox(sfo)["ymax"]-st_bbox(sfo)["ymin"])/ysamplingrate
+    rast = raster()
+    sfoextent = extent(sfo)
+    sfoextent@xmin = sfoextent@xmin - 0.5*xsamplingrate
+    sfoextent@xmax = sfoextent@xmax - 0.5*xsamplingrate
+    sfoextent@ymin = sfoextent@ymin - 0.5*ysamplingrate
+    sfoextent@ymax = sfoextent@ymax - 0.5*ysamplingrate
+    extent(rast) = sfoextent
+    ncol(rast) = xres
+    nrow(rast) = yres
+    PR.ras = rasterize(sfo[layers], rast, fun=fun, ...)
+    return(PR.ras)
 }

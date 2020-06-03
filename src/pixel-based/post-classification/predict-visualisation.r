@@ -45,24 +45,6 @@ plot(SpatialPredictions["water"])
 plot(SpatialPredictions["shrub"])
 st_write(SpatialPredictions, "../data/pixel-based/predictions/randomforest-onestep-walltowall.gpkg")
 
-## Make a raster image
-SfToRaster = function(sfo, xsamplingrate=0.2, ysamplingrate=0.2, layers=GetCommonClassNames(), fun=max, ...)
-{
-    xres = (st_bbox(sfo)["xmax"]-st_bbox(sfo)["xmin"])/xsamplingrate
-    yres = (st_bbox(sfo)["ymax"]-st_bbox(sfo)["ymin"])/ysamplingrate
-    rast = raster()
-    sfoextent = extent(sfo)
-    sfoextent@xmin = sfoextent@xmin - 0.5*xsamplingrate
-    sfoextent@xmax = sfoextent@xmax - 0.5*xsamplingrate
-    sfoextent@ymin = sfoextent@ymin - 0.5*ysamplingrate
-    sfoextent@ymax = sfoextent@ymax - 0.5*ysamplingrate
-    extent(rast) = sfoextent
-    ncol(rast) = xres
-    nrow(rast) = yres
-    PR.ras = rasterize(sfo[layers], rast, fun=fun, ...)
-    return(PR.ras)
-}
-
 OneStepRaster = SfToRaster(SpatialPredictions) # Note: first layer is id, can be ignored
 writeRaster(OneStepRaster, "../data/pixel-based/predictions/randomforest-onestep-walltowall.tif", datatype="INT1U", options=c("COMPRESS=DEFLATE"), overwrite=TRUE)
 TIFFtoBMP = function(tifffile, layers=c(5,2,8), prefix="ctw", nas=3)
@@ -134,40 +116,6 @@ ggplotBox(list(Intercept = InterceptModel,
     ),
     Truth/100, main="Other model comparison", outlier.shape=NA)
 
-## Spatial errors
-
-# Points
-RFSingle = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)
-
-plot(Val.sp["shrub"])
-PR.sp = st_set_geometry(RFSingle, Val.sp[["geometry"]])
-plot(PR.sp["shrub"])
-
-# Errors
-RFSingleErr = RFSingle - Data.val[,Classes]
-Err.sp = st_set_geometry(RFSingleErr, Val.sp[["geometry"]])
-plot(Err.sp["shrub"])
-AbsErr.sp = Err.sp
-AbsErr.sp = abs(st_set_geometry(AbsErr.sp, NULL))
-AbsErr.sp = st_set_geometry(AbsErr.sp, Err.sp[["geometry"]])
-plot(AbsErr.sp["shrub"])
-st_write(AbsErr.sp, "../output/2020-04-28-rf1-AE.gpkg")
-
-EClusters = st_read("../data/pixel-based/biomes/ProbaV_UTM_LC100_biome_clusters_V3_global.gpkg")
-MAE.sp = aggregate(AbsErr.sp, EClusters["bc_id"], mean)
-plot(MAE.sp)
-st_write(MAE.sp, "../output/2020-04-28-rf1-EC-MAE.gpkg")
-
-# Raster
-plot(PR.ras)
-Val.ras = rasterize(Val.sp[Classes], rast, fun=max)
-plot(Val.ras)
-
-plotRGB(Val.ras, "shrub", "tree", "grassland", stretch="lin")
-plotRGB(PR.ras, "shrub", "tree", "grassland", stretch="lin")
-writeRaster(PR.ras, "../rf-2m-raster.tif")
-writeRaster(Val.ras, "../validation-raster.tif")
-
 ## Model comparison plot
 
 # Load all the model data we cached
@@ -182,8 +130,10 @@ Lasso = read.csv("../data/pixel-based/predictions/lasso-lambda0000401.csv") # Wi
 Logistic = read.csv("../data/pixel-based/predictions/logistic-na0.csv")
 FNC = read.csv("../data/pixel-based/predictions/fnc-na0.csv")
 NN = read.csv("../data/pixel-based/predictions/nn-3layers-softmax-nadam-9999na-nodropout.csv", row.names="X")
-Cubist = read.csv("../data/pixel-based/predictions/cubist-committees10.csv")
-SVM = read.csv("../data/pixel-based/predictions/svm-median.csv")
+Cubist = BinaryRelevance(NULL, NULL, NULL, NULL, filename="../data/pixel-based/predictions/cubist-committees10.csv")/100
+SVM = BinaryRelevance(NULL, NULL, NULL, NULL, filename="../data/pixel-based/predictions/svm-median.csv")
+SVM[SVM < 0] = 0
+SVM = ScalePredictions(SVM, FALSE)
 MRF = read.csv("../data/pixel-based/predictions/multivarrf-all-fixed.csv")
 RFSingle = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)[,Classes]
 RFThreeStepMedian = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-median.csv", PredictType="quantiles")[,Classes]
@@ -200,6 +150,18 @@ ggplotBoxLines(list(Intercept = InterceptModel, FNC=FNC, LinearLassoPLSR=LM, Log
                Truth[,Classes], main="Model comparison")
 dev.off()
 
+# Reduced to best per group
+
+ggplotBox(list(Intercept = InterceptModel, GLM=LM, RF = RFSingle, SVM=SVM),
+          Truth[,Classes], main="Model comparison", outlier.shape=NA)
+
+# Barplots
+RMSEPlot = ggplotBar(list(Intercept = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian)) + theme(legend.position="bottom") 
+MAEPlot = ggplotBar(list(Intercept = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), "MAE") + theme(legend.position="none")
+pdf("../output/2020-06-03-model-comparison-bar.pdf", width=1272/175, height=634/175)
+gridExtra::grid.arrange(RMSEPlot, MAEPlot, heights=c(60, 40))
+dev.off()
+
 ggplotBox(list(
     RFSingle = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)[,Classes]/100,
     RFTwoStep = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)[,Classes], FALSE)/100,
@@ -211,4 +173,28 @@ ggplotBox(list(
     Intercept = InterceptModel
 ), Truth[,Classes]/100, main="Random forest model comparison", outlier.shape=NA)
 
+# Comparison with Li 2018
+MyClass="water"
+PlotHex(Cubist[,MyClass]*100, Truth[, MyClass], "Cubist")
+hydroGOF::NSE(Cubist[,MyClass]*100, Truth[, MyClass]) # 0.723
+cor(Cubist[,MyClass]*100, Truth[, MyClass])^2         # 0.726
+AccuracyStats(Cubist[,MyClass]*100, Truth[, MyClass]) # 11.51 RMSE, 2.57 MAE
+PlotHex(RFSingle[,MyClass], Truth[, MyClass], "RF")
+hydroGOF::NSE(RFSingle[,MyClass], Truth[, MyClass])   # 0.716
+cor(RFSingle[,MyClass], Truth[, MyClass])^2           # 0.728
+AccuracyStats(RFSingle[,MyClass], Truth[, MyClass])   # 11.65 RMSE, 3.48 MAE
 
+# Comparison with Walton 2008
+MyClass="urban_built_up"
+PlotHex(Cubist[,MyClass]*100, Truth[, MyClass], "Cubist")
+hydroGOF::NSE(Cubist[,MyClass]*100, Truth[, MyClass]) # 0.398
+cor(Cubist[,MyClass]*100, Truth[, MyClass])^2         # 0.452
+AccuracyStats(Cubist[,MyClass]*100, Truth[, MyClass]) # 9.70 RMSE, 2.43 MAE
+PlotHex(RFSingle[,MyClass], Truth[, MyClass], "RF")
+hydroGOF::NSE(RFSingle[,MyClass], Truth[, MyClass])   # 0.385
+cor(RFSingle[,MyClass], Truth[, MyClass])^2           # 0.510
+AccuracyStats(RFSingle[,MyClass], Truth[, MyClass])   # 9.80 RMSE, 3.01 MAE
+PlotHex(SVM[,MyClass], Truth[, MyClass], "SVM")
+hydroGOF::NSE(SVM[,MyClass], Truth[, MyClass])        # 0.087
+cor(SVM[,MyClass], Truth[, MyClass])^2                # 0.134
+AccuracyStats(SVM[,MyClass], Truth[, MyClass])        # 11.94 RMSE, 2.86 MAE
