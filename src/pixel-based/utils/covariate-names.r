@@ -105,10 +105,16 @@ GetCommonClassNames = function()
 }
 
 # For plotting, using colours from CGLOPS
-GetCommonClassColours = function(prettify=FALSE)
+GetCommonClassColours = function(prettify=FALSE, darken_amount=0)
 {
     Result = c(tree="#09cc00", shrub="#ffbb22", grassland="#ffff4c", crops="#f096ff",
              urban_built_up="#ff0000", bare="#dcdcdc", water="#1919ff", Overall="#000000")
+    if (darken_amount > 0)
+    {
+        DarkResult = darken(Result, darken_amount)
+        names(DarkResult) = names(Result)
+        Result = DarkResult
+    }
     if (prettify)
         names(Result) = PrettifyNames(names(Result))
     return(Result)
@@ -167,7 +173,7 @@ PrettifyNames = function(UglyNames)
         phase2            ="NDVI order 2 phase",
         amplitude2        ="NDVI order 2 amplitude",
         slope.log         ="slope (log-transformed)",
-        tpi               ="TPI",
+        tpi               ="terrain position index",
         jan.prec.log      ="January precipitation (log)",
         apr.prec.log      ="April precipitation (log)",
         jul.prec.log      ="July precipitation (log)",

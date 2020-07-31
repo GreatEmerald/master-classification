@@ -156,22 +156,75 @@ ggplotBox(list(Intercept = InterceptModel, GLM=LM, RF = RFSingle, SVM=SVM),
           Truth[,Classes], main="Model comparison", outlier.shape=NA)
 
 # Barplots
-RMSEPlot = ggplotBar(list(Intercept = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian)) + theme(legend.position="bottom") 
-MAEPlot = ggplotBar(list(Intercept = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), "MAE") + theme(legend.position="none")
+RMSEPlot = ggplotBar(list(Intercept = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian)) + theme(legend.position="none", axis.title.x = element_blank())
+MAEPlot = ggplotBar(list(Intercept = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), "MAE") + theme(legend.position="bottom")
 pdf("../output/2020-06-03-model-comparison-bar.pdf", width=1272/175, height=634/175)
-gridExtra::grid.arrange(RMSEPlot, MAEPlot, heights=c(60, 40))
+gridExtra::grid.arrange(RMSEPlot, MAEPlot, heights=c(40, 60))
 dev.off()
 
+
+# Drill-down into Random Forest
+RFTwoStep = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE))
+RFThreeStep = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-validation.csv")
+RFSingleMedian = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-median-validation.csv", InflationAdjustment = 0, PredictType="quantiles"))
+RFTwoStepMedian = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-median.csv", InflationAdjustment = 1, TruncateZeroes = TRUE, PredictType="quantiles"))
+RSLocationCovars = unlist(GetAllPixelCovars(TRUE)[c("spectral", "harmonic", "location")])
+RFOnlyRSLocation = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-rscovars-validation.csv", InflationAdjustment = 0, covars=RSLocationCovars)
+RFOnlyRSStrict = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-rscovars-nolocation-validation.csv", InflationAdjustment = 0, covars=unlist(GetAllPixelCovars(TRUE)[c("spectral", "harmonic")]))
+
 ggplotBox(list(
-    RFSingle = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)[,Classes]/100,
-    RFTwoStep = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)[,Classes], FALSE)/100,
-    RFThreeStep = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-validation.csv")[,Classes]/100,
-    RFSingleMedian = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-median-validation.csv", InflationAdjustment = 0, PredictType="quantiles")[,Classes], FALSE)/100,
-    RFTwoStepMedian = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-median.csv", InflationAdjustment = 1, TruncateZeroes = TRUE, PredictType="quantiles")[,Classes], FALSE)/100,
-    RFThreeStepMedian = RFTrain3("../data/pixel-based/predictions/", "randomforest-threestep-median.csv", PredictType="quantiles")[,Classes]/100,
-    RFOnlyRS = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-rscovars-validation.csv", InflationAdjustment = 0, covars=RSCovars)[,Classes]/100,
-    Intercept = InterceptModel
-), Truth[,Classes]/100, main="Random forest model comparison", outlier.shape=NA)
+    Intercept = InterceptModel,
+    RFOnlyRSStrict = RFOnlyRSStrict,
+    RFOnlyRSLocation = RFOnlyRSLocation,
+    RFSingle = RFSingle,
+    RFTwoStep = RFTwoStep,
+    RFThreeStep = RFThreeStep,
+    RFSingleMedian = RFSingleMedian,
+    RFTwoStepMedian = RFTwoStepMedian,
+    RFThreeStepMedian = RFThreeStepMedian
+), Truth[,Classes], main="Random forest model comparison", outlier.shape=NA)
+
+RMSEPlot = ggplotBar(list(
+    Intercept = InterceptModel,
+    `1-step mean` = RFSingle,
+    `2-step mean` = RFTwoStep,
+    `3-step mean` = RFThreeStep,
+    `1-step median` = RFSingleMedian,
+    `3-step median` = RFThreeStepMedian
+    )) + theme(legend.position="none", axis.title.x = element_blank())
+MAEPlot = ggplotBar(list(
+    Intercept = InterceptModel,
+    `1-step mean` = RFSingle,
+    `2-step mean` = RFTwoStep,
+    `3-step mean` = RFThreeStep,
+    `1-step median` = RFSingleMedian,
+    `3-step median` = RFThreeStepMedian
+    ), "MAE") + theme(legend.position="bottom")
+pdf("../output/2020-06-04-rf-comparison-bar.pdf", width=1272/175, height=634/175)
+gridExtra::grid.arrange(RMSEPlot, MAEPlot, heights=c(40, 60))
+dev.off()
+
+AccuracyStatisticsPlots(RFOnlyRSStrict[,Classes], Truth[,Classes]) # 18.4 RMSE, 10.3 MAE
+hydroGOF::NSE(unlist(RFOnlyRSStrict[,Classes]), unlist(Truth[,Classes])) # 0.62
+SCM(RFOnlyRSStrict[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 0.64±0.04, kappa 0.54±0.05
+
+## Plot 1:1 plots
+png("../output/2020-06-21-rf1st-1to1-box-overall.png", width=70.2414*15, height=26.7229*15, res=300)
+PlotBox(RFSingle, Truth, binpredicted = TRUE, transposeaxes = TRUE)
+dev.off()
+for (Class in Classes)
+{
+    png(paste0("../output/2020-06-21-rf1st-1to1-box-", Class, ".png"), width=70.2414*15, height=26.7229*15, res=300)
+    print(PlotBox(RFSingle[,Class], Truth[,Class], binpredicted = TRUE, transposeaxes = TRUE))
+    dev.off()
+}
+
+# Comparison with Montesano 2009
+hydroGOF::NSE(RFSingle, Truth) # NSE of trees at 0.77
+cor(RFSingle[,"tree"], Truth[,"tree"])^2 # 0.77 as well
+summary(lm(RFSingle[,"tree"]~Truth[,"tree"])) # Significant coeffs, +8.8 intercept and 0.7 slope
+summary(lm(Truth[,"tree"]~RFSingle[,"tree"])) # Same this way, -2.5 and 1.09
+RMSE(RFSingle[,"tree"], Truth[,"tree"]) # 19.3
 
 # Comparison with Li 2018
 MyClass="water"

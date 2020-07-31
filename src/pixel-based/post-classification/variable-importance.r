@@ -249,18 +249,21 @@ ImportanceStatsGroup = sort(ImportanceStatsGroup, decreasing = TRUE)
 levels(VarCats) = PrettifyNames(GetAllPixelCovars(TRUE))
 VarCats = factor(VarCats, levels=PrettifyNames(names(ImportanceStatsGroup)))
 
-devEMF::emf("../output/2020-05-27-varimp-heatmap-top5.emf", height=500/100, width=800/100)
+devEMF::emf("../output/2020-06-19-varimp-heatmap-top5.emf", height=600/100, width=600/100)
 png("../output/2020-05-27-varimp-heatmap-top5.png", height=500, width=800)
-pdf("../output/2020-06-02-varimp-heatmap-top5.pdf", height=500/100, width=800/100)
+pdf("../output/2020-06-19-varimp-heatmap-top5.pdf", height=600/100, width=600/100)
 Heatmap(t(Perm10), name="RMSE", column_title = "Class", show_column_dend = FALSE, show_row_dend = FALSE,
-        row_names_gp = gpar(fontsize = 10),# row_title_gp = gpar(fontsize = 11),
+        row_names_gp = gpar(fontsize = 9), row_title_gp = gpar(fontsize = 10), column_title_gp = gpar(fontsize = 10), column_names_gp = gpar(fontsize = 10),
         column_names_rot = 45, row_title_rot = 0,
-        row_split = VarCats, cluster_row_slices = FALSE,
+        row_split = VarCats, cluster_row_slices = FALSE, cluster_rows = FALSE, cluster_columns = FALSE,
         col=circlize::colorRamp2(c(4, 0.2), c("forestgreen", "white")),
         cell_fun = function(j, i, x, y, w, h, col) {
             Value=t(Perm10)[i, j]
             #if (Value > 0.5)
-            grid.text(round(Value, 2), x, y, gp=gpar(fontsize = 10#, alpha=min(max(Value, 0.5), 1)
+            grid.text(round(Value, 2), x, y, gp=gpar(fontsize = 9#, alpha=min(max(Value, 0.5), 1)
                                                      ))
         })
 dev.off()
+
+## Make a LaTeX table
+Hmisc::latex(data.frame(Covariate=PrettifyNames(GetAllPixelCovars())), file="")

@@ -168,21 +168,49 @@ PlotHex = function(predicted, observed, main="")
 }
 
 # Plot 1:1 boxplot
-PlotBox = function(predicted, observed, binpredicted=FALSE, ...)
+PlotBox = function(predicted, observed, binpredicted=FALSE, transposeaxes=FALSE,
+                   varwidth = TRUE, outlier.size = 0.3, outlier.alpha = 0.1, width=0.2, display.n=FALSE)
 {
     OneToOne = data.frame(Predicted=seq(0, 100, 10), Bins=1:11)
     if (!binpredicted) {
         TruthBins = unlist(observed)
         TruthBins = round(TruthBins, -1)
         ValidationDF = data.frame(Truth=unlist(observed), Bins=as.factor(TruthBins), Predicted=unlist(predicted))
-        boxplot(Predicted~Bins, ValidationDF, xlab="Truth", ylab="Predicted", ...)
-        lines(Predicted~Bins, OneToOne)
+        ncount = if (display.n) {
+            paste(levels(ValidationDF$Bins),"\n(N=",round(table(ValidationDF$Bins)/1000),"k)",sep="")
+        } else waiver()
+        ggplot(ValidationDF, aes(Bins, Predicted)) +
+            stat_boxplot(geom ='errorbar', width=width) +
+            geom_boxplot(varwidth = varwidth, outlier.size = outlier.size, outlier.alpha = outlier.alpha) +
+            geom_line(data=OneToOne) +
+            xlab("Reference") +
+            scale_x_discrete(labels=ncount)
     } else {
         PredBins = unlist(predicted)
         PredBins = round(PredBins, -1)
         ValidationDF = data.frame(Truth=unlist(observed), Bins=as.factor(PredBins), Predicted=unlist(predicted))
-        boxplot(Truth~Bins, ValidationDF, xlab="Truth", ylab="Predicted", horizontal=TRUE, ...)
-        lines(Bins~Predicted, OneToOne)
+        if (!transposeaxes)
+        {
+            ncount = if (display.n) {
+                paste(levels(ValidationDF$Truth),"\n(N=",round(table(ValidationDF$Truth)/1000),"k)",sep="")
+            } else waiver()
+            ggplot(ValidationDF, aes(Truth, Bins)) +
+                stat_boxplot(geom ='errorbar', width=width) +
+                geom_boxplot(varwidth = varwidth, outlier.size = outlier.size, outlier.alpha = outlier.alpha) +
+                geom_line(data=OneToOne, aes(Predicted, Bins)) +
+                ylab("Predicted") + xlab("Reference") +
+                scale_x_discrete(labels=ncount)
+        } else {
+            ncount = if (display.n) {
+                paste(levels(ValidationDF$Bins),"\n(N=",round(table(ValidationDF$Bins)/1000, 1),"k)",sep="")
+            } else waiver()
+            ggplot(ValidationDF, aes(Bins, Truth)) +
+                stat_boxplot(geom ='errorbar', width=width) +
+                geom_boxplot(varwidth = varwidth, outlier.size = outlier.size, outlier.alpha = outlier.alpha) +
+                geom_line(data=OneToOne, aes(Bins, Predicted)) +
+                xlab("Predicted") + ylab("Reference") +
+                scale_x_discrete(labels=ncount)
+        }
     }
 }
 
@@ -252,7 +280,7 @@ ggplotBar = function(ModelsToPlot, statistic="RMSE")
     ggplot(ModelStats, aes_string("Model", statistic, fill="Class")) +
         geom_col(position = "dodge", colour="black") +
         geom_text(aes_string(label=sprintf("%s", paste0(statistic,"R"))), position=position_dodge(width = 0.9), vjust=-0.1, size=2.5) +
-        scale_fill_manual(name = "Class", values = GetCommonClassColours(TRUE)) +
+        scale_fill_manual(name = "Class", values = GetCommonClassColours(TRUE, 0.1)) +
         coord_cartesian(clip = 'off')
 }
 
