@@ -6,7 +6,9 @@ source("pixel-based/utils/db-io.r")
 DataDir = "../data/pixel-based/soil"
 OutFile = file.path(DataDir, "soilgrids-raw.gpkg")
 OutName = "Training"#"Validation"
-PointsToExtract = LoadGlobalTrainingData()#LoadGlobalValidationData()
+Training = LoadGlobalTrainingData()
+Validation = LoadGlobalValidationData()
+Prediction = LoadGlobalRasterPoints()
 
 if (!dir.exists(DataDir))
     dir.create(DataDir)
@@ -17,7 +19,7 @@ if (!dir.exists(DataDir))
 #AllPoints = read.csv(file.path(DataDir, "covariates", "soil-merged.csv"))
 #nrow(AllPoints) # 35581 points
 
-CurrentDataset = tryCatch(st_read(OutFile, OutName, query=paste0("SELECT X, Y FROM '", OutName, "'")), error=function(e)NULL)
+
 
 # Input: a row of the input DF.
 # Output: TRUE on a successful write to a database.
@@ -34,7 +36,9 @@ ReadWriteDB = function(df, outfile = OutFile, outname=OutName, curdata = Current
     return(TRUE)
 }
 
-apply(PointsToExtract, 1, ReadWriteDB)
+apply(Training, 1, ReadWriteDB, OutName="Training", curdata=tryCatch(st_read(OutFile, "Training", query=paste0("SELECT X, Y FROM '", OutName, "'")), error=function(e)NULL))
+apply(Validation, 1, ReadWriteDB, OutName="Validation", curdata=tryCatch(st_read(OutFile, "Validation", query=paste0("SELECT X, Y FROM '", OutName, "'")), error=function(e)NULL))
+apply(Prediction, 1, ReadWriteDB, OutName="Prediction", curdata=tryCatch(st_read(OutFile, "Prediction", query=paste0("SELECT X, Y FROM '", OutName, "'")), error=function(e)NULL))
 
 # For some reason, some responses are shorter (fewer covariates returned).
 # Used ALTER TABLE to add those missing columns.
