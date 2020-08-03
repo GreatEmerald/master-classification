@@ -103,6 +103,8 @@ for (layeridx in 2:nlayers(OneStepRaster))
 #lapply(BMPs, function(BMP) {gdal_translate(BMP, paste0(strtrim(BMP, nchar(BMP)-4), ".png"), options=c("ZLEVEL=9", "NBITS=1"))})
 # Actually they are even larger, so never mind
 
+## Model comparison plots
+
 ## Comparison between non-RF models
 InterceptModel = Truth
 InterceptModel[] = 1/length(Classes)
@@ -115,8 +117,6 @@ ggplotBox(list(Intercept = InterceptModel,
         NNet3Layers = read.csv("../data/pixel-based/predictions/nn-3layers-softmax-adam-0na-nodropout.csv", row.names=1)/100
     ),
     Truth/100, main="Other model comparison", outlier.shape=NA)
-
-## Model comparison plot
 
 # Load all the model data we cached
 

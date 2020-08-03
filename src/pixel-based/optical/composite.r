@@ -201,6 +201,4 @@ for (VI in VIs)
 st_write(CompositesSF, OutputDB)
 
 # Input: matrices of each band representing time series
-# Output: 5 versions of each VI: median, summer median, winter median, autumn median, spring median
-# First calculate all the VIs
-# Then take max NDVI over each of the subsets
+# Output: 5 versions of each VI: median, summer median, winter median, autumn median, spring median\

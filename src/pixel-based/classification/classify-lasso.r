@@ -60,7 +60,8 @@ which.min(AccChange$MAE) # 90
 for (i in 1:length(coef(singlelasso)))
     print(which(coef(singlelasso)[[i]][,48] == 0))
 # jul.srad and mean.srad
-# Since 90 is just OLS, let's use 72 (lambda=0.000401)
+# 90 is just OLS
+# Let's try 72 (lambda=0.000401)
 write.csv(PredictionsScaledA[[72]][,Classes], "../data/pixel-based/predictions/lasso-lambda0000401.csv", row.names=FALSE)
 AccuracyStatisticsPlots(PredictionsScaledA[[72]][,Classes], Truth) # 21.4% RMSE, 12.6 MAE
 SCM(PredictionsScaledA[[72]][,Classes]/100, Truth/100, plot=TRUE, totals=TRUE) # OA 56±0.04 kappa 0.43±0.05

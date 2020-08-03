@@ -2,6 +2,7 @@
 
 library(nnet)
 library(hydroGOF)
+library(future)
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
 source("pixel-based/utils/crossvalidation.r")
