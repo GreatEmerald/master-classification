@@ -76,6 +76,8 @@ st_write(Med3Prediction, "../data/pixel-based/predictions/randomforest-median-th
 
 Med3Raster = SfToRaster(Med3Prediction)
 writeRaster(Med3Raster, "../data/pixel-based/predictions/randomforest-median-threestep-walltowall.tif", datatype="INT1U", options=c("COMPRESS=DEFLATE"), overwrite=TRUE)
+Med3Hardened = which.max(Med3Raster[[-1]])
+writeRaster(Med3Hardened, "../data/pixel-based/predictions/randomforest-median-threestep-walltowall-hardened.tif", datatype="INT1U", options=c("COMPRESS=DEFLATE"), overwrite=TRUE)
 plotRGB(Med3Raster, "shrub", "tree", "grassland", stretch="lin")
 
 TIFFtoBMP("../data/pixel-based/predictions/randomforest-median-threestep-walltowall.tif")
@@ -156,12 +158,18 @@ ggplotBox(list(Intercept = InterceptModel, GLM=LM, RF = RFSingle, SVM=SVM),
           Truth[,Classes], main="Model comparison", outlier.shape=NA)
 
 # Barplots
-RMSEPlot = ggplotBar(list(Intercept = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian)) + theme(legend.position="none", axis.title.x = element_blank())
-MAEPlot = ggplotBar(list(Intercept = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), "MAE") + theme(legend.position="bottom")
+RMSEPlot = ggplotBar(list(`Equal proportions` = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian)) + theme(legend.position="none", axis.title.x = element_blank())
+MAEPlot = ggplotBar(list(`Equal proportions` = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), "MAE") + theme(legend.position="bottom")
 pdf("../output/2020-06-03-model-comparison-bar.pdf", width=1272/175, height=634/175)
 gridExtra::grid.arrange(RMSEPlot, MAEPlot, heights=c(40, 60))
 dev.off()
 
+# Relative measures
+RRMSEPlot = ggplotBar(list(`Equal proportions` = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), ylab="RRMSE", digits=1, relative=TRUE) + theme(legend.position="none", axis.title.x = element_blank())
+RMAEPlot = ggplotBar(list(`Equal proportions` = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), "MAE", "RMAE", digits=1, relative=TRUE) + theme(legend.position="bottom")
+pdf("../output/2020-11-02-model-comparison-bar.pdf", width=1272/175, height=634/175)
+gridExtra::grid.arrange(RRMSEPlot, RMAEPlot, heights=c(40, 60))
+dev.off()
 
 # Drill-down into Random Forest
 RFTwoStep = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE))
@@ -185,7 +193,7 @@ ggplotBox(list(
 ), Truth[,Classes], main="Random forest model comparison", outlier.shape=NA)
 
 RMSEPlot = ggplotBar(list(
-    Intercept = InterceptModel,
+    `Equal proportions` = InterceptModel,
     `1-step mean` = RFSingle,
     `2-step mean` = RFTwoStep,
     `3-step mean` = RFThreeStep,
@@ -193,7 +201,7 @@ RMSEPlot = ggplotBar(list(
     `3-step median` = RFThreeStepMedian
     )) + theme(legend.position="none", axis.title.x = element_blank())
 MAEPlot = ggplotBar(list(
-    Intercept = InterceptModel,
+    `Equal proportions` = InterceptModel,
     `1-step mean` = RFSingle,
     `2-step mean` = RFTwoStep,
     `3-step mean` = RFThreeStep,
@@ -202,6 +210,28 @@ MAEPlot = ggplotBar(list(
     ), "MAE") + theme(legend.position="bottom")
 pdf("../output/2020-06-04-rf-comparison-bar.pdf", width=1272/175, height=634/175)
 gridExtra::grid.arrange(RMSEPlot, MAEPlot, heights=c(40, 60))
+dev.off()
+
+# Relative
+
+RRMSEPlot = ggplotBar(list(
+    `Equal proportions` = InterceptModel,
+    `1-step mean` = RFSingle,
+    `2-step mean` = RFTwoStep,
+    `3-step mean` = RFThreeStep,
+    `1-step median` = RFSingleMedian,
+    `3-step median` = RFThreeStepMedian
+), ylab="RRMSE", digits=1, relative=TRUE) + theme(legend.position="none", axis.title.x = element_blank())
+RMAEPlot = ggplotBar(list(
+    `Equal proportions` = InterceptModel,
+    `1-step mean` = RFSingle,
+    `2-step mean` = RFTwoStep,
+    `3-step mean` = RFThreeStep,
+    `1-step median` = RFSingleMedian,
+    `3-step median` = RFThreeStepMedian
+), "MAE", "RMAE", digits=1, relative=TRUE) + theme(legend.position="bottom")
+pdf("../output/2020-11-02-rf-comparison-bar.pdf", width=1272/175, height=634/175)
+gridExtra::grid.arrange(RRMSEPlot, RMAEPlot, heights=c(40, 60))
 dev.off()
 
 AccuracyStatisticsPlots(RFOnlyRSStrict[,Classes], Truth[,Classes]) # 18.4 RMSE, 10.3 MAE
@@ -219,12 +249,22 @@ for (Class in Classes)
     dev.off()
 }
 
+png("../output/2020-10-12-rf3st-1to1-box-overall.png", width=70.2414*20, height=26.7229*20, res=300)
+PlotBox(RFThreeStepMedian, Truth, binpredicted = TRUE, transposeaxes = TRUE)
+dev.off()
+for (Class in Classes)
+{
+    png(paste0("../output/2020-10-12-rf3st-1to1-box-", Class, ".png"), width=70.2414*20, height=26.7229*20, res=300)
+    print(PlotBox(RFThreeStepMedian[,Class], Truth[,Class], binpredicted = TRUE, transposeaxes = TRUE))
+    dev.off()
+}
+
 # Comparison with Montesano 2009
-hydroGOF::NSE(RFSingle, Truth) # NSE of trees at 0.77
-cor(RFSingle[,"tree"], Truth[,"tree"])^2 # 0.77 as well
-summary(lm(RFSingle[,"tree"]~Truth[,"tree"])) # Significant coeffs, +8.8 intercept and 0.7 slope
-summary(lm(Truth[,"tree"]~RFSingle[,"tree"])) # Same this way, -2.5 and 1.09
-RMSE(RFSingle[,"tree"], Truth[,"tree"]) # 19.3
+hydroGOF::NSE(RFThreeStepMedian, Truth) # NSE of trees at 0.72
+cor(RFThreeStepMedian[,"tree"], Truth[,"tree"])^2 # 0.74
+summary(lm(RFThreeStepMedian[,"tree"]~Truth[,"tree"])) # Significant coeffs, 5.8 intercept and 0.87 slope
+summary(lm(Truth[,"tree"]~RFThreeStepMedian[,"tree"])) # Same this way, 3.17 and 0.85
+RMSE(RFThreeStepMedian[,"tree"], Truth[,"tree"]) # 21.1
 
 # Comparison with Li 2018
 MyClass="water"
@@ -251,3 +291,17 @@ PlotHex(SVM[,MyClass], Truth[, MyClass], "SVM")
 hydroGOF::NSE(SVM[,MyClass], Truth[, MyClass])        # 0.087
 cor(SVM[,MyClass], Truth[, MyClass])^2                # 0.134
 AccuracyStats(SVM[,MyClass], Truth[, MyClass])        # 11.94 RMSE, 2.86 MAE
+
+# Comparison with GSW
+round(AccuracyStatTable(RFSingle, Truth),2)
+round(AccuracyStatTable(RFSingle, Truth, TRUE),2)
+round(AccuracyStatTable(RFThreeStepMedian, Truth),2)
+round(AccuracyStatTable(RFThreeStepMedian, Truth, TRUE),2)
+round(NSE(RFSingle, Truth), 2)
+round(cor(RFSingle$water, Truth$water)^2, 2)
+round(cor(RFSingle$tree, Truth$tree)^2, 2)
+round(cor(RFSingle$urban_built_up, Truth$urban_built_up)^2, 2)
+round(NSE(RFThreeStepMedian, Truth), 2)
+round(cor(RFThreeStepMedian$water, Truth$water)^2, 2)
+round(cor(RFThreeStepMedian$tree, Truth$tree)^2, 2)
+round(cor(RFThreeStepMedian$urban_built_up, Truth$urban_built_up)^2, 2)

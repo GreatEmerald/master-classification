@@ -38,6 +38,17 @@ PermuteMe = function(CovarsInGroup, Model, Class, RealPrediction, statistic="RMS
     AccuracyStats(Permutation$predictions, Truth[[Class]])[[statistic]] - AccuracyStats(RealPrediction$predictions, Truth[[Class]])[[statistic]]
 }
 
+PermuteMe3 = function(CovarsInGroup, Model, RealPrediction, statistic="RMSE")
+{
+    PermutedVal = Data.val
+    set.seed(0xbeefcab)
+    for (covar in CovarsInGroup)
+        PermutedVal[[covar]] = sample(PermutedVal[[covar]])
+    
+    Permutation = predict(Model, PermutedVal)
+    AccuracyStatTable(Permutation, Truth[,Classes])[statistic] - AccuracyStatTable(RealPrediction, Truth[,Classes])[statistic]
+}
+
 GetPermutationImportance = function(statistic="RMSE", AdjustPerNumCovars = FALSE, ClassNames=GetCommonClassNames(), CovarGroups=GetAllPixelCovars(TRUE))
 {
     FullFormula = paste0("~", paste(GetAllPixelCovars(), collapse = "+"))
@@ -52,6 +63,20 @@ GetPermutationImportance = function(statistic="RMSE", AdjustPerNumCovars = FALSE
         Importances = rbind(Importances, sapply(CovarGroups, PermuteMe, Model=rfmodel, Class=Class, RealPrediction=RealPrediction, statistic=statistic))
         row.names(Importances)[nrow(Importances)] = Class
     }
+    if (AdjustPerNumCovars)
+        return(t(t(Importances) / sapply(CovarGroups, length)))
+    return(Importances)
+}
+
+GetPermutationImportance3 = function(statistic="RMSE", AdjustPerNumCovars = FALSE, ClassNames=GetCommonClassNames(), CovarGroups=GetAllPixelCovars(TRUE))
+{
+    rfmodel = RFModel3("../data/pixel-based/predictions/", "randomforest-threestep-median.rds", PredictType="quantiles")
+    RealPrediction = predict(rfmodel, Data.val)
+    
+    Importances = lapply(CovarGroups, PermuteMe3, Model=rfmodel, RealPrediction=RealPrediction, statistic=statistic)
+    Importances = do.call(cbind, Importances)
+    names(Importances) = if (is.list(CovarGroups)) names(CovarGroups) else CovarGroups
+    
     if (AdjustPerNumCovars)
         return(t(t(Importances) / sapply(CovarGroups, length)))
     return(Importances)
@@ -96,6 +121,13 @@ RawImportancesMAE = GetPermutationImportance("MAE")
 AdjustedImportancesMAE = t(t(RawImportancesMAE) / sapply(CovarGroups, length))
 plot_heatmap(RawImportancesMAE)
 plot_heatmap(AdjustedImportancesMAE)
+
+# 3-step model
+RawImportancesRMSE3 = GetPermutationImportance3(CovarGroups=GetAllPixelCovars())
+plot_heatmap(RawImportancesRMSE3)
+write.csv(RawImportancesRMSE3, "../data/pixel-based/varimp-rf3step-all.csv", row.names = FALSE)
+RawImportancesMAE3 = GetPermutationImportance3(CovarGroups=GetAllPixelCovars(), statistic = "MAE")
+write.csv(RawImportancesMAE3, "../data/pixel-based/varimp-rf3step-all-mae.csv", row.names = FALSE)
 
 ## Variable importance for remote sensing-only model
 
@@ -251,12 +283,12 @@ VarCats = factor(VarCats, levels=PrettifyNames(names(ImportanceStatsGroup)))
 
 devEMF::emf("../output/2020-06-19-varimp-heatmap-top5.emf", height=600/100, width=600/100)
 png("../output/2020-05-27-varimp-heatmap-top5.png", height=500, width=800)
-pdf("../output/2020-06-19-varimp-heatmap-top5.pdf", height=600/100, width=600/100)
-Heatmap(t(Perm10), name="RMSE", column_title = "Class", show_column_dend = FALSE, show_row_dend = FALSE,
+pdf("../output/2020-11-06-varimp-heatmap-top5.pdf", height=600/100, width=700/100)
+Heatmap(t(Perm10), name="MAE", column_title = "Class", show_column_dend = FALSE, show_row_dend = FALSE,
         row_names_gp = gpar(fontsize = 9), row_title_gp = gpar(fontsize = 10), column_title_gp = gpar(fontsize = 10), column_names_gp = gpar(fontsize = 10),
         column_names_rot = 45, row_title_rot = 0,
         row_split = VarCats, cluster_row_slices = FALSE, cluster_rows = FALSE, cluster_columns = FALSE,
-        col=circlize::colorRamp2(c(4, 0.2), c("forestgreen", "white")),
+        col=circlize::colorRamp2(c(3, 0.2), c("forestgreen", "white")),
         cell_fun = function(j, i, x, y, w, h, col) {
             Value=t(Perm10)[i, j]
             #if (Value > 0.5)

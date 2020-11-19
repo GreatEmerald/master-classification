@@ -111,7 +111,7 @@ GetCommonClassColours = function(prettify=FALSE, darken_amount=0)
              urban_built_up="#ff0000", bare="#dcdcdc", water="#1919ff", Overall="#000000")
     if (darken_amount > 0)
     {
-        DarkResult = darken(Result, darken_amount)
+        DarkResult = colorspace::darken(Result, darken_amount)
         names(DarkResult) = names(Result)
         Result = DarkResult
     }

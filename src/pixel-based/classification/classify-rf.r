@@ -205,6 +205,7 @@ PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-one
 AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17.3%, MAE 9.4%
 SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 67%±4, kappa 0.57±0.05
 NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.66
+cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.67
 
 # Holdout with the ~100 uncorrelated covars
 PredictionUnscaled = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-validation.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars(), scale=FALSE)
@@ -582,6 +583,147 @@ NSE(PredictionResult[,Classes]/100, Truth[,Classes]/100)
 PlotHex(PredictionResult[,Classes], Truth[,Classes], "RF, three-step model, median")
 PlotBox(PredictionResult[,Classes], Truth[,Classes], main="RF, three-step model, median")
 
+## Explore the different parts of 3-step median
+ThreeStepMedianModel = RFModel3("../data/pixel-based/predictions/", "randomforest-threestep-median.rds", PredictType="quantiles")
+# Predict validation data using the whole ensemble
+PredictionResult = predict(ThreeStepMedianModel, Data.val, PredictType="quantiles")
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100)
+# What is the accuracy of the individual models?
+PurePredictions = as.logical(predict(ThreeStepMedianModel$PureModel, Data.val)$predictions)
+PureValidation = apply(Data.val[,Classes], 1, max) > ThreeStepMedianModel$purity_threshold
+mean(PurePredictions == PureValidation) # OA: 75%
+mean(PurePredictions & PureValidation) # TP: 36%
+mean(!PurePredictions & !PureValidation) # TN: 39%
+mean(PurePredictions & !PureValidation) # FP: 17%
+mean(!PurePredictions & PureValidation) # FN: 8%
+# Classifier step
+ClassifierPredictions = predict(ThreeStepMedianModel$ClassificationModel, Data.val[PurePredictions,])$predictions
+(CM = caret::confusionMatrix(ClassifierPredictions, Data.val[PurePredictions, "dominant_lc"]))
+# 85% OA, 0.79 kappa
+round(CM$byClass[,c("Sensitivity", "Precision")], 2)
+#bare               UA 0.75     PA 0.93
+#crops              UA 0.91     PA 0.85
+#grassland          UA 0.82     PA 0.65
+#shrub              UA 0.02     PA 0.86
+#tree               UA 0.98     PA 0.91
+#urban_built_up     UA 0.04     PA 1.00
+#water              UA 0.80     PA 0.90
+# Regression step
+ValTable = Data.val[!PurePredictions,Classes]
+PredTable = ValTable
+PredTable[] = NA
+for (Class in Classes)
+{
+    RegPredictions = predict(ThreeStepMedianModel[[paste0(Class, "RegressionModel")]], Data.val[!PurePredictions,], type="quantiles", quantiles=0.5)
+    PredTable[, Class] = RegPredictions$predictions
+}
+PredTable = ScalePredictions(PredTable)
+AccuracyStatisticsPlots(PredTable, ValTable) # 21.15 RMSE, 10.92 MAE
+SCM(PredTable/100, ValTable/100, totals=TRUE) # OA 62±3%, kappa 0.47±0.05
+AccuracyStatTable(PredTable, ValTable, TRUE) # Shrubs, water are the most difficult, urban crops and bare too by producer's accuracy
+sort(NSE(PredTable, ValTable)) # Grass is worst, shrubs, bare, urban, water
+NSE(unlist(PredTable), unlist(ValTable)) # 0.36
+cor(unlist(PredTable), unlist(ValTable))^2 # 0.42
+
+## Higher purity
+ThreeStepMedianModelP99 = RFModel3("../data/pixel-based/predictions/", "randomforest-threestep-median-p99.rds", PredictType="quantiles", purity_threshold = 99)
+# Predict validation data using the whole ensemble
+PredictionResult = predict(ThreeStepMedianModelP99, Data.val, PredictType="quantiles")
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100)
+# RMSE 20.0, MAE 7.9
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, totals=TRUE) # 0.72±2 OA, 0.64±0.02 kappa
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.55
+cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.60
+
+# What is the accuracy of the individual models?
+PurePredictions = as.logical(predict(ThreeStepMedianModelP99$PureModel, Data.val)$predictions)
+PureValidation = apply(Data.val[,Classes], 1, max) > ThreeStepMedianModelP99$purity_threshold
+mean(PurePredictions == PureValidation) # OA: 78%
+mean(PurePredictions & PureValidation) # TP: 30%
+mean(!PurePredictions & !PureValidation) # TN: 49%
+mean(PurePredictions & !PureValidation) # FP: 14%
+mean(!PurePredictions & PureValidation) # FN: 8%
+# Classifier step
+ClassifierPredictions = predict(ThreeStepMedianModelP99$ClassificationModel, Data.val[PurePredictions,])$predictions
+(CM = caret::confusionMatrix(ClassifierPredictions, Data.val[PurePredictions, "dominant_lc"]))
+# 87% OA, 0.82 kappa
+round(CM$byClass[,c("Sensitivity", "Precision")], 2)
+#bare            UA    0.77  PA  0.94
+#crops           UA    0.92  PA  0.88
+#grassland       UA    0.82  PA  0.63
+#shrub           UA    0.00  PA  1.00
+#tree            UA    0.99  PA  0.94
+#urban_built_up  UA    0.00  PA    NA
+#water           UA    0.84  PA  0.90
+# Regression step
+ValTable = Data.val[!PurePredictions,Classes]
+PredTable = ValTable
+PredTable[] = NA
+for (Class in Classes)
+{
+    RegPredictions = predict(ThreeStepMedianModelP99[[paste0(Class, "RegressionModel")]], Data.val[!PurePredictions,], type="quantiles", quantiles=0.5)
+    PredTable[, Class] = RegPredictions$predictions
+}
+PredTable = ScalePredictions(PredTable)
+AccuracyStatisticsPlots(PredTable, ValTable) # 21.38 RMSE, 10.49 MAE
+SCM(PredTable/100, ValTable/100, totals=TRUE) # OA 63±2%, kappa 0.49±0.04
+AccuracyStatTable(PredTable, ValTable, TRUE) # Shrub and urban are < 50% accuracy, by RMAE shrubs and urban > 0.85
+sort(NSE(PredTable, ValTable)) # Grass is worst, shrubs, urban, bare, water
+NSE(unlist(PredTable), unlist(ValTable)) # 0.38
+cor(unlist(PredTable), unlist(ValTable))^2 # 0.45
+# So basically it changes stats towards lower MAE but higher RMSE, which is overall beneficial
+
+## Lower purity
+ThreeStepMedianModelP89 = RFModel3("../data/pixel-based/predictions/", "randomforest-threestep-median-p89.rds", PredictType="quantiles", purity_threshold = 89)
+# Predict validation data using the whole ensemble
+PredictionResult = predict(ThreeStepMedianModelP89, Data.val, PredictType="quantiles")
+AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100)
+# RMSE 21.0, MAE 8.0 - worse
+SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, totals=TRUE) # 0.72±1 OA, 0.63±0.02 kappa
+NSE(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100)) # 0.51
+cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.58
+
+# What is the accuracy of the individual models?
+PurePredictions = as.logical(predict(ThreeStepMedianModelP89$PureModel, Data.val)$predictions)
+PureValidation = apply(Data.val[,Classes], 1, max) > ThreeStepMedianModelP89$purity_threshold
+mean(PurePredictions == PureValidation) # OA: 73%
+mean(PurePredictions & PureValidation) # TP: 46%
+mean(!PurePredictions & !PureValidation) # TN: 27%
+mean(PurePredictions & !PureValidation) # FP: 21%
+mean(!PurePredictions & PureValidation) # FN: 6%
+# Too many positives
+# Classifier step
+ClassifierPredictions = predict(ThreeStepMedianModelP89$ClassificationModel, Data.val[PurePredictions,])$predictions
+(CM = caret::confusionMatrix(ClassifierPredictions, Data.val[PurePredictions, "dominant_lc"]))
+# 81% OA, 0.75 kappa, also worse
+round(CM$byClass[,c("Sensitivity", "Precision")], 2)
+#                              UA        PA
+#Class: bare                  0.71      0.91
+#Class: crops                 0.87      0.82
+#Class: grassland             0.81      0.65
+#Class: shrub                 0.04      0.61
+#Class: tree                  0.95      0.88
+#Class: urban_built_up        0.03      0.71
+#Class: water                 0.76      0.89
+# This is almost entirely worse
+# Regression step
+ValTable = Data.val[!PurePredictions,Classes]
+PredTable = ValTable
+PredTable[] = NA
+for (Class in Classes)
+{
+    RegPredictions = predict(ThreeStepMedianModelP89[[paste0(Class, "RegressionModel")]], Data.val[!PurePredictions,], type="quantiles", quantiles=0.5)
+    PredTable[, Class] = RegPredictions$predictions
+}
+PredTable = ScalePredictions(PredTable)
+AccuracyStatisticsPlots(PredTable, ValTable) # 20.59 RMSE, 11.11 MAE - better RMSE, worse MAE
+SCM(PredTable/100, ValTable/100, totals=TRUE) # OA 61±4%, kappa 0.46±0.06
+AccuracyStatTable(PredTable, ValTable, TRUE) # Shrub and urban are < 50% accuracy, by RMAE shrubs and urban (and crops) > 0.84
+sort(NSE(PredTable, ValTable)) # Grass is worst, bare, shrubs, urban, crops, water
+NSE(unlist(PredTable), unlist(ValTable)) # 0.34
+cor(unlist(PredTable), unlist(ValTable))^2 # 0.39
+
+
 ## Only RS params
 RSCovars = GetAllPixelCovars(TRUE)
 RSCovars = c(RSCovars$location, RSCovars$spectral, RSCovars$harmonic)
@@ -598,6 +740,7 @@ InterceptModel[] = 1/length(Classes)
 AccuracyStatisticsPlots(InterceptModel, Truth[,Classes]/100) # RMSE 29.9%, MAE 21.4%
 SCM(InterceptModel, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 26±5%, kappa 0.13±0.07
 NSE(unlist(InterceptModel), unlist(Truth[,Classes]/100)) # 0
+cor(unlist(InterceptModel), unlist(Truth[,Classes]/100))^2 # NA
 PlotBox(InterceptModel*100, Truth[,Classes], main="Intercept model") # It is a line
 
 ggplotBox(list(

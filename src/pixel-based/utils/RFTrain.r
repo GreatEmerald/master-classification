@@ -155,3 +155,82 @@ RFTrain3 = function(outdir, filename, scale=TRUE, purity_threshold=95, covars=Ge
     
     return(as.data.frame(Predictions))
 }
+
+# Train the three-step model only, do not predict.
+RFModel3 = function(outdir, filename, purity_threshold=95, covars=GetAllPixelCovars(),
+                    overwrite=FALSE,  PredictType="response", TrainingSet = Data.df, ...)
+{
+    OutputFile = file.path(outdir, paste0("predictions-threestep-", filename))
+    if (!overwrite && file.exists(OutputFile))
+    {
+        Model = readRDS(OutputFile)
+        return(Model)
+    }
+    
+    Covariates = covars
+    FullFormula = paste0("~", paste(Covariates, collapse = "+"))
+    
+    TrainingSet$pure = apply(TrainingSet[,Classes], 1, max) > purity_threshold
+    
+    # Step one: pure/non-pure binary classification
+    PureModel = ranger(paste0("as.factor(pure)", FullFormula), TrainingSet, seed = 0xbadcafe, ...)
+    
+    # We know whether the input is pure or not already, so for training we give the actual pure and nonpure pixels.
+    # For predicting, we assume that PureModel is perfectly accurate.
+    
+    # Step two: classification of pure pixels
+    ClassificationModel = ranger(paste0("dominant_lc", FullFormula), TrainingSet[TrainingSet$pure,], seed = 0xbadcafe, ...)
+    
+    Model = list(purity_threshold=purity_threshold, PureModel=PureModel, ClassificationModel=ClassificationModel)
+    
+    # Step three: regression of non-pure pixels, one model per class
+    for (Class in Classes)
+    {
+        print(Class)
+        Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
+        
+        RegressionModel = ranger(Formula, TrainingSet[!TrainingSet$pure,], seed = 0xbadcafe, quantreg=PredictType!="response", ...)
+        Model[[length(Model)+1]] = RegressionModel
+        names(Model)[length(Model)] = paste0(Class, "RegressionModel")
+    }
+    
+    class(Model) = c("MultistepModel", class(Model))
+    saveRDS(Model, OutputFile)
+    return(Model)
+}
+
+predict.MultistepModel = function(object, newdata, PredictType="response", PredictQuantiles=0.5, scale=TRUE,
+                       Classes=GetCommonClassNames(), purity_threshold=object$purity_threshold)
+{
+    Predictions = matrix(ncol=length(Classes), nrow=nrow(newdata), dimnames=list(list(), Classes))
+    
+    # Run the purity model
+    PureValPredictions = predict(object$PureModel, newdata)
+    PureValPredictions = as.logical(PureValPredictions$predictions)
+    
+    # Print some stats
+    if (all(Classes %in% names(newdata)))
+    {
+        newdata$pure = apply(newdata[,Classes], 1, max) > purity_threshold
+        PurityAcc = mean(PureValPredictions == newdata$pure)
+        print(paste("Purity classifier accuracy:", PurityAcc))
+    }
+    
+    # Run classification on pure pixels
+    ClassPredictions = predict(object$ClassificationModel, newdata[PureValPredictions,]) # We use our pure model to select on which to predict
+    # Expand into columns
+    ClassCols = unclass(table(1:length(ClassPredictions$prediction),ClassPredictions$prediction)*100)
+    Predictions[PureValPredictions, Classes] = ClassCols[,Classes]
+    
+    # Run regression on mixed pixels
+    for (Class in Classes)
+    {
+        print(Class)
+        RegPredictions = predict(object[[paste0(Class, "RegressionModel")]], newdata[!PureValPredictions,], type=PredictType, quantiles=PredictQuantiles)
+        Predictions[!PureValPredictions, Class] = RegPredictions$predictions
+    }
+    
+    if (scale) Predictions = ScalePredictions(Predictions)
+    return(Predictions)
+}
+.S3method("predict", "MultistepModel")

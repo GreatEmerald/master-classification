@@ -96,8 +96,11 @@ BinaryRelevance = function(formula, data, train_function, val_data, predict_func
         ClassFormula = update.formula(formula, paste0(Class, " ~ ."))
         set.seed(seed)
         Model = train_function(ClassFormula, data=data, ...)
+        gc(full=TRUE)
         RegPredictions = predict_function(Model, newdata=val_data, ...)
         Predictions[, Class] = RegPredictions
+        rm(Model, RegPredictions)
+        gc(full=TRUE)
     }
     
     if (!is.null(filename))
@@ -168,14 +171,15 @@ PlotHex = function(predicted, observed, main="")
 }
 
 # Plot 1:1 boxplot
-PlotBox = function(predicted, observed, binpredicted=FALSE, transposeaxes=FALSE,
+PlotBox = function(predicted, observed, main="", binpredicted=FALSE, transposeaxes=FALSE,
                    varwidth = TRUE, outlier.size = 0.3, outlier.alpha = 0.1, width=0.2, display.n=FALSE)
 {
-    OneToOne = data.frame(Predicted=seq(0, 100, 10), Bins=1:11)
+    #OneToOne = data.frame(Predicted=seq(0, 100, 10), Bins=1:11)
     if (!binpredicted) {
         TruthBins = unlist(observed)
         TruthBins = round(TruthBins, -1)
         ValidationDF = data.frame(Truth=unlist(observed), Bins=as.factor(TruthBins), Predicted=unlist(predicted))
+        OneToOne = data.frame(Predicted=as.numeric(levels(ValidationDF$Bins)), Bins=1:length(levels(ValidationDF$Bins)))
         ncount = if (display.n) {
             paste(levels(ValidationDF$Bins),"\n(N=",round(table(ValidationDF$Bins)/1000),"k)",sep="")
         } else waiver()
@@ -184,11 +188,13 @@ PlotBox = function(predicted, observed, binpredicted=FALSE, transposeaxes=FALSE,
             geom_boxplot(varwidth = varwidth, outlier.size = outlier.size, outlier.alpha = outlier.alpha) +
             geom_line(data=OneToOne) +
             xlab("Reference") +
-            scale_x_discrete(labels=ncount)
+            scale_x_discrete(labels=ncount) +
+            ggtitle(main)
     } else {
         PredBins = unlist(predicted)
         PredBins = round(PredBins, -1)
         ValidationDF = data.frame(Truth=unlist(observed), Bins=as.factor(PredBins), Predicted=unlist(predicted))
+        OneToOne = data.frame(Predicted=as.numeric(levels(ValidationDF$Bins)), Bins=1:length(levels(ValidationDF$Bins)))
         if (!transposeaxes)
         {
             ncount = if (display.n) {
@@ -199,7 +205,8 @@ PlotBox = function(predicted, observed, binpredicted=FALSE, transposeaxes=FALSE,
                 geom_boxplot(varwidth = varwidth, outlier.size = outlier.size, outlier.alpha = outlier.alpha) +
                 geom_line(data=OneToOne, aes(Predicted, Bins)) +
                 ylab("Predicted") + xlab("Reference") +
-                scale_x_discrete(labels=ncount)
+                scale_x_discrete(labels=ncount)+
+                ggtitle(main)
         } else {
             ncount = if (display.n) {
                 paste(levels(ValidationDF$Bins),"\n(N=",round(table(ValidationDF$Bins)/1000, 1),"k)",sep="")
@@ -209,7 +216,8 @@ PlotBox = function(predicted, observed, binpredicted=FALSE, transposeaxes=FALSE,
                 geom_boxplot(varwidth = varwidth, outlier.size = outlier.size, outlier.alpha = outlier.alpha) +
                 geom_line(data=OneToOne, aes(Bins, Predicted)) +
                 xlab("Predicted") + ylab("Reference") +
-                scale_x_discrete(labels=ncount)
+                scale_x_discrete(labels=ncount)+
+                ggtitle(main)
         }
     }
 }
@@ -264,13 +272,14 @@ ggplotBoxLines = function(predicted_list, observed, main = "", ...)
                      width = 0.75)
 }
 
-ggplotBar = function(ModelsToPlot, statistic="RMSE")
+ggplotBar = function(ModelsToPlot, statistic="RMSE", ylab=NULL, digits=0, ...)
 {
+    if (is.null(ylab)) ylab=statistic
     ModelStats=NULL
     for (i in 1:length(ModelsToPlot))
     {
-        LMM = AccuracyStatTable(ModelsToPlot[[i]], Truth[,Classes])[statistic]
-        LMM[[paste0(statistic,"R")]] = round(LMM[[statistic]]) # For printing rounded numbers
+        LMM = AccuracyStatTable(ModelsToPlot[[i]], Truth[,Classes], ...)[statistic]
+        LMM[[paste0(statistic,"R")]] = round(LMM[[statistic]], digits = digits) # For printing rounded numbers
         LMM$Model=names(ModelsToPlot)[i]
         ClassNames = PrettifyNames(rownames(LMM))
         LMM$Class=factor(ClassNames, c("Overall", ClassNames[ClassNames != "Overall"]))
@@ -281,7 +290,7 @@ ggplotBar = function(ModelsToPlot, statistic="RMSE")
         geom_col(position = "dodge", colour="black") +
         geom_text(aes_string(label=sprintf("%s", paste0(statistic,"R"))), position=position_dodge(width = 0.9), vjust=-0.1, size=2.5) +
         scale_fill_manual(name = "Class", values = GetCommonClassColours(TRUE, 0.1)) +
-        coord_cartesian(clip = 'off')
+        coord_cartesian(clip = 'off') + ylab(ylab)
 }
 
 # Additional statistics per class: how well we predict 0, 100, 0<x<50, 50<x<100
