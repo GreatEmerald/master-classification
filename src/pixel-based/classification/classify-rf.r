@@ -34,17 +34,11 @@ Val.sp = Val.sp[rownames(Data.val),]
 
 apply(Data.val, 2, function(x){sum(is.na(x))}) / nrow(Data.df) * 100
 
-# Do some cross-validation
-
-#set.seed(0xfedbeef)
-#folds = createFolds(Data.df$location_id, 10)
-# Use stratified random sampling: make sure that we validate using all classes. Due to a large dataset, this hardly matters, but hey.
-#folds = createFolds(Data.df$dominant_lc, 10)
 Classes = GetCommonClassNames()
 Truth = Data.val[,Classes]
 # Add column for purity
-#Data.df$pure = apply(Data.df[,Classes], 1, max) > 95 # At 95%, half of our data is pure
-#Data.val$pure = apply(Data.val[,Classes], 1, max) > 95 # At 95%, 42% of our validation is pure
+Data.df$pure = apply(Data.df[,Classes], 1, max) > 95 # At 95%, half of our data is pure
+Data.val$pure = apply(Data.val[,Classes], 1, max) > 95 # At 95%, 42% of our validation is pure
 
 # Load ecozone clusters
 #EClusters = st_read("../data/pixel-based/biomes/ProbaV_UTM_LC100_biome_clusters_V3_global.gpkg")
@@ -59,94 +53,7 @@ Truth = Data.val[,Classes]
 # We have zero- and 100-inflation in the data.
 # If we adjust for the zero inflation and use zero-truncated data for the second model, it tends to just predict 100.
 # If we use both zero- and 100-truncated data, it still tends to 100, but is more fuzzy.
-RFCV = function(outdir, filename, InflationAdjustment=1, TruncateZeroes = FALSE, scale=TRUE, covars=GetAllPixelCovars(), ...)
-{
-    OutputFile = file.path(outdir, paste0("predictions-", filename))
-    if (file.exists(OutputFile))
-        return(read.csv(OutputFile))
-        
-    Covariates = covars
-    FullFormula = paste0("~", paste(Covariates, collapse = "+"))
-    PredictionsPerFold = data.frame()
-    for (i in 1:length(folds))
-    {
-        TrainingSet = Data.df[-folds[[i]],]
-        #TrainingSet = Oversample(TrainingSet)
-        ValidationSet = Data.df[folds[[i]],]
-        
-        Predictions = matrix(ncol=length(Classes), nrow=length(folds[[i]]), dimnames=list(list(), Classes))
-        for (Class in Classes)
-        {
-            print(Class)
-            ZeroClass = paste("no", Class, sep=".")
-            
-            Formula = update.formula(FullFormula, paste0(Class, " ~ ."))
-            if (InflationAdjustment > 0)
-            {
-                if (InflationAdjustment == 1) # Zero-inflation only
-                {
-                    # Predict zeroes
-                    ZeroFormula = update.formula(FullFormula, paste0("as.factor(", ZeroClass, ") ~ ."))
-                    ZeroModel = ranger(ZeroFormula, TrainingSet, seed = 0xbadcafe)
-                    ClassPredictions = predict(ZeroModel, ValidationSet)
-                    ClassPredictions = as.numeric(!as.logical(ClassPredictions$predictions))
-                    NonZeroes = ClassPredictions==1
-                } else if (InflationAdjustment == 2) # Zero and 100 inflation
-                {
-                    # Convert the "no." column to a factor, "zero", "hundred", "in-between"
-                    TrainingCategories = rep("in-between", nrow(TrainingSet))
-                    TrainingCategories[TrainingSet[,Class] == 0] = "zero"
-                    TrainingCategories[TrainingSet[,Class] == 100] = "hundred"
-                    TrainingCategories = factor(TrainingCategories)
-                    TrainingSet[,ZeroClass] = TrainingCategories
-                    
-                    ZeroFormula = update.formula(FullFormula, paste0(ZeroClass, " ~ ."))
-                    ZeroModel = ranger(ZeroFormula, TrainingSet, seed = 0xbadcafe)
-                    
-                    CategoryPredictions = predict(ZeroModel, ValidationSet)$prediction
-                    ClassPredictions = as.numeric(CategoryPredictions) # For length
-                    ClassPredictions[CategoryPredictions == "zero"] = 0
-                    ClassPredictions[CategoryPredictions == "hundred"] = 100
-                    NonZeroes = CategoryPredictions=="in-between"
-                }
-                
-                # Predict non-zeroes
-                if (any(NonZeroes))
-                {
-                    # Whether to use all data for training, or zero-truncate. Truncating makes the model biased towards 100...
-                    if (TruncateZeroes)
-                    {
-                        if (InflationAdjustment == 1)
-                            NonzeroModel = ranger(Formula, TrainingSet[TrainingSet[,Class] > 0,], seed = 0xbadcafe)
-                        else if (InflationAdjustment == 2)
-                            NonzeroModel = ranger(Formula, TrainingSet[TrainingSet[,Class] > 0 & TrainingSet[,Class] < 100,], seed = 0xbadcafe)
-                    }
-                    else
-                        NonzeroModel = ranger(Formula, TrainingSet, seed = 0xbadcafe)
-                    ClassPredictions[NonZeroes] = predict(NonzeroModel, ValidationSet[NonZeroes,])$prediction
-                } else print("Everything was predicted to be zero!")
-            } else {
-                # Predict all
-                rfmodel = ranger(Formula, TrainingSet, seed = 0xbadcafe)
-                ClassPredictions = predict(rfmodel, ValidationSet)$prediction
-            }
-            
-            Predictions[,Class] = ClassPredictions
-        }
-        if (scale)
-        {
-            Predictions = Predictions / rowSums(Predictions) * 100
-            # There is a possibility that all classes have been predicted as 0, so we can't normalise.
-            # In that case we just keep them as 0%. It won't add up to 100%. Alternatively we can set it to 1/nclass.
-            Predictions[is.nan(Predictions)] = 0
-        }
-        PredictionsPerFold = rbind(PredictionsPerFold, Predictions)
-    }
-    # Sort everything back to the order of the original
-    PredictionsPerFold = PredictionsPerFold[order(unlist(folds)),]
-    write.csv(PredictionsPerFold, OutputFile, row.names=FALSE)
-    return(PredictionsPerFold)
-}
+## See RFTrain.r for the RFTrain function
 
 ## Training per cluster
 
@@ -192,12 +99,6 @@ RFClusterTrain = function(outdir, filename, scale=TRUE, covars=GetAllPixelCovars
 }
 
 # Actually, oversampling in this case is not needed, because we have a model per class (or two). Y is not unbalanced in that case, just zero-inflated (to various degrees).
-# TODO: see if this can be rewritten using CrossValidate()
-
-PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-10folds.csv", InflationAdjustment = 0)
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 16%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 66%, kappa 0.57
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.65
 
 # Holdout validation
 PredictionResult = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-allcovars-validation.csv", InflationAdjustment = 0)
@@ -247,13 +148,7 @@ PlotHex(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariat
 PlotBox(HMPredictions, Truth[,Classes], main="RF, single model, uncorrelated covariates, histogram matched")
 OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, single model, uncorrelated covariates, histogram matched") # 0 and 100 accuracy skyrockets, but the middle plummets
 
-PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
-PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE, scale=TRUE) # OA 71±2%, kappa 0.63 - this is much better
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.60
-
-# Holdout
+# 2-step
 PredictionResult2S <- RFTrain("../data/pixel-based/predictions/", "randomforest-twostep-truncated-validation.csv", InflationAdjustment = 1, TruncateZeroes = TRUE)
 PredictionResult2S[rowSums(PredictionResult2S) == 0,] = rep(100/length(Classes),length(Classes)) # Set cases of all 0 to equal
 AccuracyStatisticsPlots(PredictionResult2S[,Classes]/100, Truth[,Classes]/100) # RMSE 19.9%, MAE 8.2%
@@ -281,24 +176,6 @@ svg("../rf-2m-me.svg", width=9, height=3)
 barplot(as.matrix(AccuracyStatTable(PredictionResult[,Classes], Truth[,Classes]))[,"ME"], main="Mean Error (bias)")
 dev.off()
 
-PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-threestep-truncated-allcovars-10folds.csv", InflationAdjustment = 2, TruncateZeroes = TRUE)
-PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 70%, kappa 0.62 - this doesn't help any
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.58
-
-# What if we don't truncate
-PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-twostep-untruncated-allcovars-10folds.csv", InflationAdjustment = 1, TruncateZeroes = FALSE)
-PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 71%, kappa 0.63 - so truncation doesn't matter
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.60
-
-PredictionResult = RFCV("../data/pixel-based/predictions/", "randomforest-threestep-untruncated-allcovars-10folds.csv", InflationAdjustment = 2, TruncateZeroes = FALSE)
-PredictionResult[rowSums(PredictionResult) == 0,] = rep(10,10) # Set cases of all 0 to all 10
-AccuracyStatisticsPlots(PredictionResult[,Classes]/100, Truth[,Classes]/100) # RMSE 17%
-SCM(PredictionResult[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 70%, kappa 0.62 - so truncation doesn't matter here either
-cor(unlist(PredictionResult[,Classes]/100), unlist(Truth[,Classes]/100))^2 # 0.59
 
 # Three-model approach
 
@@ -352,31 +229,6 @@ NSE(HMPredictions/100, Truth[,Classes]/100) # Terrible again
 PlotHex(HMPredictions, Truth[,Classes], "RF, three models, uncorrelated covariates, histogram matched except extremes (B)")
 PlotBox(HMPredictions, Truth[,Classes], main="RF, three models, uncorrelated covariates, histogram matched except extremes (B)")
 OneToOneStatPlot(HMPredictions, Truth[,Classes], "RF, three models, uncorrelated covariates, histogram matched except extremes (B)")
-
-
-AST = AccuracyStatTable(PredictionResult[,Classes], Truth[,Classes])
-print(AST)
-barplot(AST$RMSE, names.arg=rownames(AST), main="RMSE")
-barplot(AST$MAE, names.arg=rownames(AST), main="MAE")
-barplot(AST$ME, names.arg=rownames(AST), main="ME")
-#plot(unlist(PredictionsPerFold), unlist(Truth))
-#abline(0, 1, col="red")
-write.csv(AST, paste0("../data/pixel-based/predictions/", "randomforest-twostep-truncated-allcovars-10folds.csv"))
-
-library(ggplot2)
-# ggplot for more reasonable display of ludicrous amounts of points
-ggplot(data.frame(Prediction=unlist(PredictionResult), Truth=unlist(Truth)), aes(Truth, Prediction)) +
-    geom_hex() + xlim(0, 100) + ylim(0, 100) +
-    scale_fill_distiller(palette=7, trans="log") + #log scale
-    geom_abline(slope=1, intercept=0) + ggtitle("Random Forest, Validation, three models")
-
-
-TruthBins = unlist(Truth)
-TruthBins = round(TruthBins, -1)
-ValidationDF = data.frame(Truth=unlist(Truth), Bins=as.factor(TruthBins), Predicted=unlist(PredictionResult))
-boxplot(Predicted~TruthBins, ValidationDF, xlab="Truth", ylab="Predicted")
-OneToOne = data.frame(Predicted=seq(0, 100, 10), Bins=1:11)
-lines(Predicted~Bins, OneToOne)
 
 # Pure model
 Covariates = GetAllPixelCovars()
@@ -483,18 +335,6 @@ OneToOneStatPlot(PredictionResult[,Classes], Truth[,Classes], "RF, single model,
 # So just filling with -9999 is fine
 
 ## Try to histmatch only the middle
-
-Data.df = LoadTrainingAndCovariates()
-Data.df = as.data.frame(Data.df)
-Data.df = AddZeroValueColumns(Data.df)
-Data.df[is.na(Data.df)] = -9999
-Data.df = TidyData(Data.df) # 28000 vs 26000
-Data.val = LoadValidationAndCovariates()
-class(Data.val) = "data.frame"
-Data.val[is.na(Data.val)] = -9999
-Data.val = TidyData(Data.val) # 3500 vs 2700
-Classes = GetCommonClassNames()
-Truth = Data.val[,Classes]
 
 # Test simply without double rescaling
 PredictionResultUnscaled = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-uncorrelated-unscaled-validation.csv", InflationAdjustment = 0, covars=GetUncorrelatedPixelCovars(), scale=FALSE)

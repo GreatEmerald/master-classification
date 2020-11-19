@@ -16,6 +16,8 @@ Dates = LoadRawDataDirs()$date
 ColDates = paste0("X", gsub("-", "", Dates))
 
 # Modified probaV::smoothLoess to plot the result
+# This function is by Johannes Eberenz under Expat license:
+# https://github.com/johanez/probaV/blob/master/LICENSE.md
 smoothLoessPlot = function (tsx, QC_good = NULL, dates = NULL, threshold = c(-50, 
   Inf), res_type = c("distance", "sd_distance", "all", "filled", 
   "omit", "QC"), span=0.3, family="gaussian", threshstat="none", plot=TRUE, ...) 

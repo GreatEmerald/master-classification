@@ -1,3 +1,4 @@
+## Code by Jorn Dallinga, under Expat license
 cloud_filter <- function(x, probav_sm_dir, cf_bands, pattern, tiles, thresholds=c(-50, Inf) , span=0.3, minrows=1, mc.cores=1, logfile, overwrite=FALSE, filename="") {
 
   thresholds <- matrix(thresholds, nrow=2)

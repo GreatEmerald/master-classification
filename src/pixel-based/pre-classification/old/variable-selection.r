@@ -319,4 +319,4 @@ RemainingCovars = RemainingCovars[!RemainingCovars %in% "wc2.0_30s_tavg_05"] # c
 CorLong = RecalcCor(RemainingCovars, method="spearman") # 0.9 threshold reached
 length(RemainingCovars) # 86
 # Next is to either do lasso or stepwise with a logistic regression
-toString(RemainingCovars) # This is put into GetUncorrelatedCovars()
+toString(RemainingCovars) # This is put into utils/covariate-names.r, GetAllPixelCovars()

@@ -5,7 +5,6 @@ source("pixel-based/utils/db-io.r")
 
 DataDir = "../data/pixel-based/soil"
 OutFile = file.path(DataDir, "soilgrids-raw.gpkg")
-OutName = "Training"#"Validation"
 Training = LoadGlobalTrainingData()
 Validation = LoadGlobalValidationData()
 Prediction = LoadGlobalRasterPoints()

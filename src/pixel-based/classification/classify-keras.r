@@ -12,7 +12,6 @@ library(hydroGOF)
 source("pixel-based/utils/load-sampling-data.r")
 source("pixel-based/utils/covariate-names.r")
 source("pixel-based/utils/crossvalidation.r")
-#registerDoParallel(cores=10)
 source("pixel-based/utils/subpixel-confusion-matrix.r") # Replace with package eventually
 source("utils/accuracy-statistics.r")
 
