@@ -222,6 +222,40 @@ PlotBox = function(predicted, observed, main="", binpredicted=FALSE, transposeax
     }
 }
 
+# Accuracy, Precision, Uncertainty (RMSE, MAE, ME) plot
+APUPlot = function(predicted, observed)
+{
+    GetASTable = function(Class)
+    {
+        PredClass = if (Class != "Overall") predicted[,Class] else unlist(predicted)
+        TruthClass = if (Class != "Overall") observed[,Class] else unlist(observed)
+        PredBins = round(PredClass, -1)
+        ValidationDF = data.frame(Truth=TruthClass, Bins=as.factor(PredBins), Predicted=PredClass)
+        BinAS = t(sapply(levels(ValidationDF$Bins), function(Bin) {
+            ValidationBin = ValidationDF[ValidationDF$Bins == Bin,]
+            AS = AccuracyStats(ValidationBin$Predicted, ValidationBin$Truth)
+            return(c(unlist(AS), obs=nrow(ValidationBin)/nrow(ValidationDF)*100, obsabs=nrow(ValidationBin), bin=as.numeric(Bin)))
+        }))
+        BinAS = data.frame(BinAS, class=Class)
+        return(BinAS)
+    }
+    BinAS = lapply(GetCommonClassNames(), GetASTable)
+    BinAS = c(list(GetASTable("Overall")), BinAS)
+    BinAS = do.call("rbind", BinAS)
+    # Exclude too small bins
+    BinAS = BinAS[BinAS$obsabs > 10,]
+    # Reorder and prettify names
+    ClassNames = PrettifyNames(BinAS$class)
+    BinAS$class = factor(ClassNames, c("Overall", unique(ClassNames[ClassNames != "Overall"])))
+    scaleval = 1.5 # 300
+    ggplot(BinAS, aes(x=bin, y=RMSE)) + geom_line(aes(colour="RMSE")) + geom_line(aes(y=MAE, colour="MAE")) + geom_line(aes(y=ME, colour="ME")) +
+        geom_col(aes(y=obs/scaleval, fill="Density"), alpha=0, colour="black") +
+        scale_y_continuous(sec.axis = sec_axis(~.*scaleval, name = "Probability density (%)")) +
+        labs(x="Predicted fraction (%)", y="Statistic (%)") +
+        scale_colour_discrete(name = 'Statistic', breaks=c("RMSE", "MAE", "ME")) + scale_fill_manual(name = 'Histogram', values=c("Density"="white")) +
+        facet_wrap(vars(class), nrow=2)
+}
+
 # Boxplot comparison between different methods
 # predicted_list is a list with the prediction table, with the name being the name of the model
 ggplotBox = function(predicted_list, observed, main = "", ...)
@@ -272,7 +306,7 @@ ggplotBoxLines = function(predicted_list, observed, main = "", ...)
                      width = 0.75)
 }
 
-ggplotBar = function(ModelsToPlot, statistic="RMSE", ylab=NULL, digits=0, ...)
+ggplotBar = function(ModelsToPlot, statistic="RMSE", ylab=NULL, digits=0, textsize=2.5, textvjust=-0.1, ...)
 {
     if (is.null(ylab)) ylab=statistic
     ModelStats=NULL
@@ -288,7 +322,7 @@ ggplotBar = function(ModelsToPlot, statistic="RMSE", ylab=NULL, digits=0, ...)
     ModelStats$Model = factor(ModelStats$Model, levels = names(ModelsToPlot))
     ggplot(ModelStats, aes_string("Model", statistic, fill="Class")) +
         geom_col(position = "dodge", colour="black") +
-        geom_text(aes_string(label=sprintf("%s", paste0(statistic,"R"))), position=position_dodge(width = 0.9), vjust=-0.1, size=2.5) +
+        geom_text(aes_string(label=sprintf("%s", paste0(statistic,"R"))), position=position_dodge(width = 0.9), vjust=textvjust, size=textsize) +
         scale_fill_manual(name = "Class", values = GetCommonClassColours(TRUE, 0.1)) +
         coord_cartesian(clip = 'off') + ylab(ylab)
 }

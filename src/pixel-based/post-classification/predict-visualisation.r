@@ -165,8 +165,8 @@ gridExtra::grid.arrange(RMSEPlot, MAEPlot, heights=c(40, 60))
 dev.off()
 
 # Relative measures
-RRMSEPlot = ggplotBar(list(`Equal proportions` = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), ylab="RRMSE", digits=1, relative=TRUE) + theme(legend.position="none", axis.title.x = element_blank())
-RMAEPlot = ggplotBar(list(`Equal proportions` = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), "MAE", "RMAE", digits=1, relative=TRUE) + theme(legend.position="bottom")
+RRMSEPlot = ggplotBar(list(`Equal proportions` = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), ylab="RRMSE", digits=1, relative=TRUE, textsize=1.9, textvjust=-0.3) + theme(legend.position="none", axis.title.x = element_blank())
+RMAEPlot = ggplotBar(list(`Equal proportions` = InterceptModel, GLM=LM, SVM=SVM, Cubist=Cubist*100, `RF 1-step mean` = RFSingle, `RF 3-step median` = RFThreeStepMedian), "MAE", "RMAE", digits=1, relative=TRUE, textsize=1.9, textvjust=-0.3) + theme(legend.position="bottom")
 pdf("../output/2020-11-02-model-comparison-bar.pdf", width=1272/175, height=634/175)
 gridExtra::grid.arrange(RRMSEPlot, RMAEPlot, heights=c(40, 60))
 dev.off()
@@ -179,6 +179,7 @@ RFTwoStepMedian = ScalePredictions(RFTrain("../data/pixel-based/predictions/", "
 RSLocationCovars = unlist(GetAllPixelCovars(TRUE)[c("spectral", "harmonic", "location")])
 RFOnlyRSLocation = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-rscovars-validation.csv", InflationAdjustment = 0, covars=RSLocationCovars)
 RFOnlyRSStrict = RFTrain("../data/pixel-based/predictions/", "randomforest-onestep-rscovars-nolocation-validation.csv", InflationAdjustment = 0, covars=unlist(GetAllPixelCovars(TRUE)[c("spectral", "harmonic")]))
+SL3 = BinaryRelevance(paste0("~", paste(GetAllPixelCovars(), collapse = "+")), Data.df, filename="../data/pixel-based/predictions/sl3-rf-cubist-rf.csv")
 
 ggplotBox(list(
     Intercept = InterceptModel,
@@ -221,7 +222,7 @@ RRMSEPlot = ggplotBar(list(
     `3-step mean` = RFThreeStep,
     `1-step median` = RFSingleMedian,
     `3-step median` = RFThreeStepMedian
-), ylab="RRMSE", digits=1, relative=TRUE) + theme(legend.position="none", axis.title.x = element_blank())
+), ylab="RRMSE", digits=1, relative=TRUE, textsize=1.9, textvjust=-0.3) + theme(legend.position="none", axis.title.x = element_blank())
 RMAEPlot = ggplotBar(list(
     `Equal proportions` = InterceptModel,
     `1-step mean` = RFSingle,
@@ -229,7 +230,7 @@ RMAEPlot = ggplotBar(list(
     `3-step mean` = RFThreeStep,
     `1-step median` = RFSingleMedian,
     `3-step median` = RFThreeStepMedian
-), "MAE", "RMAE", digits=1, relative=TRUE) + theme(legend.position="bottom")
+), "MAE", "RMAE", digits=1, relative=TRUE, textsize=1.9, textvjust=-0.3) + theme(legend.position="bottom")
 pdf("../output/2020-11-02-rf-comparison-bar.pdf", width=1272/175, height=634/175)
 gridExtra::grid.arrange(RRMSEPlot, RMAEPlot, heights=c(40, 60))
 dev.off()
@@ -237,6 +238,20 @@ dev.off()
 AccuracyStatisticsPlots(RFOnlyRSStrict[,Classes], Truth[,Classes]) # 18.4 RMSE, 10.3 MAE
 hydroGOF::NSE(unlist(RFOnlyRSStrict[,Classes]), unlist(Truth[,Classes])) # 0.62
 SCM(RFOnlyRSStrict[,Classes]/100, Truth[,Classes]/100, plot=TRUE, totals=TRUE) # OA 0.64±0.04, kappa 0.54±0.05
+
+## OLS R2
+PredList = list(FNC*100, LM, Logistic, NN, SVM, Cubist*100, RFSingle,
+    RFOnlyRSLocation, RFTwoStep, RFThreeStep,
+    RFSingleMedian, RFTwoStepMedian, RFThreeStepMedian, SL3)
+OLSStats = t(sapply(PredList, function(Pred){
+    OLS = summary(lm(unlist(Truth)~unlist(Pred)))
+    OLSStat = t(c(OLS$r.squared, OLS$coefficients[,1]))
+}))
+rownames(OLSStats) = c("FNC", "LM", "Logistic", "NN", "SVM", "Cubist", "RFSingle",
+                       "RFOnlyRSLocation", "RFTwoStep", "RFThreeStep",
+                       "RFSingleMedian", "RFTwoStepMedian", "RFThreeStepMedian", "SL3")
+colnames(OLSStats) = c("R.sq", "intercept", "slope")
+round(OLSStats[,c(1,3,2)], 2)
 
 ## Plot 1:1 plots
 png("../output/2020-06-21-rf1st-1to1-box-overall.png", width=70.2414*15, height=26.7229*15, res=300)
@@ -258,6 +273,16 @@ for (Class in Classes)
     print(PlotBox(RFThreeStepMedian[,Class], Truth[,Class], binpredicted = TRUE, transposeaxes = TRUE))
     dev.off()
 }
+
+# APU plot
+pdf("../output/2021-01-13-apu-rf3step.pdf", width=10, height=5)
+#devEMF::emf("../output/2021-01-13-apu-rf3step.emf", width=10, height=5)
+APUPlot(RFThreeStepMedian, Truth)
+dev.off()
+pdf("../output/2021-01-13-apu-rf1step.pdf", width=10, height=5)
+#devEMF::emf("../output/2021-01-13-apu-rf1step.emf", width=10, height=5)
+APUPlot(RFSingle, Truth)
+dev.off()
 
 # Comparison with Montesano 2009
 hydroGOF::NSE(RFThreeStepMedian, Truth) # NSE of trees at 0.72
