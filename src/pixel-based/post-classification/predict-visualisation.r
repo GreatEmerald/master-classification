@@ -275,11 +275,11 @@ for (Class in Classes)
 }
 
 # APU plot
-pdf("../output/2021-01-13-apu-rf3step.pdf", width=10, height=5)
+pdf("../output/2021-03-22-apu-rf3step.pdf", width=10, height=5)
 #devEMF::emf("../output/2021-01-13-apu-rf3step.emf", width=10, height=5)
 APUPlot(RFThreeStepMedian, Truth)
 dev.off()
-pdf("../output/2021-01-13-apu-rf1step.pdf", width=10, height=5)
+pdf("../output/2021-03-22-apu-rf1step.pdf", width=10, height=5)
 #devEMF::emf("../output/2021-01-13-apu-rf1step.emf", width=10, height=5)
 APUPlot(RFSingle, Truth)
 dev.off()

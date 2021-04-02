@@ -247,12 +247,14 @@ APUPlot = function(predicted, observed)
     # Reorder and prettify names
     ClassNames = PrettifyNames(BinAS$class)
     BinAS$class = factor(ClassNames, c("Overall", unique(ClassNames[ClassNames != "Overall"])))
-    scaleval = 1.5 # 300
-    ggplot(BinAS, aes(x=bin, y=RMSE)) + geom_line(aes(colour="RMSE")) + geom_line(aes(y=MAE, colour="MAE")) + geom_line(aes(y=ME, colour="ME")) +
+    scaleval = 1#1.5 # 300
+    ggplot(BinAS, aes(x=bin, y=RMSE)) + geom_line(aes(colour="RMSE")) +
+        geom_line(aes(y=MAE, colour="MAE")) + geom_line(aes(y=ME, colour="ME")) +
+        geom_line(aes(y=RMSEAdj, colour="RMSEAdj")) +
         geom_col(aes(y=obs/scaleval, fill="Density"), alpha=0, colour="black") +
         scale_y_continuous(sec.axis = sec_axis(~.*scaleval, name = "Probability density (%)")) +
         labs(x="Predicted fraction (%)", y="Statistic (%)") +
-        scale_colour_discrete(name = 'Statistic', breaks=c("RMSE", "MAE", "ME")) + scale_fill_manual(name = 'Histogram', values=c("Density"="white")) +
+        scale_colour_discrete(name = 'Statistic', breaks=c("RMSE", "MAE", "ME", "RMSEAdj")) + scale_fill_manual(name = 'Histogram', values=c("Density"="white")) +
         facet_wrap(vars(class), nrow=2)
 }
 
